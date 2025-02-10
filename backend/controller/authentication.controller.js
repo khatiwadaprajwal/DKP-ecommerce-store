@@ -11,6 +11,10 @@ dotenv.config();
 const signup = async (req, res) => {
     try {
         const { name, email, password, role } = req.body;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({ message: "Invalid email format" });
+        }
 
         // Check if user already exists
         const existingUser = await User.findOne({ email });
@@ -27,7 +31,7 @@ const signup = async (req, res) => {
             name,
             email,
             password: hashedPassword,
-            role,
+            role: "Customer",
             otp,
             otpExpires: new Date(Date.now() + 10 * 60 * 1000),
         });
@@ -66,7 +70,8 @@ const verifyOTP = async (req, res) => {
         await TempUser.deleteOne({ email });
 
         // Generate JWT Token
-        const token = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+        const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: "7d" });
+
 
         res.status(200).json({ message: "User verified and registered successfully", token });
     } catch (error) {

@@ -21,7 +21,7 @@ const isLoggedIn = async (req, res, next) => {
 
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
-      console.log("✅ Decoded Token:", decoded);
+     
 
       // Check if token expired
       if (decoded.exp * 1000 < Date.now()) {

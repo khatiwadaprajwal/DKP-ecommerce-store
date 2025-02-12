@@ -7,7 +7,7 @@ const isAdmin = require("../middleware/isadmin");
 const router = express.Router();
 
 // Admin-only routes:
-router.get("/customers", getAllCustomers);
+router.get("/customers",isLoggedIn,isAdmin,getAllCustomers);
 router.get("/customer/:email",  getCustomerByEmail);
 
 // Route to update a user (only the logged-in user can update their own data)

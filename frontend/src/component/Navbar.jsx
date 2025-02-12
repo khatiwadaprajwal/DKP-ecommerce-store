@@ -2,7 +2,9 @@ import React, { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { assets } from "../assets/assets";
 const Navbar = () => {
-  const [visible, setVisisble] = useState(false);
+  const [visible, setVisible] = useState(false);
+
+  
   return (
     <div className="">
       <div className="flex items-center justify-between py-8 font-medium px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw]">
@@ -65,7 +67,7 @@ const Navbar = () => {
                   alt=""
                 />
               </Link>
-              <div className="group-hover:block hidden absolute right-0 pt-4 dropdown-menu shadow-lg bg-white group-hover:block z-10">
+              <div className=" hidden absolute right-0 pt-4 dropdown-menu shadow-lg bg-white group-hover:block z-10">
                 <div className="flex flex-col gap-2 w-36 py-3 px-5 bg-slate-100 text-gray-500 rounded">
                   <p className="cursor-pointer hover:text-black">My Profile</p>
                   <p className="cursor-pointer hover:text-black">Logout</p>
@@ -81,7 +83,7 @@ const Navbar = () => {
               </p>
             </Link>
             <img
-              onClick={() => setVisisble(true)}
+              onClick={() => setVisible(true)}
               src={assets.menu_icon}
               className="w-6 cursor-pointer sm:hidden"
             />
@@ -94,7 +96,7 @@ const Navbar = () => {
           >
             <div className="flex flex-col text-gray-600">
               <div
-                onClick={() => setVisisble(false)}
+                onClick={() => setVisible(false)}
                 className="flex items-center gap-4 p-3"
               >
                 <img className="h-4 rotate-180" src={assets.dropdown_icon} />
@@ -107,28 +109,28 @@ const Navbar = () => {
                 HOME
               </NavLink>
               <NavLink
-                onClick={() => setVisisble(false)}
+                onClick={() => setVisible(false)}
                 className="py-2 pl-6 border-b border-gray-100/80"
                 to="/collection"
               >
                 COLLECTION
               </NavLink>
               <NavLink
-                onClick={() => setVisisble(false)}
+                onClick={() => setVisible(false)}
                 className="py-2 pl-6 border-b border-gray-100/80"
                 to="/order"
               >
                 ORDER
               </NavLink>
               <NavLink
-                onClick={() => setVisisble(false)}
+                onClick={() => setVisible(false)}
                 className="py-2 pl-6 border-b border-gray-100/80"
                 to="/about"
               >
                 ABOUT
               </NavLink>
               <NavLink
-                onClick={() => setVisisble(false)}
+                onClick={() => setVisible(false)}
                 className="py-2 pl-6 border-b border-gray-100/80"
                 to="/contact"
               >

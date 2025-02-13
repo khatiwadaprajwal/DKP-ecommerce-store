@@ -1,14 +1,20 @@
 import React, { useContext, useEffect, useState } from "react";
-import { assets, products } from "../assets/assets";
-// import { ShopContext } from '../context/Shopcontext'
+import { assets } from "../assets/assets";
 import ProductItem from "../component/ProductItem";
+import { ShopContext } from "../context/Shopcontext";
 
 const Collection = () => {
+
+
+  const {products} = useContext(ShopContext);
   const [showFilter, setShowFilter] = useState(false);
   const [filterProducts, setFilterProducts] = useState([]);
   const [category, setCategory] = useState([]);
   const [sizes, setSizes] = useState([]);
   const [sortType , setSortType] = useState("Relavent");
+
+  console.log(products);
+
 
   const toggleCategory = (e) => {
     if (category.includes(e.target.value)) {
@@ -26,6 +32,7 @@ const Collection = () => {
     }
   };
 
+
   const applyFilter = () =>{
     
     let productsCopy= products.slice();
@@ -40,6 +47,7 @@ const Collection = () => {
       setFilterProducts(productsCopy)
   }
 
+
   const sortProduct = () =>{
 
    let filterProductCopy = filterProducts.slice()
@@ -48,6 +56,7 @@ const Collection = () => {
     case 'low-high':
       setFilterProducts(filterProductCopy.sort((a,b)=>(a.price-b.price)));
       break;
+
 
       case 'high-low':
         setFilterProducts(filterProductCopy.sort((a,b)=>(b.price-a.price)));
@@ -66,7 +75,6 @@ const Collection = () => {
   useEffect(()=>{
     sortProduct();
   },[sortType])
-
 
 
   return (

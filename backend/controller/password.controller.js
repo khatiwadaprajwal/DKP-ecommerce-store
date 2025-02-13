@@ -60,6 +60,52 @@ const resetpassword = async (req, res) => {
     }
 };
 
-module.exports = { sendotp, resetpassword };
+
+// ✅ Change Password (Authenticated User)
+
+
+const changePassword = async (req, res) => {
+  try {
+    console.log("🔹 Received req.user in changePassword:", req.user);
+    console.log("🔹 Request Body:", req.body); // Check what Postman is sending
+
+    const { oldPassword, newPassword } = req.body;
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ msg: "Please provide old and new passwords" });
+    }
+
+    // Find user (should already exist in req.user)
+    const user = req.user;
+    console.log("🔹 Found User:", user);
+
+    // Compare old password
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    console.log("🔹 Password Match:", isMatch);
+
+    if (!isMatch) {
+      return res.status(401).json({ msg: "Old password is incorrect" });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    console.log("🔹 Hashed New Password:", hashedPassword);
+
+    // Update password in DB
+    const updatedUser = await User.findByIdAndUpdate(
+      user._id,
+      { password: hashedPassword },
+      { new: true }
+    );
+
+    console.log("🔹 Updated User:", updatedUser);
+
+    res.json({ msg: "Password changed successfully" });
+  } catch (error) {
+    console.error("❌ Error in changePassword:", error);
+    res.status(500).json({ msg: "Server error", error: error.message });
+  }
+};
+
+module.exports = { sendotp, resetpassword,changePassword };
 
 

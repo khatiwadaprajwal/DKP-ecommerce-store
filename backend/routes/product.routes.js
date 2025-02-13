@@ -15,7 +15,8 @@ const router = express.Router();
 router.route("/product")
     .post(isLoggedIn, isAdmin, uploader.array("images", 5), createProduct); // Allows up to 5 images
 
-router.put("/product/:id", isLoggedIn, isAdmin, updateProduct);
+    router.put("/product/:id", isLoggedIn, isAdmin, uploader.array("images", 5), updateProduct);
+
 router.delete("/product/:id", isLoggedIn, isAdmin, deleteProduct);
 
 // Public routes:

@@ -25,7 +25,7 @@ const getCustomerByEmail = async (req, res) => {
             return res.status(400).json({ message: "Email is required in URL parameters" });
         }
 
-        email = String(email).trim(); // Convert to string and trim spaces
+        email = String(email).trim(); 
         console.log("Received email:", email);
 
         const user = await User.findOne({ email });
@@ -62,7 +62,7 @@ const updateUser = async (req, res) => {
       return res.status(403).json({ message: "You are not authorized to update this user" });
     }
 
-    const { password, ...otherUpdates } = req.body;
+    const {  ...otherUpdates } = req.body;
 
     // Hash the password only if it is provided
     if (password) {

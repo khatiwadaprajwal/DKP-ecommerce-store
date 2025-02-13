@@ -64,12 +64,8 @@ const updateUser = async (req, res) => {
 
     const {  ...otherUpdates } = req.body;
 
-    // Hash the password only if it is provided
-    if (password) {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      otherUpdates.password = hashedPassword;
-    }
-
+    
+   
     // Update user in MongoDB using `findOneAndUpdate`
     const updatedUser = await User.findOneAndUpdate(
       { email },

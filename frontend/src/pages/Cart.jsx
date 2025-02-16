@@ -152,6 +152,7 @@ const Cart = () => {
                 Rs. {totalPrice + delivery_fee}
               </span>
             </div>
+            
               <button
                 disabled={selectedItems.length === 0}
                 onClick={handleCheckout}

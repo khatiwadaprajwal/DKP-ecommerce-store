@@ -6,6 +6,8 @@ import { useNavigate, Link } from "react-router-dom";
 import ProductItem from "../component/ProductItem";
 import Pagination from "../component/Pagination"; // Import the Pagination component
 
+
+
 const Product = () => {
   const { productId } = useParams();
   const { products, addToCart } = useContext(ShopContext);
@@ -135,12 +137,11 @@ const Product = () => {
           </div>
           {/* Buttons */}
           <div className="flex gap-4 mt-6">
-          <button onClick={()=>addToCart(productData._id,selectedSize,quantity)} className= "bg-black text-white cursor-pointer px-8 py-3 rounded-md font-medium hover:bg-gray-700">
+          <button onClick={()=>addToCart(productData._id,selectedSize,quantity,productData.name,productData.price,productData.image[0])} className= "bg-black text-white cursor-pointer px-8 py-3 rounded-md font-medium hover:bg-gray-700">
                 Add to Cart
               </button>
-            <Link to={"/order"}>
+            <Link to={"/placeOrder"}>
             <button
-              navigate="/order"
               className="bg-yellow-500 cursor-pointer text-white px-8 py-3 rounded-md font-medium  hover:bg-yellow-700"
             >
               Order Now

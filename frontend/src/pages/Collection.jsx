@@ -2,19 +2,21 @@ import React, { useContext, useEffect, useState } from "react";
 import { assets } from "../assets/assets";
 import ProductItem from "../component/ProductItem";
 import { ShopContext } from "../context/Shopcontext";
+import Pagination from "../component/Pagination"; // Import the Pagination component
 
 const Collection = () => {
-
-
-  const {products} = useContext(ShopContext);
+  const { products } = useContext(ShopContext);
   const [showFilter, setShowFilter] = useState(false);
   const [filterProducts, setFilterProducts] = useState([]);
   const [category, setCategory] = useState([]);
   const [sizes, setSizes] = useState([]);
-  const [sortType , setSortType] = useState("Relavent");
+  const [sortType, setSortType] = useState("Relavent");
+
+  // Pagination States
+  const [currentPage, setCurrentPage] = useState(0);
+  const itemsPerPage = 20; // Number of products per page
 
   console.log(products);
-
 
   const toggleCategory = (e) => {
     if (category.includes(e.target.value)) {
@@ -32,50 +34,55 @@ const Collection = () => {
     }
   };
 
+  const applyFilter = () => {
+    let productsCopy = products.slice();
 
-  const applyFilter = () =>{
-    
-    let productsCopy= products.slice();
-
-    if(category.length > 0){
-      productsCopy= productsCopy.filter(item => category.includes(item.category));
+    if (category.length > 0) {
+      productsCopy = productsCopy.filter((item) =>
+        category.includes(item.category)
+      );
     }
 
-    if(sizes.length > 0){
-      productsCopy= productsCopy.filter(item => item.sizes.some(size => sizes.includes(size)));
+    if (sizes.length > 0) {
+      productsCopy = productsCopy.filter((item) =>
+        item.sizes.some((size) => sizes.includes(size))
+      );
     }
-      setFilterProducts(productsCopy)
-  }
+    setFilterProducts(productsCopy);
+  };
 
+  const sortProduct = () => {
+    let filterProductCopy = filterProducts.slice();
 
-  const sortProduct = () =>{
-
-   let filterProductCopy = filterProducts.slice()
-
-   switch (sortType){
-    case 'low-high':
-      setFilterProducts(filterProductCopy.sort((a,b)=>(a.price-b.price)));
-      break;
-
-
-      case 'high-low':
-        setFilterProducts(filterProductCopy.sort((a,b)=>(b.price-a.price)));
+    switch (sortType) {
+      case "low-high":
+        setFilterProducts(filterProductCopy.sort((a, b) => a.price - b.price));
         break;
 
-        default:
-          applyFilter();
-          break;
-   }
-  }
+      case "high-low":
+        setFilterProducts(filterProductCopy.sort((a, b) => b.price - a.price));
+        break;
 
-  useEffect(() =>{
-      applyFilter()
-  },[category, sizes])
+      default:
+        applyFilter();
+        break;
+    }
+  };
 
-  useEffect(()=>{
+  useEffect(() => {
+    applyFilter();
+  }, [category, sizes]);
+
+  useEffect(() => {
     sortProduct();
-  },[sortType])
+  }, [sortType]);
 
+  // **Pagination Logic**
+  const totalPages = Math.ceil(filterProducts.length / itemsPerPage);
+  const paginatedProducts = filterProducts.slice(
+    currentPage * itemsPerPage,
+    (currentPage + 1) * itemsPerPage
+  );
 
   return (
     <div className="flex flex-col sm:flex-row gap-1 sm:gap-10 pt-10 pb-8 ">
@@ -193,7 +200,10 @@ const Collection = () => {
           {/* sorting products */}
           <div className="flex px-2 items-center justify-center my-3">
             <p className="inline-flex text-sm px-2">Sort By:</p>
-            <select onChange={(e)=>setSortType(e.target.value)} className="min-w-30 border-gray-200 shadow text-base font-medium px-3">
+            <select
+              onChange={(e) => setSortType(e.target.value)}
+              className="min-w-30 border-gray-200 shadow text-base font-medium px-3"
+            >
               <option value="relavent">Relavent</option>
               <option value="low-high">Low-High</option>
               <option value="high-low">High-Low</option>
@@ -201,23 +211,36 @@ const Collection = () => {
           </div>
         </div>
 
-
-
-        {/* map products */}
+        {/* Products Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-y-6 gap-x-3">
-          {filterProducts.map((item, index) => (
-            <ProductItem
-              key={index}
-              name={item.name}
-              id={item._id}
-              price={item.price}
-              image={item.image}
-            />
-          ))}
+          {paginatedProducts.length > 0 ? (
+            paginatedProducts.map((item) => (
+              <ProductItem
+                key={item._id}
+                name={item.name}
+                id={item._id}
+                price={item.price}
+                image={item.image}
+              />
+            ))
+          ) : (
+            <p className="text-gray-500">No products found.</p>
+          )}
         </div>
+
+        {/* Pagination Component */}
+        <Pagination
+          totalPages={totalPages}
+          currentPage={currentPage}
+          onPageChange={(page) => {
+            setCurrentPage(page);
+            window.scrollTo({ top: 0, behavior: "smooth" }); // Scroll to top smoothly
+          }} 
+        />
       </div>
     </div>
   );
 };
+
 
 export default Collection;

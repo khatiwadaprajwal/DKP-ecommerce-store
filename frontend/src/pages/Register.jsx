@@ -62,6 +62,7 @@ const Register = () => {
     return () => clearInterval(timer); // Cleanup on unmount
   }, [showOTP, timeLeft]);
 
+  
   // Format time as MM:SS
   const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60);

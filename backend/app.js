@@ -1,11 +1,13 @@
 const express = require('express');
 const app = express();
 require('./config/mongoconfig');
+const cors = require("cors");
 
 //const path = require('path');
 
 // Express setup
 app.use(express.json());
+app.use(cors());
 
 //routes connected
 const routes = require("./routes/index")

@@ -10,7 +10,7 @@ dotenv.config();
 // Signup - Save user in TempUser & Send OTP
 const signup = async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+        const { name, email, password, role } = req.body;
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
             return res.status(400).json({ message: "Invalid email format" });
@@ -50,14 +50,11 @@ const signup = async (req, res) => {
 const verifyOTP = async (req, res) => {
     try {
         const { email, otp } = req.body;
-
         const tempUser = await TempUser.findOne({ email });
         if (!tempUser) return res.status(404).json({ message: "User not found" });
-
         if (tempUser.otp !== otp || tempUser.otpExpires < Date.now()) {
             return res.status(400).json({ message: "Invalid or expired OTP" });
         }
-
         // Move user to main User model
         const newUser = await User.create({
             name: tempUser.name,
@@ -65,14 +62,10 @@ const verifyOTP = async (req, res) => {
             password: tempUser.password,
             role: tempUser.role,
         });
-
         // Delete temp user
         await TempUser.deleteOne({ email });
-
         // Generate JWT Token
-        const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: "7d" });
-
-
+        const token = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
         res.status(200).json({ message: "User verified and registered successfully", token });
     } catch (error) {
         console.error("❌ Error in verifyOTP:", error.message);

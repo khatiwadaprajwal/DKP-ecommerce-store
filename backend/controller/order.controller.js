@@ -2,96 +2,109 @@ const Order = require("../model/order.model");
 const OrderItem = require("../model/orderitem.model");
 const Product = require("../model/productmodel");
 const axios = require("axios");
+const mongoose = require("mongoose");
 const { generateAccessToken, PAYPAL_API } = require("../utils/paypal");
 
-// Create Order
 exports.createOrder = async (req, res) => {
-    try {
-        const { userId, productId, quantity, address, location, paymentMethod } = req.body;
+  try {
+      console.log("📌 Creating order - Token User ID:", req.user?._id);
 
-        // Find product
-        const product = await Product.findById(productId);
-        if (!product || product.totalQuantity < quantity) {
-            return res.status(400).json({ error: "Product not available" });
-        }
+      const { productId, quantity, address, location, paymentMethod } = req.body;
+      
+      // Ensure user is logged in
+      if (!req.user || !req.user._id) {
+          return res.status(401).json({ error: "Unauthorized: User not found" });
+      }
 
-        const totalAmount = quantity * product.price;
+      const userId = req.user._id.toString(); // ✅ Convert ObjectId to string
 
-        // Create Order
-        const order = new Order({
-            userId,
-            totalAmount,
-            address,
-            location,
-            paymentMethod,
-            status: "Pending",
-            paymentStatus: paymentMethod === "PayPal" ? "Pending" : "Paid"
-        });
+      // Find the product
+      const product = await Product.findById(productId);
+      if (!product || product.totalQuantity < quantity) {
+          return res.status(400).json({ error: "Product not available or insufficient stock" });
+      }
 
-        await order.save();
+      const totalAmount = quantity * product.price;
 
-        // Create Order Item
-        const orderItem = new OrderItem({
-            orderId: order._id,
-            productId,
-            quantity,
-            price: product.price,
-            totalPrice: totalAmount
-        });
+      // Create Order Item
+      const orderItem = new OrderItem({
+          orderId: null, // Set after order creation
+          productId,
+          quantity,
+          price: product.price,
+          totalPrice: totalAmount
+      });
+      await orderItem.save();
 
-        await orderItem.save();
+      // Create Order
+      const order = new Order({
+          userId,  // ✅ User ID comes from `req.user._id`, not body
+          orderItems: [orderItem._id], // ✅ Store order item reference
+          totalAmount,
+          address,
+          location,
+          paymentMethod,
+          status: "Pending",
+          paymentStatus: paymentMethod === "PayPal" ? "Pending" : "Paid"
+      });
 
-        if (paymentMethod === "PayPal") {
-            try {
-                // Get PayPal Access Token
-                const accessToken = await generateAccessToken();
+      await order.save();
 
-                // Create PayPal Payment
-                const paymentData = {
-                    intent: "sale",
-                    payer: { payment_method: "paypal" },
-                    redirect_urls: {
-                        return_url: `http://localhost:3001/v1/paypal/success?orderId=${order._id}`,
-                        cancel_url: "http://localhost:3001/v1/paypal/cancel"
-                    },
-                    transactions: [{ amount: { currency: "USD", total: totalAmount.toFixed(2) } }]
-                };
+      // Update OrderItem with the correct Order ID
+      await OrderItem.findByIdAndUpdate(orderItem._id, { orderId: order._id });
 
-                // Make API Call to PayPal
-                const response = await axios.post(
-                    `${PAYPAL_API}/v1/payments/payment`,
-                    paymentData,
-                    {
-                        headers: {
-                            Authorization: `Bearer ${accessToken}`,
-                            "Content-Type": "application/json"
-                        }
-                    }
-                );
+      // Handle PayPal Payment
+      if (paymentMethod === "PayPal") {
+          try {
+              const accessToken = await generateAccessToken();
 
-                // Extract approval URL
-                const approvalUrl = response.data.links.find(link => link.rel === "approval_url").href;
+              // Create PayPal Payment
+              const paymentData = {
+                  intent: "sale",
+                  payer: { payment_method: "paypal" },
+                  redirect_urls: {
+                      return_url: `http://localhost:3001/v1/paypal/success?orderId=${order._id}`,
+                      cancel_url: "http://localhost:3001/v1/paypal/cancel"
+                  },
+                  transactions: [{ amount: { currency: "USD", total: totalAmount.toFixed(2) } }]
+              };
 
-                return res.json({ message: "Redirect to PayPal", approvalUrl });
+              // Call PayPal API
+              const response = await axios.post(
+                  `${PAYPAL_API}/v1/payments/payment`,
+                  paymentData,
+                  {
+                      headers: {
+                          Authorization: `Bearer ${accessToken}`,
+                          "Content-Type": "application/json"
+                      }
+                  }
+              );
 
-            } catch (paypalError) {
-                console.error("PayPal Payment Error:", paypalError);
-                return res.status(500).json({ error: "PayPal payment initialization failed" });
-            }
-        } else {
-            // Update stock for COD payments
-            product.totalQuantity -= quantity;
-            product.totalSold += quantity;
-            await product.save();
+              // Extract approval URL
+              const approvalUrl = response.data.links.find(link => link.rel === "approval_url").href;
 
-            return res.status(201).json({ message: "Order placed successfully", order });
-        }
+              return res.json({ message: "Redirect to PayPal", approvalUrl });
 
-    } catch (error) {
-        console.error("Order Creation Error:", error);
-        return res.status(500).json({ error: "Order creation failed" });
-    }
+          } catch (paypalError) {
+              console.error("❌ PayPal Payment Error:", paypalError.response?.data || paypalError.message);
+              return res.status(500).json({ error: "PayPal payment initialization failed" });
+          }
+      }
+
+      // Reduce product stock for COD payments
+      product.totalQuantity -= quantity;
+      product.totalSold += quantity;
+      await product.save();
+
+      return res.status(201).json({ message: "✅ Order placed successfully", order });
+
+  } catch (error) {
+      console.error("❌ Order Creation Error:", error);
+      return res.status(500).json({ error: "Order creation failed" });
+  }
 };
+
 
 // PayPal Payment Success
 exports.paypalSuccess = async (req, res) => {
@@ -142,54 +155,141 @@ exports.paypalSuccess = async (req, res) => {
     }
 };
 
-// Cancel Order
 exports.cancelOrder = async (req, res) => {
-    try {
-        const { orderId } = req.params;
+  try {
+      const { orderId } = req.params;
 
-        const order = await Order.findById(orderId);
-        if (!order) return res.status(404).json({ error: "Order not found" });
+      // Fetch the order
+      const order = await Order.findById(orderId);
+      if (!order) return res.status(404).json({ error: "Order not found" });
 
-        if (order.status === "Cancelled") return res.status(400).json({ error: "Order already cancelled" });
+      // Ensure the order can only be cancelled if it's pending
+      if (order.status !== "Pending") {
+          return res.status(400).json({ error: "Order can only be cancelled if it's pending" });
+      }
 
-        const orderItems = await OrderItem.find({ orderId });
+      // Restore product stock
+      const orderItems = await OrderItem.find({ orderId });
+      const bulkUpdates = orderItems.map(item => ({
+          updateOne: {
+              filter: { _id: item.productId },
+              update: { 
+                  $inc: { totalQuantity: item.quantity, totalSold: -item.quantity } 
+              }
+          }
+      }));
 
-        for (let item of orderItems) {
-            const product = await Product.findById(item.productId);
-            if (product) {
-                product.totalQuantity += item.quantity; // Restore quantity
-                product.totalSold -= item.quantity; // Reduce total sold
-                await product.save();
-            }
-        }
+      if (bulkUpdates.length) await Product.bulkWrite(bulkUpdates);
 
-        order.status = "Cancelled";
-        await order.save();
+      // Update order status to "Cancelled"
+      order.status = "Cancelled";
+      await order.save();
 
-        return res.status(200).json({ message: "Order cancelled successfully", order });
+      return res.status(200).json({ message: "✅ Order cancelled successfully", order });
 
-    } catch (error) {
-        console.error("Order Cancellation Error:", error);
-        return res.status(500).json({ error: error.message });
-    }
+  } catch (error) {
+      console.error("❌ Order Cancellation Error:", error);
+      return res.status(500).json({ error: "Something went wrong, please try again" });
+  }
 };
 
 // Get All Orders for Logged-in User
+
 exports.getOrders = async (req, res) => {
-    try {
-        const orders = await Order.find({ userId: req.user.id });
+  try {
+    console.log("🔵 Incoming request for orders...");
 
-        // Fetch associated order items for each order
-        const ordersWithItems = await Promise.all(
-            orders.map(async (order) => {
-                const orderItems = await OrderItem.find({ orderId: order._id }).populate("productId", "name price");
-                return { ...order._doc, orderItems };
-            })
-        );
-
-        return res.status(200).json(ordersWithItems);
-    } catch (error) {
-        console.error("Get Orders Error:", error);
-        return res.status(500).json({ error: "Failed to retrieve orders" });
+    if (!req.user || !req.user._id) {
+      console.log("❌ Unauthorized: No valid user");
+      return res.status(401).json({ error: "Unauthorized: User not found" });
     }
+
+    // Ensure userId is a valid ObjectId
+    const userId = new mongoose.Types.ObjectId(req.user._id);
+    console.log("🟢 Fetching orders for user:", userId);
+
+    // Try fetching orders again
+    const orders = await Order.find({ userId: userId })
+      .populate({
+        path: "orderItems",
+        populate: { path: "productId", select: "name price" },
+      })
+      .sort({ createdAt: -1 });
+
+    if (!orders.length) {
+      console.log("⚠️ No orders found for user:", userId);
+      return res.status(404).json({ message: "No orders found" });
+    }
+
+    console.log("✅ Orders retrieved:", orders.length);
+    return res.status(200).json({ success: true, orders });
+  } catch (error) {
+    console.error("❌ Get Orders Error:", error);
+    return res.status(500).json({
+      error: "Failed to retrieve orders",
+      details: error.message,
+    });
+  }
+};
+
+exports.getAllOrders = async (req, res) => {
+  try {
+      console.log("📌 Fetching all orders...");
+
+      const orders = await Order.find()
+          .populate({
+              path: "userId",
+              select: "name email" // Fetch user details
+          })
+          .populate({
+              path: "orderItems",
+              populate: {
+                  path: "productId",
+                  select: "name price" // Fetch product details
+              }
+          })
+          .sort({ createdAt: -1 }); // Sort orders by latest
+
+      return res.status(200).json({ message: "✅ Orders fetched successfully", orders });
+
+  } catch (error) {
+      console.error("❌ Error fetching orders:", error);
+      return res.status(500).json({ error: "Failed to fetch orders" });
+  }
+};
+
+
+exports.changeOrderStatus = async (req, res) => {
+  try {
+      const { orderId } = req.params;
+      const { status } = req.body;
+
+      // Allowed status updates
+      const validStatuses = ["Pending", "Processing", "Shipped", "Delivered", "Cancelled"];
+
+      if (!validStatuses.includes(status)) {
+          return res.status(400).json({ error: "Invalid status update" });
+      }
+
+      // Fetch the order
+      const order = await Order.findById(orderId);
+      if (!order) return res.status(404).json({ error: "Order not found" });
+
+      
+
+      // Prevent changing status of cancelled orders
+      if (order.status === "Cancelled") {
+          return res.status(400).json({ error: "Cannot update a cancelled order" });
+      }
+
+      // Update the order status
+      order.status = status;
+      await order.save();
+
+      return res.status(200).json({ message: `✅ Order status updated to ${status}`, order });
+
+  } catch (error) {
+      console.error("❌ Order Status Update Error:", error);
+      return res.status(500).json({ error: "Something went wrong, please try again" });
+  }
 };

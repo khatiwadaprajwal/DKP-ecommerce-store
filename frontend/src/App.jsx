@@ -13,16 +13,30 @@ import Product from "./pages/Product";
 import Footer from "./component/Footer";
 import { ToastContainer, toast } from 'react-toastify';
 import PlaceOrder from "./pages/PlaceOrder";
-// import 'react-toastify/dist/ReactToastify.css';
-
+import Adminpage from "./pages/Admin/Adminpage";
+import AddProduct from "./pages/Admin/AddProduct";
+import Dashboard from "./pages/Admin/Dashboard";
+import ListProducts from "./pages/Admin/ListProducts";
+import 'react-toastify/dist/ReactToastify.css';
+import ListOrders from "./pages/Admin/ListOrders";
+import UserLayout from "./pages/UserLayout";
 
 const App = () => {
   return (
-    <div >
-      <ToastContainer/>
-      <Navbar />
-      <div className="px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw]">
-        <Routes>
+    <div>
+      <ToastContainer />
+      <Routes>
+
+        {/* Admin Routes without Navbar/Footer */}
+        <Route path="/admin" element={<Adminpage />}>
+          <Route index element={<Dashboard />} />
+          <Route path="addProduct" element={<AddProduct />} />
+          <Route path="listProducts" element={<ListProducts />} />
+          <Route path="ordersList" element={<ListOrders />} />
+        </Route>
+
+        {/* User Routes with Navbar/Footer */}
+        <Route element={<UserLayout/>}>
           <Route path="/" element={<Home />} />
           <Route path="/collection" element={<Collection />} />
           <Route path="/about" element={<About />} />
@@ -33,9 +47,9 @@ const App = () => {
           <Route path="/register" element={<Register />} />
           <Route path="/product/:productId" element={<Product />} />
           <Route path="/placeOrder" element={<PlaceOrder />} />
-        </Routes>
-      </div>
-      <Footer />
+        </Route>
+
+      </Routes>
     </div>
   );
 };

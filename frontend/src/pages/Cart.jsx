@@ -10,10 +10,12 @@ const Cart = () => {
     updateCartQuantity,
     delivery_fee,
     navigate,
+    selectedItems,
+    toggleSelectItem,
+    totalPrice,
   } = useContext(ShopContext);
-  const [selectedItems, setSelectedItems] = useState([]);
 
-  // Convert cartData into an array with productId & variants (size, quantity)
+  // Convert cartData into an array
   const cartItems = Object.entries(cartData).flatMap(([productId, variants]) =>
     variants.map((variant) => ({
       productId,
@@ -25,37 +27,8 @@ const Cart = () => {
     }))
   );
 
-  // Calculate total price of selected items
-  const totalPrice = selectedItems.reduce((total, selectedItem) => {
-    const item = cartItems.find(
-      (product) =>
-        product.productId === selectedItem.productId &&
-        product.size === selectedItem.size
-    );
-    return total + (item ? item.price * item.quantity : 0);
-  }, 0);
-
-  // Handle selection toggle
-  const toggleSelectItem = (productId, size) => {
-    console.log("Selected Items Before:", selectedItems);
-    console.log("Toggling item with Product ID:", productId, "Size:", size);
-  
-    setSelectedItems((prev) => {
-      const updatedItems = prev.some(
-        (item) => item.productId === productId && item.size === size
-      )
-        ? prev.filter((item) => !(item.productId === productId && item.size === size))
-        : [...prev, { productId, size }];
-      
-      console.log("Selected Items After:", updatedItems);
-      return updatedItems;
-    });
-  };
-  
-
-  //Handle checkout
+  // Handle checkout
   const handleCheckout = () => {
-    console.log("Selected Items for Checkout:", selectedItems); // Debugging log
     if (selectedItems.length === 0) {
       toast.error("Select at least one item to proceed to checkout!");
     } else {
@@ -65,7 +38,7 @@ const Cart = () => {
   
 
   return (
-    <div className=" mx-auto min-h-250 p-6">
+    <div className=" mx-auto min-h-250">
       <h1 className="text-3xl font-bold mb-6">Shopping Cart</h1>
 
       {cartItems.length === 0 ? (
@@ -135,23 +108,28 @@ const Cart = () => {
               </div>
             ))}
           </div>
-          {/* Cart Total Box */}
-          <div className="p-6 bg-orange-200 shadow max-h-200 rounded-lg">
-            <h2 className="text-4xl font-semibold mb-4">CART TOTALS</h2>
-            <div className="bg-orange-100 rounded  px-4 py-4 my-6 flex justify-between">
-              <span className="text-xl font-bold">SUB TOTAL :</span>
-              <span className="text-xl font-bold">Rs. {totalPrice}</span>
+          <div>
+           {/* Cart Summary */}
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div className="text-xl mb-4">
+              <h2 className="font-semibold text-gray-900 border-b-2 border-gray-900 pb-2">CART TOTALS</h2>
             </div>
-            <div className="bg-orange-100 rounded  px-4 py-4 my-6 flex justify-between">
-              <span className="text-xl font-bold">SHIPPING COST :</span>
-              <span className="text-xl font-bold">Rs. {delivery_fee}</span>
+            
+            <div className="space-y-3">
+              <div className="flex justify-between py-2 border-b border-gray-100">
+                <span>Subtotal</span>
+                <span>Rs. {totalPrice}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-gray-100">
+                <span>Shipping Fee</span>
+                <span>Rs. {delivery_fee}</span>
+              </div>
+              <div className="flex justify-between pt-3 font-bold text-lg">
+                <span>Total</span>
+                <span>Rs. {totalPrice + delivery_fee}</span>
+              </div>
             </div>
-            <div className="bg-orange-100 rounded  px-4 py-4 my-6 flex justify-between">
-              <span className="text-xl text-red-700 font-bold">TOTAL :</span>
-              <span className="text-xl text-red-700 font-bold">
-                Rs. {totalPrice + delivery_fee}
-              </span>
-            </div>
+          </div>
             
               <button
                 disabled={selectedItems.length === 0}
@@ -160,7 +138,7 @@ const Cart = () => {
               >
                 Proceed to Checkout
               </button>
-          </div>
+         </div>
         </div>
       )}
     </div>

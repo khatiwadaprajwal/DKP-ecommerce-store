@@ -13,86 +13,106 @@ const ShopcontextProvider = ({ children }) => {
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(true);
   const [cartData, setCartData] = useState({});
+  const [selectedItems, setSelectedItems] = useState([]);
 
-  const navigate= useNavigate();
+  const navigate = useNavigate();
 
   const addToCart = async (itemId, size, quantity, name, price, image) => {
     if (!size) {
-        toast.error("Select Size");
-        return;
+      toast.error("Select Size");
+      return;
     }
 
-    setCartData(prevCart => {
-        // Check if item already exists in the cart with the same size
-        const existingItem = prevCart[itemId]?.find(item => item.size === size);
+    setCartData((prevCart) => {
+      const existingItem = prevCart[itemId]?.find((item) => item.size === size);
 
-        if (existingItem) {
-            // Update quantity if item already exists
-            return {
-                ...prevCart,
-                [itemId]: prevCart[itemId].map(item => 
-                    item.size === size 
-                        ? { ...item, quantity: item.quantity + quantity } 
-                        : item
-                )
-            };
-        } else {
-            // Add new item if not present
-            return {
-                ...prevCart,
-                [itemId]: [
-                    ...(prevCart[itemId] || []), 
-                    { itemId, name, price, image, size, quantity }
-                ]
-            };
-        }
+      if (existingItem) {
+        return {
+          ...prevCart,
+          [itemId]: prevCart[itemId].map((item) =>
+            item.size === size ? { ...item, quantity: item.quantity + quantity } : item
+          ),
+        };
+      } else {
+        return {
+          ...prevCart,
+          [itemId]: [...(prevCart[itemId] || []), { itemId, name, price, image, size, quantity }],
+        };
+      }
     });
-};
+  };
 
+  const getCartCount = () => {
+    return Object.values(cartData)
+      .flat()
+      .reduce((total, item) => total + item.quantity, 0);
+  };
 
-const getCartCount = () => {
-    return Object.values(cartData).flat().reduce((total, item) => total + item.quantity, 0);
-};
+  const removeFromCart = (productId, size) => {
+    setCartData((prevCart) => {
+      if (!prevCart[productId]) return prevCart;
 
-const removeFromCart = (productId, size) => {
-  setCartData((prevCart) => {
-    // If there are no items of this productId, return the same object
-    if (!prevCart[productId]) return prevCart;
+      const updatedItems = prevCart[productId].filter((item) => item.size !== size);
+      const updatedCart = { ...prevCart };
 
-    // Filter out the item with the specified size
-    const updatedItems = prevCart[productId].filter((item) => item.size !== size);
+      if (updatedItems.length === 0) {
+        delete updatedCart[productId];
+      } else {
+        updatedCart[productId] = updatedItems;
+      }
 
-    // If no items are left for this productId, remove the key from the cartData
-    const updatedCart = { ...prevCart };
-    if (updatedItems.length === 0) {
-      delete updatedCart[productId];
-    } else {
-      updatedCart[productId] = updatedItems;
-    }
+      return updatedCart;
+    });
+  };
 
-    return updatedCart;
-  });
-};
+  const updateCartQuantity = (productId, size, quantity) => {
+    setCartData((prevCart) => {
+      if (!prevCart[productId]) return prevCart;
 
+      const updatedItems = prevCart[productId].map((item) =>
+        item.size === size ? { ...item, quantity: quantity } : item
+      );
 
-const updateCartQuantity = (productId, size, quantity) => {
-  setCartData((prevCart) => {
-    // Check if the productId exists in cartData
-    if (!prevCart[productId]) return prevCart;
+      return {
+        ...prevCart,
+        [productId]: updatedItems,
+      };
+    });
+  };
 
-    // Map through the cart data and update the quantity of the item with the matching size
-    const updatedItems = prevCart[productId].map((item) =>
-      item.size === size ? { ...item, quantity: quantity } : item
+  // Convert cartData into an array
+  const cartItems = Object.entries(cartData).flatMap(([productId, variants]) =>
+    variants.map((variant) => ({
+      productId,
+      size: variant.size,
+      quantity: variant.quantity,
+      name: variant.name || "Unknown Product",
+      price: variant.price || 0,
+      image: variant.image || "/placeholder.jpg",
+    }))
+  );
+
+  // Handle selection toggle
+  const toggleSelectItem = (productId, size) => {
+    setSelectedItems((prev) => {
+      const updatedItems = prev.some(
+        (item) => item.productId === productId && item.size === size
+      )
+        ? prev.filter((item) => !(item.productId === productId && item.size === size))
+        : [...prev, { productId, size }];
+      
+      console.log("Selected Items After:", updatedItems);
+      return updatedItems;
+    });
+  };
+
+  // Calculate total price of selected items
+  const totalPrice = selectedItems.reduce((total, selectedItem) => {
+    const item = cartItems.find(
+      (product) => product.productId === selectedItem.productId && product.size === selectedItem.size
     );
-
-    return {
-      ...prevCart,
-      [productId]: updatedItems, // Update the items for this productId
-    };
-  });
-};
-
-
+    return total + (item ? item.price * item.quantity : 0);
+  }, 0);
 
   useEffect(() => {
     console.log(cartData);
@@ -115,16 +135,13 @@ const updateCartQuantity = (productId, size, quantity) => {
     getCartCount,
     removeFromCart,
     updateCartQuantity,
-    navigate
+    navigate,
+    selectedItems,
+    toggleSelectItem,
+    totalPrice,
   };
 
-  return (
-    <ShopContext.Provider value={value}>
-      {" "}
-      {/* ✅ Correct Provider */}
-      {children}
-    </ShopContext.Provider>
-  );
+  return <ShopContext.Provider value={value}>{children}</ShopContext.Provider>;
 };
 
 export default ShopcontextProvider;

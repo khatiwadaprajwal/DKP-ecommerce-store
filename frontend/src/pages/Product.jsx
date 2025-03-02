@@ -8,6 +8,7 @@ import Pagination from "../component/Pagination"; // Import the Pagination compo
 
 
 
+
 const Product = () => {
   const { productId } = useParams();
   const { products, addToCart } = useContext(ShopContext);

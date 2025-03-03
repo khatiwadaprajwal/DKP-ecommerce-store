@@ -11,7 +11,8 @@ const productSchema = new mongoose.Schema({
     size: [{ type: String, required: true }],
     color: [{ type: String, required: true }],
     totalQuantity: { type: Number, required: true },
-    totalSold: { type: Number, required: true }
+    totalSold: { type: Number, required: true },
+    averageRating: { type: Number, default: 0 }
 },
     {
 

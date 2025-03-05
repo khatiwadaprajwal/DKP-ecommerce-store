@@ -8,7 +8,6 @@ import Pagination from "../component/Pagination"; // Import the Pagination compo
 
 
 
-
 const Product = () => {
   const { productId } = useParams();
   const { products, addToCart } = useContext(ShopContext);
@@ -18,7 +17,8 @@ const Product = () => {
   const [quantity, setQuantity] = useState(1);
   const [sizes, setSizes] = useState("");
   const navigate = useNavigate();
-  const [showReviews, setShowReviews] = useState(false);
+  const [activeTab, setActiveTab] = useState("description");
+  // const [showReviews, setShowReviews] = useState(false);
   const [currentPage, setCurrentPage] = useState(0); // Track pagination page
 
   const itemsPerPage = 5; // Number of products per page
@@ -38,12 +38,12 @@ const Product = () => {
     (item) => item.category === productData?.category && item._id !== productId
   );
 
- // **Paginate Related Products**
- const totalPages = Math.ceil(relatedProducts.length / itemsPerPage);
- const paginatedProducts = relatedProducts.slice(
-   currentPage * itemsPerPage,
-   (currentPage + 1) * itemsPerPage
- );
+  // **Paginate Related Products**
+  const totalPages = Math.ceil(relatedProducts.length / itemsPerPage);
+  const paginatedProducts = relatedProducts.slice(
+    currentPage * itemsPerPage,
+    (currentPage + 1) * itemsPerPage
+  );
 
   useEffect(() => {
     fetchProductData();
@@ -55,7 +55,11 @@ const Product = () => {
         {/* Product Image */}
         <div className="flex-1  gap-3 sm:flex-row">
           <div className="w-full">
-            <img className="w-full sm:w-[95%] h-auto sm:h-[90%]" src={image} alt="" />
+            <img
+              className="w-full sm:w-[95%] h-auto sm:h-[90%]"
+              src={image}
+              alt=""
+            />
           </div>
           <div className=" hover:transition-110 grid grid-cols-4 gap-4 mt-4  justify-between sm:justify-normal sm:w-[80%] w-[70%]">
             {productData.image.map((item, index) => (
@@ -128,7 +132,9 @@ const Product = () => {
             >
               -
             </button>
-            <span className="px-4 py-1 bg-gray-200 rounded-md ">{quantity}</span>
+            <span className="px-4 py-1 bg-gray-200 rounded-md ">
+              {quantity}
+            </span>
             <button
               className="px-3 py-1 bg-gray-200 rounded-md cursor-pointer"
               onClick={() => setQuantity((prev) => prev + 1)}
@@ -138,47 +144,142 @@ const Product = () => {
           </div>
           {/* Buttons */}
           <div className="flex gap-4 mt-6">
-          <button onClick={()=>addToCart(productData._id,selectedSize,quantity,productData.name,productData.price,productData.image[0])} className= "bg-black text-white cursor-pointer px-8 py-3 rounded-md font-medium hover:bg-gray-700">
-                Add to Cart
-              </button>
-            <Link to={"/placeOrder"}>
             <button
-              className="bg-yellow-500 cursor-pointer text-white px-8 py-3 rounded-md font-medium  hover:bg-yellow-700"
+              onClick={() =>
+                addToCart(
+                  productData._id,
+                  selectedSize,
+                  quantity,
+                  productData.name,
+                  productData.price,
+                  productData.image[0]
+                )
+              }
+              className="bg-black text-white cursor-pointer px-8 py-3 rounded-md font-medium hover:bg-gray-700"
             >
-              Order Now
+              Add to Cart
             </button>
+            <Link to={"/placeOrder"}>
+              <button className="bg-yellow-500 cursor-pointer text-white px-8 py-3 rounded-md font-medium  hover:bg-yellow-700">
+                Order Now
+              </button>
             </Link>
           </div>
-          <hr className="mt-8 sm:w-4/5"/>
+          <hr className="mt-8 sm:w-4/5" />
           <div className="text-sm text-gray-400 mt-5 flex flex-col gap-1">
             <p>100% Original product.</p>
             <p>Cash on delivery is available on this product.</p>
             <p>Easy return and exchange policy within 7 days.</p>
           </div>
-
         </div>
       </div>
 
-      {/* Review section */}
-      <div className="mt-20">
-      <div className="flex">
-        <p 
-          className={`border text-base px-5 py-3 cursor-pointer ${!showReviews ? "bg-black text-white" : "hover:bg-black hover:text-white"}`} 
-          onClick={() => setShowReviews(false)}
-        >
-          Description
-        </p>
-        <p 
-          className={`border text-base px-5 py-3 cursor-pointer ${showReviews ? "bg-black text-white" : "hover:bg-black hover:text-white"}`} 
-          onClick={() => setShowReviews(true)}
-        >
-          Reviews
-        </p>
-      </div>
-    </div>
+      {/* Description and Reviews Section */}
+      <div className="mt-20 border-gray-300 border-b items-center justify-center">
+        <div className="flex border-b border-gray-300">
+          <button
+            className={`px-6 py-3 text-base font-semibold ${
+              activeTab === "description"
+                ? "border-b-2 border-black text-black"
+                : "text-gray-500 hover:text-black"
+            }`}
+            onClick={() => setActiveTab("description")}
+          >
+            DESCRIPTION
+          </button>
+          <button
+            className={`px-6 py-3 text-base font-semibold ${
+              activeTab === "additional"
+                ? "border-b-2 border-black text-black"
+                : "text-gray-500 hover:text-black"
+            }`}
+            onClick={() => setActiveTab("additional")}
+          >
+            ADDITIONAL INFORMATION
+          </button>
+          <button
+            className={`px-6 py-3 text-base font-semibold ${
+              activeTab === "reviews"
+                ? "border-b-2 border-black text-black"
+                : "text-gray-500 hover:text-black"
+            }`}
+            onClick={() => setActiveTab("reviews")}
+          >
+            REVIEWS (0)
+          </button>
+          <button
+            className={`px-6 py-3 text-base font-semibold ${
+              activeTab === "shipping"
+                ? "border-b-2 border-black text-black"
+                : "text-gray-500 hover:text-black"
+            }`}
+            onClick={() => setActiveTab("shipping")}
+          >
+            SHIPPING & DELIVERY
+          </button>
+        </div>
 
-    {/* Conditional Rendering of ReviewSection */}
-    {showReviews && <ReviewSection reviews={productData.reviews || []} />}
+        {/* Content for each tab */}
+        <div className="py-8 px-4">
+          {activeTab === "description" && (
+            <div className="space-y-4">
+              <p className="text-gray-700">
+                Going for a more casual look? You cannot thumb your noses at
+                these minimal pair of microfiber casuals from Caliber which is
+                fantastic at portraying a casual yet neat look. Slide this
+                sneaker on for an easy footwear option that can be styled with
+                anything.
+              </p>
+
+              <div className="space-y-2">
+                <h3 className="font-semibold text-lg">COMFORTABLE FIT</h3>
+                <p className="text-gray-700">
+                  The lace-up closure and closed toe style gives your feet a
+                  perfect fit to the shoe.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="font-semibold text-lg">IMPRESSIVE DESIGN</h3>
+                <p className="text-gray-700">
+                  Keeping in mind the latest trends in fashion, this sleek pair
+                  adds to the style of the outfit. The ways these can be worn
+                  are virtually endless, thanks to the stylish street style
+                  circuits we're continuously blessed with.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="font-semibold text-lg">MADE FOR COMFORT</h3>
+                <p className="text-gray-700">
+                  Sneakers are designed to give maximum comfort.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="font-semibold text-lg">CARE INSTRUCTIONS</h3>
+                <p className="text-gray-700">
+                  Allow your pair of footwear to air and deodorize at regular
+                  basis; use shoe bags to prevent any stains or mildew; dust any
+                  dry dirt from the surface using a clean cloth.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "reviews" && (
+            <ReviewSection reviews={productData.reviews || []} />
+          )}
+
+          {activeTab === "shipping" && (
+            <>
+              <p>Delivery within 3-7 business days.</p>
+              <p>Free shipping on orders over Rs. 2000.</p>
+              <p>Easy return and exchange within 7 days of delivery.</p>
+            </>
+          )}
+        </div>
+      </div>
 
       {/* Related Products */}
       {/* Related Products Section with Pagination */}
@@ -201,10 +302,10 @@ const Product = () => {
         </div>
 
         {/* Use the Pagination Component */}
-        <Pagination 
-          totalPages={totalPages} 
-          currentPage={currentPage} 
-          onPageChange={setCurrentPage} 
+        <Pagination
+          totalPages={totalPages}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
         />
       </div>
     </div>

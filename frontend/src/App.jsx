@@ -20,6 +20,8 @@ import ListProducts from "./pages/Admin/ListProducts";
 import 'react-toastify/dist/ReactToastify.css';
 import ListOrders from "./pages/Admin/ListOrders";
 import UserLayout from "./pages/UserLayout";
+import ListUsers from "./pages/Admin/ListUsers";
+import ForgotPassword from "./pages/ForgotPassword";
 
 const App = () => {
   return (
@@ -33,6 +35,7 @@ const App = () => {
           <Route path="addProduct" element={<AddProduct />} />
           <Route path="listProducts" element={<ListProducts />} />
           <Route path="ordersList" element={<ListOrders />} />
+          <Route path="listUsers" element={<ListUsers/>} />
         </Route>
 
         {/* User Routes with Navbar/Footer */}
@@ -47,6 +50,7 @@ const App = () => {
           <Route path="/register" element={<Register />} />
           <Route path="/product/:productId" element={<Product />} />
           <Route path="/placeOrder" element={<PlaceOrder />} />
+          <Route path="/forgot-password" element={<ForgotPassword/>} />
         </Route>
 
       </Routes>

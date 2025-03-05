@@ -1,10 +1,11 @@
 import React from 'react';
+import Newsletter from '../component/Newsletter';
 
 const About = () => {
   return (
     <div className="about-page">
       {/* Hero Section */}
-      <section className="bg-gray-50 py-16 md:py-24">
+      <section className="bg-red-50 py-16 md:py-24">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">
             <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">About DKP Clothing</h1>
@@ -31,8 +32,8 @@ const About = () => {
             <div className="md:w-1/2">
               <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6">Our Story</h2>
               <p className="text-gray-600 mb-4">
-                DKP Clothing began with a simple idea: create comfortable, high-quality clothing that looks good and lasts long. 
-                Founded by Deepak Kumar in 2018, we started as a small operation in Mumbai with just three designs.
+              Welcome to DKP Clothing, your go-to destination for stylish and authentic fashion in the heart of Sundarharaincha, Morang. Located in the beautiful eastern region of Nepal, we take pride in offering a diverse collection of clothing that celebrates both modern trends and our rich Nepali culture. From elegant suits and graceful sarees to traditional Nepali cultural dresses and trendy tops, DKP Clothing is committed to providing high-quality fashion for every occasion. Our goal is to bring you a unique shopping experience where tradition meets contemporary style, all while delivering exceptional 
+              service and affordable prices. Whether you're dressing for a cultural event, a formal gathering, or everyday wear, DKP Clothing has something special just for you.
               </p>
               <p className="text-gray-600 mb-4">
                 Over the years, we've grown into a team of 25 passionate craftspeople, designers, and fashion enthusiasts 
@@ -52,7 +53,7 @@ const About = () => {
       </section>
 
       {/* Values Section */}
-      <section className="bg-gray-50 py-16 md:py-24">
+      <section className="bg-gray-100 py-16 md:py-24">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">Our Values</h2>
@@ -151,9 +152,9 @@ const About = () => {
       </section>
 
       {/* Stats Section */}
-      <section className="bg-blue-600 text-white py-16">
+      <section className="bg-red-100 py-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center text-black">
             {[
               { number: "7+", label: "Years Experience" },
               { number: "15K+", label: "Happy Customers" },
@@ -162,12 +163,14 @@ const About = () => {
             ].map((stat, index) => (
               <div key={index}>
                 <p className="text-3xl md:text-4xl font-bold mb-2">{stat.number}</p>
-                <p className="text-blue-100">{stat.label}</p>
+                <p className="text-black">{stat.label}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
+
+
 
       {/* Testimonial Section */}
       <section className="py-16 md:py-24">
@@ -201,26 +204,7 @@ const About = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="bg-gray-50 py-16">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6">Join Our Journey</h2>
-          <p className="text-gray-600 max-w-3xl mx-auto mb-8">
-            Subscribe to our newsletter and be the first to know about new collections, 
-            special offers, and behind-the-scenes content.
-          </p>
-          <div className="max-w-md mx-auto flex flex-col sm:flex-row gap-2">
-            <input
-              type="email"
-              placeholder="Enter your email"
-              className="flex-grow px-4 py-3 text-gray-900 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
-            />
-            <button className="px-6 py-3 bg-blue-600 text-white font-medium rounded hover:bg-blue-700 transition-colors">
-              Subscribe
-            </button>
-          </div>
-        </div>
-      </section>
+      <Newsletter/>
     </div>
   );
 };

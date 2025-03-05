@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { EyeIcon } from '@heroicons/react/24/outline';
 
 
-
 const ListOrders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,10 +18,6 @@ const ListOrders = () => {
       try {
         // Mock API call
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
-
-
-        
 
         // Mock data
         const mockOrders = [
@@ -241,6 +236,8 @@ const ListOrders = () => {
           </select>
         </div>
       </div>
+      
+
       
       {loading ? (
         <div className="text-center py-8">

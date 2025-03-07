@@ -1,6 +1,8 @@
 const Order = require("../model/order.model");
 const OrderItem = require("../model/orderitem.model");
 const Product = require("../model/productmodel");
+const Cart = require("../model/cart.model");
+const CartItem = require("../model/cartitem.model");
 const axios = require("axios");
 const mongoose = require("mongoose");
 const { generateAccessToken, PAYPAL_API } = require("../utils/paypal");
@@ -106,54 +108,75 @@ exports.createOrder = async (req, res) => {
 };
 
 
-// PayPal Payment Success
+
+// Assuming you have the Cart model and the function to remove items from it
+
+
 exports.paypalSuccess = async (req, res) => {
-    try {
-        const { orderId, paymentId, PayerID } = req.query;
+  try {
+    const { orderId, paymentId, PayerID, userId, productIds } = req.query;
 
-        // Get PayPal Access Token
-        const accessToken = await generateAccessToken();
+    console.log(`✅ PayPal Success - Order ID: ${orderId}`);
 
-        // Execute PayPal Payment
-        const response = await axios.post(
-            `${PAYPAL_API}/v1/payments/payment/${paymentId}/execute`,
-            { payer_id: PayerID },
-            {
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                    "Content-Type": "application/json"
-                }
-            }
-        );
+    
 
-        if (response.status !== 200) {
-            return res.status(500).json({ error: "Payment execution failed" });
-        }
-
-        const order = await Order.findById(orderId);
-        if (!order) return res.status(404).json({ error: "Order not found" });
-
-        order.paymentStatus = "Paid";
-        await order.save();
-
-        // Update Product Stock After PayPal Payment
-        const orderItems = await OrderItem.find({ orderId });
-        for (let item of orderItems) {
-            const product = await Product.findById(item.productId);
-            if (product) {
-                product.totalQuantity -= item.quantity;
-                product.totalSold += item.quantity;
-                await product.save();
-            }
-        }
-
-        return res.json({ message: "Payment successful", order });
-
-    } catch (error) {
-        console.error("PayPal Success Error:", error);
-        return res.status(500).json({ error: error.message });
+    // Generate PayPal Access Token
+    const accessToken = await generateAccessToken();
+    if (!accessToken) {
+      console.error("❌ Failed to generate PayPal access token");
+      return res.status(500).json({ error: "Failed to generate PayPal access token" });
     }
+
+    // Execute the PayPal payment
+    const executePaymentUrl = `${PAYPAL_API}/v1/payments/payment/${paymentId}/execute`;
+    const executePaymentData = { payer_id: PayerID };
+
+    const paymentResponse = await axios.post(executePaymentUrl, executePaymentData, {
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    });
+
+    console.log("✅ PayPal Payment Executed:", JSON.stringify(paymentResponse.data, null, 2));
+
+    if (paymentResponse.data.state !== "approved") {
+      console.error("❌ PayPal Payment not approved");
+      return res.status(400).json({ error: "Payment not approved by PayPal" });
+    }
+
+    // Update the order status to "Paid"
+    const order = await Order.findById(orderId);
+    if (!order) {
+      console.error("❌ Order not found");
+      return res.status(400).json({ error: "Order not found" });
+    }
+
+    order.paymentStatus = "Paid";
+    await order.save();
+
+    console.log(`✅ Order Status Updated: ${orderId} - Paid and Confirmed`);
+
+    // Remove the items from the cart
+    const cart = await Cart.findOne({ userId }).populate("cartItems");
+    if (cart) {
+      const productIdList = productIds.split(',');
+      const cartItemIdsToRemove = cart.cartItems
+        .filter(item => productIdList.includes(item.productId.toString()))
+        .map(item => item._id);
+
+      await CartItem.deleteMany({ _id: { $in: cartItemIdsToRemove } });
+      console.log(`✅ Cart items cleared for order ID: ${orderId}`);
+    }
+
+    return res.json({ message: "Payment successful", order  });
+
+  } catch (error) {
+    console.error("❌ PayPal Success Error:", error);
+    return res.status(500).json({ error: "Payment confirmation failed" });
+  }
 };
+
+
+
+
 
 exports.cancelOrder = async (req, res) => {
   try {

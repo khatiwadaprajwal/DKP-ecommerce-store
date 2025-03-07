@@ -22,29 +22,30 @@ const FeaturedProducts = () => {
   }, [products]);
 
   return (
-    <section className="bg-gray-50 py-16">
+    <section className=" py-4">
       <div className="container mx-auto">
-        <h2 className="text-4xl font-bold text-center mb-12">Featured Products</h2>
+        <h2 className="text-3xl font-bold  mb-8">Featured Products</h2>
         <Swiper
+        className='h-auto'
           modules={[Navigation]}
           spaceBetween={20}
           slidesPerView={4}
           navigation
           breakpoints={{
             0: {
-              slidesPerView: 1,
+              slidesPerView: 2,
               spaceBetween: 10,
             },
             640: {
-              slidesPerView: 2,
+              slidesPerView: 3,
               spaceBetween: 20,
             },
             768: {
-              slidesPerView: 3,
+              slidesPerView: 4,
               spaceBetween: 30,
             },
             1024: {
-              slidesPerView: 4,
+              slidesPerView: 5,
               spaceBetween: 40,
             },
           }}

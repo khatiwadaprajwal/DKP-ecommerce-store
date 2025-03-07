@@ -3,53 +3,29 @@ import { assets } from "../assets/assets";
 import ProductItem from "../component/ProductItem";
 import { ShopContext } from "../context/Shopcontext";
 import Pagination from "../component/Pagination"; // Import the Pagination component
+// import UseProductFilter from "../hooks/useProductFilter";
 
 const Collection = () => {
-  const { products } = useContext(ShopContext);
-  const [showFilter, setShowFilter] = useState(false);
-  const [filterProducts, setFilterProducts] = useState([]);
+  const {
+    products,
+    filterProducts,
+    toggleCategory,
+    toggleSizes,
+    applyFilter,
+    setFilterProducts,
+  } = useContext(ShopContext);
   const [category, setCategory] = useState([]);
   const [sizes, setSizes] = useState([]);
+  // const [filterProducts, setFilterProducts] = useState(products)
+  const [showFilter, setShowFilter] = useState(false);
+
   const [sortType, setSortType] = useState("Relavent");
 
   // Pagination States
   const [currentPage, setCurrentPage] = useState(0);
-  const itemsPerPage = 20; // Number of products per page
+  const itemsPerPage = 16; // Number of products per page
 
   console.log(products);
-
-  const toggleCategory = (e) => {
-    if (category.includes(e.target.value)) {
-      setCategory((prev) => prev.filter((item) => item !== e.target.value));
-    } else {
-      setCategory((prev) => [...prev, e.target.value]);
-    }
-  };
-
-  const toggleSizes = (e) => {
-    if (sizes.includes(e.target.value)) {
-      setSizes((prev) => prev.filter((item) => item !== e.target.value));
-    } else {
-      setSizes((prev) => [...prev, e.target.value]);
-    }
-  };
-
-  const applyFilter = () => {
-    let productsCopy = products.slice();
-
-    if (category.length > 0) {
-      productsCopy = productsCopy.filter((item) =>
-        category.includes(item.category)
-      );
-    }
-
-    if (sizes.length > 0) {
-      productsCopy = productsCopy.filter((item) =>
-        item.sizes.some((size) => sizes.includes(size))
-      );
-    }
-    setFilterProducts(productsCopy);
-  };
 
   const sortProduct = () => {
     let filterProductCopy = filterProducts.slice();
@@ -70,10 +46,6 @@ const Collection = () => {
   };
 
   useEffect(() => {
-    applyFilter();
-  }, [category, sizes]);
-
-  useEffect(() => {
     sortProduct();
   }, [sortType]);
 
@@ -85,12 +57,12 @@ const Collection = () => {
   );
 
   return (
-    <div className="flex flex-col sm:flex-row gap-1 sm:gap-10 pt-10 pb-8 ">
+    <div className="flex flex-col sm:flex-row gap-1 sm:gap-10 pt-10 pb-8  ">
       {/* filter options */}
-      <div className="min-w-90 bg-white px-3 rounded-xl ">
+      <div className="min-w-60 bg-white px-3 rounded-xl ">
         <p
           onClick={() => setShowFilter(!showFilter)}
-          className="my-2 text-2xl font-bold flex items-center cursor-pointer gap-2"
+          className="my-2 text-xl font-bold flex items-center cursor-pointer gap-2"
         >
           FILTERS
           <img
@@ -112,7 +84,7 @@ const Collection = () => {
                 className="w-3"
                 type="checkbox"
                 value={"Men"}
-                onChange={toggleCategory}
+                onChange={(e) => toggleCategory(e.target.value)}
               />
               Men
             </p>
@@ -121,7 +93,7 @@ const Collection = () => {
                 className="w-3"
                 type="checkbox"
                 value={"Women"}
-                onChange={toggleCategory}
+                onChange={(e) => toggleCategory(e.target.value)}
               />
               Women
             </p>
@@ -130,7 +102,7 @@ const Collection = () => {
                 className="w-3"
                 type="checkbox"
                 value={"Kids"}
-                onChange={toggleCategory}
+                onChange={(e) => toggleCategory(e.target.value)}
               />
               Kids
             </p>
@@ -149,7 +121,7 @@ const Collection = () => {
                 className="w-3"
                 type="checkbox"
                 value={"S"}
-                onChange={toggleSizes}
+                onChange={(e) => toggleSizes(e.target.value)}
               />
               S
             </p>
@@ -158,7 +130,7 @@ const Collection = () => {
                 className="w-3"
                 type="checkbox"
                 value={"M"}
-                onChange={toggleSizes}
+                onChange={(e) => toggleSizes(e.target.value)}
               />
               M
             </p>
@@ -167,7 +139,7 @@ const Collection = () => {
                 className="w-3"
                 type="checkbox"
                 value={"L"}
-                onChange={toggleSizes}
+                onChange={(e) => toggleSizes(e.target.value)}
               />
               L
             </p>
@@ -176,7 +148,7 @@ const Collection = () => {
                 className="w-3"
                 type="checkbox"
                 value={"XL"}
-                onChange={toggleSizes}
+                onChange={(e) => toggleSizes(e.target.value)}
               />
               XL
             </p>
@@ -185,7 +157,7 @@ const Collection = () => {
                 className="w-3"
                 type="checkbox"
                 value={"XXL"}
-                onChange={toggleSizes}
+                onChange={(e) => toggleSizes(e.target.value)}
               />
               XXL
             </p>
@@ -194,8 +166,8 @@ const Collection = () => {
       </div>
       {/* right side */}
       <div className="flex-1">
-        <div className="flex justify-between text-base sm:text-2xl mb-4">
-          <h2 className="my-3 text-3xl font-semibold">ALL COLLECTIONS---</h2>
+        <div className="flex justify-between text-base sm:text-xl mb-4">
+          <h2 className="my-3 text-3xl font-semibold">ALL COLLECTIONS</h2>
 
           {/* sorting products */}
           <div className="flex px-2 items-center justify-center my-3">
@@ -214,9 +186,9 @@ const Collection = () => {
         {/* Products Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-y-6 gap-x-3">
           {paginatedProducts.length > 0 ? (
-            paginatedProducts.map((item) => (
+            paginatedProducts.map((item, index) => (
               <ProductItem
-                key={item._id}
+                key={index}
                 name={item.name}
                 id={item._id}
                 price={item.price}
@@ -235,12 +207,11 @@ const Collection = () => {
           onPageChange={(page) => {
             setCurrentPage(page);
             window.scrollTo({ top: 0, behavior: "smooth" }); // Scroll to top smoothly
-          }} 
+          }}
         />
       </div>
     </div>
   );
 };
-
 
 export default Collection;

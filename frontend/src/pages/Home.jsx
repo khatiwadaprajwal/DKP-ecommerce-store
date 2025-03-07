@@ -16,7 +16,7 @@ const Home = () => {
       <CategoriesSection />
       <FeaturedProducts />
       <div className="container mx-auto py-16 px-2">
-        <div className="flex flex-col gap-y-6 gap-x-3 mx-2 mt-2">
+        <div className="flex flex-col gap-y-6 gap-x-3 mx-2 my-2">
           <ProductCollection title="Bestsellers" collectionType="bestseller" />
           <ProductCollection title="Top Rated" collectionType="topRated" />
           <ProductCollection

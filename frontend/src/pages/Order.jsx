@@ -34,6 +34,7 @@ const Order = () => {
       id: product._id,
       name: product.name,
       quantity: 1,
+      image: product.image,
       price: product.price,
       size: product.sizes[0], // Take first available size
       category: product.category,

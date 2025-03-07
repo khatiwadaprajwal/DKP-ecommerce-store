@@ -25,7 +25,7 @@ const ProductItem = ({ id, image, name, price }) => {
         <img
           src={image[0]}
           alt={name}
-          className="w-full h-72 object-cover transform 
+          className="w-full h-auto object-cover transform 
                      group-hover:scale-105 transition-transform duration-300"
         />
 

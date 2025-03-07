@@ -1,33 +1,36 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { assets } from "../assets/assets";
+import axios from "axios";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    const data = {
-      email,
-      password,
-    };
-    console.log(data);
+    setError("");
+    try {
+      const response = await axios.post("http://localhost:3001/v1/auth/login", {
+        email,
+        password,
+      });
+      
+      if (response.status === 200) {
+        localStorage.setItem("token", response.data.token);
+        // alert("Login successful!");
+        navigate("/");
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || "Login failed. Please try again.");
+    }
   };
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Top Banner */}
-      {/* <div className="bg-black text-white py-2 px-4 text-center text-sm">
-        Summer Sale For All Swim Suits And Free Express Delivery - OFF 50%!{" "}
-        <span className="font-semibold">ShopNow</span>
-      </div> */}
-
-      
-
-      {/* Login Section */}
       <div className="flex flex-1 flex-col md:flex-row">
-        {/* Left Side - Image */}
         <div className="hidden md:block md:w-1/2 bg-blue-50">
           <img 
             src={assets.banner} 
@@ -36,11 +39,12 @@ const Login = () => {
           />
         </div>
 
-        {/* Right Side - Login Form */}
         <div className="w-full md:w-1/2 flex items-center justify-center px-6 py-12">
           <div className="w-full max-w-md">
             <h1 className="text-3xl font-bold mb-2">Log in to Exclusive</h1>
             <p className="text-gray-600 mb-8">Enter your details below</p>
+
+            {error && <p className="text-red-500 mb-4">{error}</p>}
 
             <form onSubmit={handleLogin} className="space-y-6">
               <div>

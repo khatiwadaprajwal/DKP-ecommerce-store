@@ -7,7 +7,8 @@ const cors = require("cors");
 
 // Express setup
 app.use(express.json());
-app.use(cors());
+app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+
 
 //routes connected
 const routes = require("./routes/index")

@@ -34,8 +34,8 @@ const ProductCollection = ({ title, collectionType }) => {
   }, [products, collectionType]);
 
   return (
-    <div className='px-2 py-4 '>
-      <h3 className="text-3xl font-bold mb-8 text-center">{title}</h3>
+    <div className=''>
+      <h3 className="text-3xl font-bold mb-8 ">{title}</h3>
       <Swiper
         modules={[Navigation]}
         spaceBetween={20}
@@ -43,19 +43,19 @@ const ProductCollection = ({ title, collectionType }) => {
         navigation
         breakpoints={{
             0: {
-                slidesPerView: 1,
+                slidesPerView: 2,
                 spaceBetween: 10,
               },
               640: {
-                slidesPerView: 2,
+                slidesPerView: 3,
                 spaceBetween: 20,
               },
               768: {
-                slidesPerView: 3,
+                slidesPerView: 4,
                 spaceBetween: 30,
               },
               1024: {
-                slidesPerView: 4,
+                slidesPerView: 5,
                 spaceBetween: 40,
               },
         }}

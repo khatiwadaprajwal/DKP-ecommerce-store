@@ -15,6 +15,13 @@ const ShopcontextProvider = ({ children }) => {
   const [cartData, setCartData] = useState({});
   const [selectedItems, setSelectedItems] = useState([]);
 
+
+  
+  // Filter states
+  const [category, setCategory] = useState([]);
+  const [sizes, setSizes] = useState([]);
+  const [filterProducts, setFilterProducts] = useState(products);
+
   const navigate = useNavigate();
 
   const addToCart = async (itemId, size, quantity, name, price, image) => {
@@ -30,13 +37,18 @@ const ShopcontextProvider = ({ children }) => {
         return {
           ...prevCart,
           [itemId]: prevCart[itemId].map((item) =>
-            item.size === size ? { ...item, quantity: item.quantity + quantity } : item
+            item.size === size
+              ? { ...item, quantity: item.quantity + quantity }
+              : item
           ),
         };
       } else {
         return {
           ...prevCart,
-          [itemId]: [...(prevCart[itemId] || []), { itemId, name, price, image, size, quantity }],
+          [itemId]: [
+            ...(prevCart[itemId] || []),
+            { itemId, name, price, image, size, quantity },
+          ],
         };
       }
     });
@@ -52,7 +64,9 @@ const ShopcontextProvider = ({ children }) => {
     setCartData((prevCart) => {
       if (!prevCart[productId]) return prevCart;
 
-      const updatedItems = prevCart[productId].filter((item) => item.size !== size);
+      const updatedItems = prevCart[productId].filter(
+        (item) => item.size !== size
+      );
       const updatedCart = { ...prevCart };
 
       if (updatedItems.length === 0) {
@@ -98,9 +112,11 @@ const ShopcontextProvider = ({ children }) => {
       const updatedItems = prev.some(
         (item) => item.productId === productId && item.size === size
       )
-        ? prev.filter((item) => !(item.productId === productId && item.size === size))
+        ? prev.filter(
+            (item) => !(item.productId === productId && item.size === size)
+          )
         : [...prev, { productId, size }];
-      
+
       console.log("Selected Items After:", updatedItems);
       return updatedItems;
     });
@@ -109,14 +125,57 @@ const ShopcontextProvider = ({ children }) => {
   // Calculate total price of selected items
   const totalPrice = selectedItems.reduce((total, selectedItem) => {
     const item = cartItems.find(
-      (product) => product.productId === selectedItem.productId && product.size === selectedItem.size
+      (product) =>
+        product.productId === selectedItem.productId &&
+        product.size === selectedItem.size
     );
     return total + (item ? item.price * item.quantity : 0);
   }, 0);
 
+  // Toggle category filter
+  const toggleCategory = (value) => {
+    setCategory((prev) =>
+      prev.includes(value)
+        ? prev.filter((item) => item !== value)
+        : [...prev, value]
+    );
+  };
+
+  // Toggle size filter
+  const toggleSizes = (value) => {
+    setSizes((prev) =>
+      prev.includes(value)
+        ? prev.filter((item) => item !== value)
+        : [...prev, value]
+    );
+  };
+
+  // Apply filter based on categories and sizes
+  const applyFilter = () => {
+    let productsCopy = products.slice();
+
+    if (category.length > 0) {
+      productsCopy = productsCopy.filter((item) =>
+        category.includes(item.category)
+      );
+    }
+
+    if (sizes.length > 0) {
+      productsCopy = productsCopy.filter((item) =>
+        item.sizes.some((size) => sizes.includes(size))
+      );
+    }
+
+    setFilterProducts(productsCopy);
+  };
+
   useEffect(() => {
     console.log(cartData);
   }, [cartData]);
+
+  useEffect(() => {
+    applyFilter();
+  }, [category, sizes]);
 
   const value = {
     products,
@@ -139,6 +198,13 @@ const ShopcontextProvider = ({ children }) => {
     selectedItems,
     toggleSelectItem,
     totalPrice,
+    category,
+    sizes,
+    toggleCategory,
+    toggleSizes,
+    applyFilter,
+    filterProducts,
+    setFilterProducts,
   };
 
   return <ShopContext.Provider value={value}>{children}</ShopContext.Provider>;

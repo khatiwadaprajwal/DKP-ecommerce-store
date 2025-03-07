@@ -15,7 +15,7 @@ import {
 const ServiceSection = () => {
   return (
     <div>
-      <div className="bg-gray-100 py-12">
+      <div className="bg-gray-50 py-12">
         <div className="container mx-auto grid md:grid-cols-4 gap-6 text-center">
           <div className="flex flex-col items-center">
             <Truck className="text-blue-600 mb-4" size={48} />

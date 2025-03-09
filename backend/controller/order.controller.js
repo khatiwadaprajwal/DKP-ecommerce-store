@@ -13,6 +13,7 @@ exports.createOrder = async (req, res) => {
 
       const { productId, quantity, address, location, paymentMethod } = req.body;
       
+      
       // Ensure user is logged in
       if (!req.user || !req.user._id) {
           return res.status(401).json({ error: "Unauthorized: User not found" });

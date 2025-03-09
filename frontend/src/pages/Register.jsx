@@ -5,6 +5,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { ShopContext } from "../context/Shopcontext";
 
+
 const Register = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");

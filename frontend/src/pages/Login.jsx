@@ -2,29 +2,52 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { assets } from "../assets/assets";
 import axios from "axios";
+import { toast } from 'react-toastify';
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
+    
     try {
       const response = await axios.post("http://localhost:3001/v1/auth/login", {
         email,
         password,
       });
-      
+      console.log(response);
+
+
       if (response.status === 200) {
+        // Store token
         localStorage.setItem("token", response.data.token);
-        // alert("Login successful!");
-        navigate("/");
+        
+        // Store user info including role
+        const userData = response.data.user || {};
+        localStorage.setItem("user", JSON.stringify(userData));
+        
+        // Success toast notification
+        toast.success("Login successful!");
+        
+        // Redirect based on role
+        if (userData.role === "Admin") {
+          navigate("/admin");
+        } else {
+          navigate("/");
+        }
       }
     } catch (err) {
-      setError(err.response?.data?.message || "Login failed. Please try again.");
+      const errorMessage = err.response?.data?.message || "Login failed. Please try again.";
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -44,7 +67,7 @@ const Login = () => {
             <h1 className="text-3xl font-bold mb-2">Log in to Exclusive</h1>
             <p className="text-gray-600 mb-8">Enter your details below</p>
 
-            {error && <p className="text-red-500 mb-4">{error}</p>}
+            {error && <p className="text-red-500 mb-4 p-3 bg-red-50 rounded">{error}</p>}
 
             <form onSubmit={handleLogin} className="space-y-6">
               <div>
@@ -76,9 +99,10 @@ const Login = () => {
               <div className="flex justify-between items-center">
                 <button
                   type="submit"
-                  className="px-8 py-3 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
+                  disabled={isLoading}
+                  className={`px-8 py-3 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
                 >
-                  Log in
+                  {isLoading ? 'Logging in...' : 'Log in'}
                 </button>
                 <Link to="/forgot-password" className="text-red-500 hover:underline">
                   Forgot Password?

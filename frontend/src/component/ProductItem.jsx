@@ -28,7 +28,6 @@ const ProductItem = ({ id, image, name, price }) => {
           className="w-full h-auto object-cover transform 
                      group-hover:scale-105 transition-transform duration-300"
         />
-
         {/* Hover Actions */}
         <div
           className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 

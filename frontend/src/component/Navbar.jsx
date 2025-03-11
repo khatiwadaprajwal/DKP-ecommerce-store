@@ -15,7 +15,7 @@ const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const { getCartCount } = useContext(ShopContext);
+  const { getCartCount, logout } = useContext(ShopContext);
   const location = useLocation();
 
   useEffect(() => {
@@ -27,6 +27,12 @@ const Navbar = () => {
       document.documentElement.style.scrollBehavior = "";
     };
   }, []);
+
+  const handleLogout = () => {
+    logout(); // Call logout function from context
+    navigate("/register"); // Redirect to register or login page
+    setIsMenuOpen(false); // Close mobile menu if open
+  };
 
   // Scroll to top when route changes
   useEffect(() => {
@@ -138,7 +144,9 @@ const Navbar = () => {
                 >
                   <Heart className="w-4 h-4 mr-2" /> My Profile
                 </Link>
-                <button className="flex items-center w-full px-4 py-2 hover:bg-gray-100 text-sm">
+                <button 
+                onClick={()=>handleLogout()}
+                className="flex items-center w-full px-4 py-2 hover:bg-gray-100 text-sm">
                   <LogOut className="w-4 h-4 mr-2" /> Logout
                 </button>
               </div>
@@ -274,8 +282,7 @@ const Navbar = () => {
                   </Link>
                   <button
                     onClick={() => {
-                      setIsMenuOpen(false);
-                      // Add logout logic
+                      handleLogout()
                     }}
                     className="w-full flex items-center text-base font-medium text-gray-700 py-3 px-4 hover:bg-gray-50 rounded-md text-left"
                   >

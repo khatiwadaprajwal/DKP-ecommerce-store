@@ -54,7 +54,7 @@ const FeaturedProducts = () => {
             <SwiperSlide key={product._id}>
               <ProductItem
                 id={product._id}
-                image={product.image}
+                image={product.image[0]}
                 name={product.name}
                 price={product.price}
               />

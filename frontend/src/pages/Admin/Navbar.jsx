@@ -1,15 +1,19 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bars3Icon, XMarkIcon, HomeIcon, PlusCircleIcon, ShoppingBagIcon, ShoppingCartIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import { Link, useLocation } from 'react-router-dom';
+import { ShopContext } from "../../context/Shopcontext";
+
 
 const Navbar = ({ toggleSidebar, isSidebarOpen }) => {
   const navigate = useNavigate();
   const [visible, setVisible] = useState(false);
   const location = useLocation();
+  const {token , setToken}= useContext(ShopContext);
   
   const handleLogout = () => {
-    localStorage.removeItem('adminToken');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     navigate('/login');
   };
 

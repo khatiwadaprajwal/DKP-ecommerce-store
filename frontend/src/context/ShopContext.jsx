@@ -1,7 +1,7 @@
 import React, { useState, createContext, useEffect } from "react";
 import { products } from "../assets/assets";
 import { ToastContainer, toast } from "react-toastify";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 export const ShopContext = createContext(); // ✅ Correct context creation
 
@@ -23,6 +23,17 @@ const ShopcontextProvider = ({ children }) => {
   const [filterProducts, setFilterProducts] = useState(products);
 
   const navigate = useNavigate();
+
+
+const location = useLocation();
+
+useEffect(() => {
+  if (location.pathname === "/") {
+    setCategory([]); // Reset categories if on home page
+    setSizes([]); // Reset sizes if on home page
+    setFilterProducts(products); // Reset filtered products
+  }
+}, [location.pathname]); // Runs whenever the route changes
 
   const addToCart = async (itemId, size, quantity, name, price, image) => {
     if (!size) {
@@ -141,6 +152,8 @@ const ShopcontextProvider = ({ children }) => {
     );
   };
 
+
+ 
   // Toggle size filter
   const toggleSizes = (value) => {
     setSizes((prev) =>
@@ -169,6 +182,17 @@ const ShopcontextProvider = ({ children }) => {
     setFilterProducts(productsCopy);
   };
 
+  const logout = () => {
+    // Clear user data, token, etc.
+    setToken("");
+    localStorage.removeItem("user"); // Example: if you store user data in localStorage
+    localStorage.removeItem("token"); // Example: if you store token
+    // Optionally, reset any context state related to user
+    setUser(null);
+    console.log("User logged out");
+  };
+  
+
   useEffect(() => {
     console.log(cartData);
   }, [cartData]);
@@ -176,6 +200,7 @@ const ShopcontextProvider = ({ children }) => {
   useEffect(() => {
     applyFilter();
   }, [category, sizes]);
+
 
   const value = {
     products,
@@ -200,11 +225,14 @@ const ShopcontextProvider = ({ children }) => {
     totalPrice,
     category,
     sizes,
+    setCategory,
+    setSizes,
     toggleCategory,
     toggleSizes,
     applyFilter,
     filterProducts,
     setFilterProducts,
+    logout,
   };
 
   return <ShopContext.Provider value={value}>{children}</ShopContext.Provider>;

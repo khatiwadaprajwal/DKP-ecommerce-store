@@ -1,137 +1,85 @@
-import React, { useEffect, useState } from 'react';
-import { Navigate, Outlet, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, createContext, useContext } from 'react';
+import { Navigate, Outlet } from 'react-router-dom';
+import { jwtDecode } from 'jwt-decode';  // <-- Fixed here
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
-// For handling admin-only routes
-export const AdminRoute = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const navigate = useNavigate();
 
-  useEffect(() => {
-    const verifyAdmin = async () => {
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
 
-      try {
-        // Set token for all axios requests
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        
-        // Check user profile or a specific admin verification endpoint
-        const response = await axios.get('http://localhost:3001/v1/auth/login');
-        console.log(response);
-        
-        if (response.data.user && response.data.user.role === 'Admin') {
-          setIsAdmin(true);
-        } else {
-          toast.error("Access denied. Admin privileges required.");
-        }
-      } catch (error) {
-        console.error('Admin verification failed:', error);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        toast.error("Session expired or invalid. Please login again.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
+// Create AuthContext to share user data globally
+const AuthContext = createContext();
 
-    verifyAdmin();
-  }, [navigate]);
+// Custom hook to use AuthContext easily
+export const useAuth = () => useContext(AuthContext);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
-      </div>
-    );
-  }
-
-  return isAdmin ? <Outlet /> : <Navigate to="/login" replace />;
-};
-
-// For handling customer-only routes (if needed)
-export const CustomerRoute = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const verifyCustomer = async () => {
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        // Set token for all axios requests
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        
-        // Verify the token is valid
-        const response = await axios.get('http://localhost:3001/v1/customer/khatiwadaprajwal18@gmail.com');
-        
-        
-        if (response.data.user) {
-          setIsAuthenticated(true);
-        }
-      } catch (error) {
-        console.error('Authentication failed:', error);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        toast.error("Session expired or invalid. Please login again.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    verifyCustomer();
-  }, [navigate]);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
-      </div>
-    );
-  }
-
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
-};
-
-// Auth provider for setting up axios defaults and checking auth on app load
+// ----- AUTH PROVIDER -----
 export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+
   useEffect(() => {
     const token = localStorage.getItem('token');
-    
     if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      try {
+        // Decode user from token
+        const decodedUser = jwtDecode(token);  // <-- Fixed here
+        setUser(decodedUser);
+        // Set axios default header
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      } catch (error) {
+        console.error('Invalid Token:', error);
+        localStorage.removeItem('token');
+        toast.error('Invalid session. Please log in again.');
+      }
     }
-    
-    // Setup axios interceptor for handling 401 responses globally
+
+    // Global axios interceptor for 401 errors
     const interceptor = axios.interceptors.response.use(
       response => response,
       error => {
         if (error.response && error.response.status === 401) {
           localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          toast.error('Your session has expired. Please log in again.');
+          toast.error('Session expired. Please log in again.');
           window.location.href = '/login';
         }
         return Promise.reject(error);
       }
     );
-    
+
     return () => {
       axios.interceptors.response.eject(interceptor);
     };
   }, []);
-  
-  return <>{children}</>;
+
+  return <AuthContext.Provider value={{ user }}>{children}</AuthContext.Provider>;
+};
+
+// ----- ADMIN ROUTE -----
+export const AdminRoute = () => {
+  const { user } = useAuth();
+
+  if (user === null) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
+      </div>
+    );
+  }
+
+  return user.role === 'Admin' ? <Outlet /> : <Navigate to="/login" replace />;
+};
+
+// ----- CUSTOMER ROUTE -----
+export const CustomerRoute = () => {
+  const { user } = useAuth();
+
+  if (user === null) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
+        <Navigate to="/login" replace />
+      </div>
+    );
+  }
+
+  return user.role=== 'Customer' ? <Outlet /> : <Navigate to="/login" replace />;
 };

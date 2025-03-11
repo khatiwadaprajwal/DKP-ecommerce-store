@@ -1,15 +1,20 @@
-import React from "react";
+import React, { useContext, useEffect } from "react";
 import HeroBanner from "../component/HeroBanner";
 import FeaturedProducts from "../component/FeaturedProducts";
 import ProductCollection from "../component/ProductCollection";
 import CategoriesSection from "../component/CategoriesSection";
 import Newsletter from "../component/Newsletter";
 import ServiceSection from "../component/ServiceSection";
+import { ShopContext } from "../context/Shopcontext";
 // import HeroBanner from './component/HeroBanner';
 // import FeaturedProducts from './component/FeaturedProducts';
 // import ProductCollection from './component/ProductCollection';
 
+
+
 const Home = () => {
+ 
+
   return (
     <div className="min-h-screen bg-white">
       <HeroBanner />

@@ -1,5 +1,5 @@
 import React, { useState, useContext, Fragment } from 'react';
-import { ShopContext } from '../context/Shopcontext';
+import { ShopContext } from '../context/ShopContext';
 import { Dialog, Transition } from '@headlessui/react';
 import { 
   ShoppingBagIcon, 

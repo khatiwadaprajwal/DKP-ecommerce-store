@@ -1,8 +1,10 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { assets } from "../assets/assets";
 import axios from "axios";
-import { toast } from 'react-toastify';
+import { toast } from "react-toastify";
+import { ShopContext } from "../context/Shopcontext";
+import { jwtDecode } from "jwt-decode";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -10,40 +12,43 @@ const Login = () => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { token, setToken } = useContext(ShopContext);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
-    
+
     try {
       const response = await axios.post("http://localhost:3001/v1/auth/login", {
         email,
         password,
       });
-      console.log(response);
-
 
       if (response.status === 200) {
         // Store token
+        setToken(response.data.token);
         localStorage.setItem("token", response.data.token);
-        
-        // Store user info including role
-        const userData = response.data.user || {};
-        localStorage.setItem("user", JSON.stringify(userData));
-        
-        // Success toast notification
-        toast.success("Login successful!");
-        
+
+        // Decode token to get role (Optional here as AuthProvider will handle this on refresh)
+        const decoded = jwtDecode(response.data.token);
+        localStorage.setItem("user", decoded);
+
         // Redirect based on role
-        if (userData.role === "Admin") {
+        if (decoded.role === "Admin") {
           navigate("/admin");
-        } else {
+        } else if (decoded.role === "Customer") {
           navigate("/");
+        } else {
+          navigate("/login");
         }
+        toast.success(
+                  "Login successful"
+                );
       }
     } catch (err) {
-      const errorMessage = err.response?.data?.message || "Login failed. Please try again.";
+      const errorMessage =
+        err.response?.data?.message || "Login failed. Please try again.";
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -55,19 +60,21 @@ const Login = () => {
     <div className="min-h-screen flex flex-col">
       <div className="flex flex-1 flex-col md:flex-row">
         <div className="hidden md:block md:w-1/2 bg-blue-50">
-          <img 
-            src={assets.banner} 
-            alt="Shopping Cart with Smartphone" 
+          <img
+            src={assets.banner}
+            alt="Shopping Cart with Smartphone"
             className="w-full h-full object-cover"
           />
         </div>
 
         <div className="w-full md:w-1/2 flex items-center justify-center px-6 py-12">
           <div className="w-full max-w-md">
-            <h1 className="text-3xl font-bold mb-2">Log in to Exclusive</h1>
+            <h1 className="text-3xl font-bold mb-2">Log in to Dkp</h1>
             <p className="text-gray-600 mb-8">Enter your details below</p>
 
-            {error && <p className="text-red-500 mb-4 p-3 bg-red-50 rounded">{error}</p>}
+            {error && (
+              <p className="text-red-500 mb-4 p-3 bg-red-50 rounded">{error}</p>
+            )}
 
             <form onSubmit={handleLogin} className="space-y-6">
               <div>
@@ -100,11 +107,16 @@ const Login = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className={`px-8 py-3 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  className={`px-8 py-3 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors ${
+                    isLoading ? "opacity-70 cursor-not-allowed" : ""
+                  }`}
                 >
-                  {isLoading ? 'Logging in...' : 'Log in'}
+                  {isLoading ? "Logging in..." : "Log in"}
                 </button>
-                <Link to="/forgot-password" className="text-red-500 hover:underline">
+                <Link
+                  to="/forgot-password"
+                  className="text-red-500 hover:underline"
+                >
                   Forgot Password?
                 </Link>
               </div>

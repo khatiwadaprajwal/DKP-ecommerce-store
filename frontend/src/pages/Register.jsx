@@ -5,7 +5,6 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { ShopContext } from "../context/Shopcontext";
 
-
 const Register = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -15,7 +14,7 @@ const Register = () => {
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutes in seconds
   const [loading, setLoading] = useState(false);
 
-  const { setToken, backend_url } = useContext(ShopContext);
+  const { setToken, token, backend_url } = useContext(ShopContext);
   const navigate = useNavigate();
 
   // Handle registration submission
@@ -24,12 +23,15 @@ const Register = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post("http://localhost:3001/v1/auth/signup", {
-        name,
-        email,
-        password,
-      });
-      console.log(response)
+      const response = await axios.post(
+        "http://localhost:3001/v1/auth/signup",
+        {
+          name,
+          email,
+          password,
+        }
+      );
+      console.log(response);
 
       if (response.status === 201) {
         setShowOTP(true);
@@ -55,17 +57,19 @@ const Register = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post("http://localhost:3001/v1/auth/verify-otp", {
-        email,
-        otp,
-      });
-
-      if (response.status === 200 ) {
+      const response = await axios.post(
+        "http://localhost:3001/v1/auth/verify-otp",
+        {
+          email,
+          otp,
+        }
+      );
+      
+      if (response.status === 200) {
         navigate("/");
         setToken(response.data.token);
         localStorage.setItem("token", response.data.token);
         toast.success("Email verified successfully!");
-        
       } else {
         toast.error(response.data.message || "OTP verification failed");
       }
@@ -88,8 +92,6 @@ const Register = () => {
       .toString()
       .padStart(2, "0")}`;
   };
-
-
 
   return (
     <div className="min-h-screen flex flex-col">

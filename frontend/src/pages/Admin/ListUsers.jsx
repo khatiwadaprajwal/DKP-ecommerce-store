@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PencilIcon, TrashIcon, EyeIcon } from '@heroicons/react/24/outline';
-import axios  from 'axios';
+import axios from 'axios';
 
 const ListUsers = () => {
   const [users, setUsers] = useState([]);
@@ -11,30 +11,42 @@ const ListUsers = () => {
   const [sortDirection, setSortDirection] = useState('asc');
   const [showUserDetails, setShowUserDetails] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const token = localStorage.getItem("token");
   
   // Updated to match the mongoose model roles
   const roleOptions = ['All', 'Admin', 'Customer'];
   
+  // API base URL
+  const API_BASE_URL = 'http://localhost:3001/v1';
+  
+  // Setup axios instance with default headers
+  const api = axios.create({
+    baseURL: API_BASE_URL,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    }
+  });
+  
+
+  
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get("/customers");
+      setUsers(response.data);
+      setErrorMessage('');
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      setErrorMessage('Failed to load users. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   useEffect(() => {
-    // Fetch users
-    const fetchUsers = async () => {
-      try {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const response = await axios.get("http://localhost:3001/v1/customers",  {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        
-        setUsers(response.data);
-      } catch (error) {
-        console.error('Error fetching users:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     fetchUsers();
   }, []);
   
@@ -47,40 +59,100 @@ const ListUsers = () => {
     }
   };
   
-  const updateUserStatus = (userId, newStatus) => {
-    setUsers(
-      users.map(user => 
-        user._id === userId ? { ...user, status: newStatus } : user
-      )
-    );
-    // In a real app, you would make an API call here
-  };
-  
-  const updateUserRole = (userId, newRole) => {
-    setUsers(
-      users.map(user => 
-        user._id === userId ? { ...user, role: newRole } : user
-      )
-    );
-    // In a real app, you would make an API call here
-  };
-  
-  const deleteUser = (userId) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
-      setUsers(users.filter(user => user._id !== userId));
-      // In a real app, you would make an API call here
+  const updateUserStatus = async (userId, newStatus) => {
+    try {
+      const userToUpdate = users.find(user => user._id === userId);
+      if (!userToUpdate) return;
+      
+      // Find user by email first since the update endpoint uses email
+      const updatedUser = { ...userToUpdate, status: newStatus };
+      
+      // Make API call to update the user
+      await api.put(`/user/${userToUpdate.email}`, { status: newStatus });
+      
+      // Update local state
+      setUsers(users.map(user => user._id === userId ? { ...user, status: newStatus } : user));
+      setSuccessMessage(`User status updated to ${newStatus}`);
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      setErrorMessage('Failed to update user status. Please try again.');
+      setTimeout(() => setErrorMessage(''), 3000);
     }
   };
   
-  const saveEditedUser = () => {
+  const updateUserRole = async (userId, newRole) => {
+    try {
+      const userToUpdate = users.find(user => user._id === userId);
+      if (!userToUpdate) return;
+      
+      if (newRole === 'Admin') {
+        // Use the special make-admin endpoint for promoting to admin
+        await api.put('/make-admin', { email: userToUpdate.email });
+      } else {
+        // Use the normal update endpoint for other role changes
+        await api.put(`/user/${userToUpdate.email}`, { role: newRole });
+      }
+      
+      // Update local state
+      setUsers(users.map(user => user._id === userId ? { ...user, role: newRole } : user));
+      setSuccessMessage(`User role updated to ${newRole}`);
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      setErrorMessage('Failed to update user role. Please try again.');
+      setTimeout(() => setErrorMessage(''), 3000);
+    }
+  };
+  
+  const deleteUser = async (userId) => {
+    if (window.confirm('Are you sure you want to delete this user?')) {
+      try {
+        const userToDelete = users.find(user => user._id === userId);
+        if (!userToDelete) return;
+        
+        // Since there's no delete endpoint in your API, you might want to implement
+        // a soft delete by updating the user status to "Inactive" or similar
+        await api.put(`/user/${userToDelete.email}`, { status: 'Inactive' });
+        
+        // Update local state (either remove or mark as inactive)
+        setUsers(users.filter(user => user._id !== userId));
+        setSuccessMessage('User successfully deleted');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      } catch (error) {
+        console.error('Error deleting user:', error);
+        setErrorMessage('Failed to delete user. Please try again.');
+        setTimeout(() => setErrorMessage(''), 3000);
+      }
+    }
+  };
+  
+  const saveEditedUser = async () => {
     if (editingUser) {
-      setUsers(
-        users.map(user => 
-          user._id === editingUser._id ? { ...editingUser } : user
-        )
-      );
-      setEditingUser(null);
-      // In a real app, you would make an API call here
+      try {
+        const { _id, ...userDataToUpdate } = editingUser;
+        
+        // If password field is empty, remove it from the update data
+        if (!userDataToUpdate.password) {
+          delete userDataToUpdate.password;
+        } else {
+          // Note: The backend should handle password hashing
+          // This is just sending the plain password to the backend
+        }
+        
+        // Make API call to update the user
+        await api.put(`/user/${editingUser.email}`, userDataToUpdate);
+        
+        // Update local state
+        setUsers(users.map(user => user._id === editingUser._id ? { ...editingUser } : user));
+        setEditingUser(null);
+        setSuccessMessage('User updated successfully');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      } catch (error) {
+        console.error('Error saving user:', error);
+        setErrorMessage('Failed to save user changes. Please try again.');
+        setTimeout(() => setErrorMessage(''), 3000);
+      }
     }
   };
   
@@ -108,8 +180,8 @@ const ListUsers = () => {
   
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      user.email.toLowerCase().includes(searchQuery.toLowerCase());
+      user.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      user.email?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesRole = roleFilter === '' || roleFilter === 'All' || user.role === roleFilter;
     
@@ -135,11 +207,13 @@ const ListUsers = () => {
   });
   
   const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
   
   const formatDateTime = (dateTimeString) => {
+    if (!dateTimeString) return 'N/A';
     const options = { 
       year: 'numeric', 
       month: 'short', 
@@ -152,6 +226,18 @@ const ListUsers = () => {
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
+      {/* Notification Messages */}
+      {errorMessage && (
+        <div className="mb-4 p-3 bg-red-100 text-red-800 rounded">
+          {errorMessage}
+        </div>
+      )}
+      {successMessage && (
+        <div className="mb-4 p-3 bg-green-100 text-green-800 rounded">
+          {successMessage}
+        </div>
+      )}
+      
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-semibold">User Management</h2>
         <div className="text-sm text-gray-500">
@@ -398,7 +484,7 @@ const ListUsers = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
                 <input
                   type="text"
-                  value={editingUser.name}
+                  value={editingUser.name || ''}
                   onChange={(e) => setEditingUser({...editingUser, name: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -408,7 +494,7 @@ const ListUsers = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input
                   type="email"
-                  value={editingUser.email}
+                  value={editingUser.email || ''}
                   onChange={(e) => setEditingUser({...editingUser, email: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -417,7 +503,7 @@ const ListUsers = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                 <select
-                  value={editingUser.role}
+                  value={editingUser.role || ''}
                   onChange={(e) => setEditingUser({...editingUser, role: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
@@ -432,7 +518,7 @@ const ListUsers = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select
-                  value={editingUser.status}
+                  value={editingUser.status || ''}
                   onChange={(e) => setEditingUser({...editingUser, status: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >

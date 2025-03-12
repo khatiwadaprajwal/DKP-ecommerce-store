@@ -1,5 +1,5 @@
 import React, { useContext, useState } from 'react';
-import axios from 'axios'; // Make sure axios is installed in your project
+import axios from 'axios'; 
 import { ShopContext } from '../../context/Shopcontext';
 import { toast } from "react-toastify";
 
@@ -150,7 +150,7 @@ const AddProduct = () => {
       formData.append('totalSold', product.totalSold);
       product.size.forEach(size => formData.append('size[]', size));
       product.color.forEach(color => formData.append('color[]', color));
-      product.images.forEach(img => formData.append('images', img.file));
+      product.images.forEach(img => formData.append('images', img.files));
   
       const response = await axios.post("http://localhost:3001/v1/product", formData, {
         headers: {

@@ -3,11 +3,12 @@ const app = express();
 require('./config/mongoconfig');
 const cors = require("cors");
 
-//const path = require('path');
+const path = require('path');
 
 // Express setup
 app.use(express.json());
 app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+app.use("/public", express.static(path.join(__dirname, "public")));
 
 
 //routes connected

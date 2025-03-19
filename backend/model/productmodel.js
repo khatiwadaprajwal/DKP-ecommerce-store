@@ -7,7 +7,7 @@ const productSchema = new mongoose.Schema({
     category: { type: String, required: true },
     price: { type: Number, required: true },
     images: [{ type: String, required: true }],
-    gender: { type: String, enum: ["Male", "Female"], required: true },
+    gender: { type: String, enum: ["Men", "Women", "Kids"], required: true },
     size: [{ type: String, required: true }],
     color: [{ type: String, required: true }],
     totalQuantity: { type: Number, required: true },

@@ -41,6 +41,7 @@ exports.addToCart = async (req, res) => {
   }
 };
 
+
 // ✅ Remove Product from Cart
 exports.removeFromCart = async (req, res) => {
   try {
@@ -48,17 +49,27 @@ exports.removeFromCart = async (req, res) => {
     const { productId } = req.params;
 
     const cart = await Cart.findOne({ userId });
-    if (!cart) return res.status(404).json({ msg: "Cart not found" });
-
-    const cartItem = await CartItem.findOneAndDelete({ cartId: cart._id, productId });
-    if (cartItem) {
-      cart.cartItems.pull(cartItem._id);
-      await cart.save();
+    if (!cart) {
+      return res.status(404).json({ msg: "Cart not found" });
     }
 
-    res.status(200).json({ msg: "Product removed from cart" });
+    // Find and delete the cart item
+    const cartItem = await CartItem.findOneAndDelete({ 
+      cartId: cart._id, 
+      productId 
+    });
+
+    if (!cartItem) {
+      return res.status(404).json({ msg: "Item not found in cart" });
+    }
+
+    // Remove the reference from the cart
+    cart.cartItems.pull(cartItem._id);
+    await cart.save();
+
+    res.status(200).json({ msg: "Item removed from cart" });
   } catch (error) {
-    console.error(error);
+    console.error("Error removing item:", error);
     res.status(500).json({ msg: "Internal server error" });
   }
 };
@@ -69,19 +80,20 @@ exports.getCart = async (req, res) => {
     const userId = extractUserId(req);
     const cart = await Cart.findOne({ userId }).populate({
       path: "cartItems",
-      populate: { path: "productId", select: "name price totalQuantity" },
+      populate: { path: "productId", select: "productName price images totalQuantity" },
     });
 
     if (!cart || cart.cartItems.length === 0) {
-      return res.status(404).json({ msg: "Cart is empty" });
+      return res.status(200).json({ cart: { cartItems: [] } });
     }
 
     res.status(200).json({ cart });
   } catch (error) {
-    console.error(error);
+    console.error("Error fetching cart:", error);
     res.status(500).json({ msg: "Internal server error" });
   }
 };
+
 
 exports.placeOrderFromCart = async (req, res) => {
   try {

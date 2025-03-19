@@ -59,11 +59,12 @@ const App = () => {
             <Route path="/contact" element={<Contact />} />
             <Route path="/product/:productId" element={<Product />} />
             <Route path="/cart" element={<Cart />} />
+            <Route path="/order" element={<Order />} />
+            <Route path="/placeOrder" element={<PlaceOrder />} />
 
             {/* Protected Customer Routes */}
             <Route element={<CustomerRoute />}>
-              <Route path="/order" element={<Order />} />
-              <Route path="/placeOrder" element={<PlaceOrder />} />
+            
               {/* <Route path="/change-password" element={<ChangePassword />} /> */}
             </Route>
           </Route>

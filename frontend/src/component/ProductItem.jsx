@@ -17,11 +17,11 @@ const ProductItem = ({ id, name, image, price }) => {
       transition={{ type: "spring", stiffness: 300 }}
     >
       <Link to={`/product/${id}`} className="block">
-        <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-t-xl bg-gray-200 relative">
+        <div className="w-full overflow-hidden rounded-t-xl bg-gray-200 relative h-64">
           <img
-            src={image}
+            src={`http://localhost:3001/public/${image}`}
             alt={name}
-            className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-105"
+            className="w-full h-full object-cover object-center transition-transform duration-300 group-hover:scale-105"
           />
           
           {/* Quick actions overlay in top right corner - visible only on hover */}

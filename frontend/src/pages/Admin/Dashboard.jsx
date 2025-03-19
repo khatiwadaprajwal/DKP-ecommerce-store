@@ -22,7 +22,7 @@ const Dashboard = () => {
         
         // Fetch all products
         const productsResponse = await axios.get('http://localhost:3001/v1/products');
-        console.log(productsResponse.data.products)
+        // console.log(productsResponse.data.products)
         const products = productsResponse.data.products || [];
         
 
@@ -92,7 +92,8 @@ const Dashboard = () => {
         id: product._id,
         name: product.productName,
         sold: product.totalSold,
-        price: product.price
+        price: product.price,
+        images: product.images,
       }));
     
     setTopProducts(sortedProducts);
@@ -177,7 +178,7 @@ const Dashboard = () => {
                           {order.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">${order.totalAmount.toFixed(2)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">Rs.{order.totalAmount.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -195,11 +196,11 @@ const Dashboard = () => {
               {topProducts.map((product) => (
                 <div key={product.id} className="flex items-center">
                   <div className="w-16 h-16 bg-gray-200 rounded-md mr-4 flex items-center justify-center text-xs text-gray-500">
-                  {product.images && product.images.length > 0 && (
+                  {product.images && (
                                 <img
-                                  src={`${product.images[0]}`}
+                                  src={`http://localhost:3001/public/${product.images[0]}`}
                                   alt={product.productName}
-                                  className="h-10 w-10 object-cover rounded-md"
+                                  className="h-14 w-14 object-cover rounded-md"
                                   onError={(e) => {
                                     e.target.onerror = null;
                                     e.target.src = "/images/placeholder.jpg";
@@ -211,7 +212,7 @@ const Dashboard = () => {
                     <h4 className="font-medium">{product.name}</h4>
                     <p className="text-gray-500 text-sm">{product.sold} sold</p>
                   </div>
-                  <div className="text-lg font-semibold">${product.price.toFixed(2)}</div>
+                  <div className="text-lg font-semibold">Rs.{product.price.toFixed(2)}</div>
                 </div>
               ))}
             </div>

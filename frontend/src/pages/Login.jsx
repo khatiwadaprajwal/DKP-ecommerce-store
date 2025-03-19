@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { assets } from "../assets/assets";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { ShopContext } from "../context/Shopcontext";
+import { ShopContext } from "../context/ShopContext";
 import { jwtDecode } from "jwt-decode";
 
 const Login = () => {
@@ -12,7 +12,7 @@ const Login = () => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { token, setToken } = useContext(ShopContext);
+  const {  setToken, setUser } = useContext(ShopContext);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -33,6 +33,7 @@ const Login = () => {
         // Decode token to get role (Optional here as AuthProvider will handle this on refresh)
         const decoded = jwtDecode(response.data.token);
         localStorage.setItem("user", decoded);
+        // setUser(decoded);
 
         // Redirect based on role
         if (decoded.role === "Admin") {

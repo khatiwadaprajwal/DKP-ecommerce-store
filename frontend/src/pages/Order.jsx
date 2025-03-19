@@ -13,8 +13,6 @@ const Order = () => {
   const { products, currency = "Rs", navigate } = useContext(ShopContext);
   const [selectedOrder, setSelectedOrder] = useState(null);
 
-
-
   // Transform products into order-like structure
   const orders = products.map((product, index) => ({
     id: `ORD-${index + 5700}`,

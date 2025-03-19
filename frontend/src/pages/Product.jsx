@@ -1,455 +1,491 @@
-import React, { useContext, useEffect, useState, useRef } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ShopContext } from "../context/ShopContext";
 import ReviewSection from "../component/ReviewSection";
 import RelatedProducts from "../component/RelatedProducts";
-// import Pagination from "../component/Pagination";
+import Description from "../component/Description";
+import AdditionalInfo from "../component/AdditionalInfo";
+import ShippingInfo from "../component/ShippingInfo";
+import axios from "axios";
 
 const Product = () => {
   const { productId } = useParams();
-  const { products, addToCart } = useContext(ShopContext);
-  const [productData, setProductData] = useState(false);
+  const { addToCart, products } = useContext(ShopContext);
+  const [productData, setProductData] = useState(null);
   const [image, setImage] = useState("");
   const [selectedSize, setSelectedSize] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("description");
   const [currentPage, setCurrentPage] = useState(0);
-  
-  // UI enhancement state variables
-  const [isZoomed, setIsZoomed] = useState(false);
-  const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
-  const [showEnlargedImage, setShowEnlargedImage] = useState(false);
-  const imageRef = useRef(null);
-  const zoomFactor = 2.5;
+  const [relatedProducts, setRelatedProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const itemsPerPage = 5;
+  const itemsPerPage = 2;
 
+  // Fetch single product data using API
   const fetchProductData = async () => {
-    const foundProduct = products.find((item) => item._id === productId);
+    try {
+      setLoading(true);
+      const response = await axios.get(
+        `http://localhost:3001/v1/product/${productId}`
+      );
 
-    if (foundProduct) {
-      setProductData(foundProduct);
-      setImage(foundProduct.image[0]);
+      if (response.status === 200) {
+        const product = response.data.product;
+        setProductData(product);
+        // Set the first image as the main image
+        if (product.images && product.images.length > 0) {
+          setImage(product.images[0]);
+        }
+
+        // Fetch related products
+        fetchRelatedProducts(product.gender, product.category);
+      }
+    } catch (error) {
+      console.error("Error fetching product data:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const relatedProducts = products.filter(
-    (item) => item.category === productData?.category && item._id !== productId
-  );
+  // Fetch related products
+  const fetchRelatedProducts = async (gender, category) => {
+    try {
+      const response = await axios.get(`http://localhost:3001/v1/products`);
 
-  const totalPages = Math.ceil(relatedProducts.length / itemsPerPage);
-  const paginatedProducts = relatedProducts.slice(
-    currentPage * itemsPerPage,
-    (currentPage + 1) * itemsPerPage
-  );
+      if (response.status === 200) {
+        // Filter related products by category and gender, excluding current product
+        const related = response.data.products.filter(
+          (item) =>
+            (item.category === category || item.gender === gender) &&
+            item._id !== productId
+        );
+
+        setRelatedProducts(related);
+      }
+    } catch (error) {
+      console.error("Error fetching related products:", error);
+    }
+  };
 
   useEffect(() => {
     fetchProductData();
-    // Reset image zoom/enlarge states when product changes
-    setIsZoomed(false);
-    setShowEnlargedImage(false);
     window.scrollTo(0, 0); // Scroll to top when product changes
   }, [productId]);
 
-  // Generate improved breadcrumb path
+  // Generate breadcrumb path
   const getBreadcrumbs = () => {
     return [
       { name: "Home", path: "/" },
-      { name: productData?.category || "Category", path: `/collection?category=${productData?.category}` },
-      { name: productData?.name || "Product", path: "#" }
+      {
+        name: productData?.gender || "Gender",
+        path: `/collection?gender=${productData?.gender}`,
+      },
+      {
+        name: productData?.category || "Category",
+        path: `/collection?category=${productData?.category}`,
+      },
+      { name: productData?.productName || "Product", path: "#" },
     ];
   };
 
-  // Handle mouse movement for zoom effect
-  const handleMouseMove = (e) => {
-    if (!imageRef.current) return;
-    
-    const { left, top, width, height } = imageRef.current.getBoundingClientRect();
-    const x = ((e.clientX - left) / width) * 100;
-    const y = ((e.clientY - top) / height) * 100;
-    
-    setZoomPosition({ x, y });
-  };
-
   const handleAddToCart = () => {
-    if (!selectedSize) {
-      // We'll handle the error in the addToCart function
+    if (selectedSize) {
       addToCart(
         productData._id,
         selectedSize,
         quantity,
-        productData.name,
+        productData.productName,
         productData.price,
-        productData.image[0]
-      );
-    } else {
-      addToCart(
-        productData._id,
-        selectedSize,
-        quantity,
-        productData.name,
-        productData.price,
-        productData.image[0]
+        productData.images[0]
       );
       // Reset quantity after adding to cart
       setQuantity(1);
     }
   };
 
-  return productData ? (
-    <div>
-    <div className="pt-6 md:pt-10 transition-opacity ease-in duration-500 opacity-100 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      {/* Breadcrumbs - Improved UI */}
-      <nav className="flex items-center text-sm text-gray-500 mb-6">
-        {getBreadcrumbs().map((crumb, index, array) => (
-          <React.Fragment key={crumb.path}>
-            {index > 0 && <span className="mx-2 text-gray-400">›</span>}
-            {index === array.length - 1 ? (
-              <span className="font-medium text-black truncate max-w-xs">{crumb.name}</span>
-            ) : (
-              <Link to={crumb.path} className="hover:text-black truncate transition-colors duration-200">
-                {crumb.name}
-              </Link>
-            )}
-          </React.Fragment>
-        ))}
-      </nav>
+  // Calculate paginated products
+  const totalPages = Math.ceil(relatedProducts.length / itemsPerPage);
+  const paginatedProducts = relatedProducts.slice(
+    currentPage * itemsPerPage,
+    (currentPage + 1) * itemsPerPage
+  );
 
-      <div className="flex gap-8 lg:gap-12 flex-col md:flex-row">
-        {/* Product Image with Zoom - Improved UI */}
-        <div className="md:w-1/2 lg:w-3/5 relative">
-          <div 
-            className="w-full overflow-hidden relative rounded-lg shadow-sm border border-gray-200" 
-            onMouseEnter={() => setIsZoomed(true)}
-            onMouseLeave={() => setIsZoomed(false)}
-            onMouseMove={handleMouseMove}
-            onClick={() => setShowEnlargedImage(true)}
-          >
-            <img
-              ref={imageRef}
-              className="w-full h-auto object-contain aspect-square cursor-zoom-in transition-transform duration-200"
-              src={image}
-              alt={productData.name}
-            />
-            {isZoomed && (
-              <div 
-                className="absolute pointer-events-none"
-                style={{
-                  width: '150px',
-                  height: '150px',
-                  borderRadius: '50%',
-                  border: '2px solid #fff',
-                  boxShadow: '0 0 10px rgba(0,0,0,0.2)',
-                  background: `url(${image}) no-repeat`,
-                  backgroundSize: `${zoomFactor * 100}%`,
-                  backgroundPosition: `${zoomPosition.x}% ${zoomPosition.y}%`,
-                  left: `${zoomPosition.x}%`,
-                  top: `${zoomPosition.y}%`,
-                  transform: 'translate(-50%, -50%)'
-                }}
+  return loading ? (
+    <div className="flex justify-center items-center h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
+    </div>
+  ) : productData ? (
+    <div className="bg-white">
+      <div className="container mx-auto px-4 py-6 transition-opacity ease-in duration-300 opacity-100">
+        {/* Breadcrumbs */}
+        <nav className="flex items-center text-sm text-gray-500 mb-4">
+          {getBreadcrumbs().map((crumb, index, array) => (
+            <React.Fragment key={crumb.path}>
+              {index > 0 && <span className="mx-2 text-gray-400">›</span>}
+              {index === array.length - 1 ? (
+                <span className="font-medium text-black truncate max-w-xs">
+                  {crumb.name}
+                </span>
+              ) : (
+                <Link
+                  to={crumb.path}
+                  className="hover:text-black truncate transition-colors duration-200"
+                >
+                  {crumb.name}
+                </Link>
+              )}
+            </React.Fragment>
+          ))}
+        </nav>
+
+        <div className="flex gap-8 flex-col md:flex-row">
+          {/* Product Image Section - with improved sizing */}
+          <div className="md:w-3/5 relative">
+            {/* Main image container with improved height */}
+            <div className="w-full overflow-hidden relative rounded-lg shadow-md">
+              <img
+                className="w-full h-auto md:h-[500px] object-contain bg-white"
+                src={`http://localhost:3001/public/${image}`}
+                alt={productData.productName}
               />
-            )}
-          </div>
-          
-          {/* Enlarged Image Modal - Improved UI */}
-          {showEnlargedImage && (
-            <div 
-              className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"
-              onClick={() => setShowEnlargedImage(false)}
-            >
-              <div className="relative max-w-4xl max-h-screen">
-                <button 
-                  className="absolute top-2 right-2 bg-white rounded-full p-2 hover:bg-gray-200 transition-colors duration-200"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowEnlargedImage(false);
-                  }}
-                >
-                  ✕
-                </button>
-                <img 
-                  src={image} 
-                  alt={productData.name} 
-                  className="max-w-full max-h-[90vh] object-contain"
-                />
-              </div>
             </div>
-          )}
 
-          {/* Thumbnails with improved UI */}
-          <div className="grid grid-cols-5 gap-2 mt-4">
-            {productData.image.map((item, index) => (
-              <div 
-                key={index}
-                className={`relative cursor-pointer transition-all duration-200 
-                  hover:scale-105 rounded-md overflow-hidden
-                  ${image === item ? 'ring-2 ring-black shadow-md' : 'border border-gray-200'}
-                `}
-                onClick={() => setImage(item)}
-              >
-                <img
-                  src={item}
-                  className="w-full h-16 object-cover"
-                  alt={`${productData.name} - view ${index + 1}`}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Product Info - Improved UI */}
-        <div className="md:w-1/2 lg:w-2/5 space-y-6 mt-6 md:mt-0">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold">{productData.name}</h1>
-            <p className="text-2xl md:text-3xl font-bold text-red-600 mt-2">
-              Rs. {productData.price.toLocaleString()}
-            </p>
-          </div>
-          
-          <div className="border-t border-gray-200 pt-4">
-            <p className="text-lg font-semibold">Description</p>
-            <p className="mt-2 text-gray-600">
-              {productData.description}
-            </p>
-          </div>
-
-          {/* Size Selection with improved UI */}
-          <div className="border-t border-gray-200 pt-4">
-            <p className="font-semibold text-lg mb-2">Select Size:</p>
-            <div className="flex flex-wrap gap-3">
-              {productData.sizes.map((size) => (
-                <button
-                  key={size}
-                  className={`h-12 w-12 flex items-center justify-center rounded-md 
-                    font-medium text-base transition-all duration-200 hover:bg-gray-700 hover:text-white
-                    ${selectedSize === size
-                      ? "bg-black text-white shadow-md transform scale-105"
-                      : "bg-gray-100 text-gray-800 hover:bg-gray-200"}
+            {/* Thumbnails - improved sizing and layout */}
+            <div className="grid grid-cols-5 gap-3 mt-4">
+              {productData.images.map((item, index) => (
+                <div
+                  key={index}
+                  className={`relative cursor-pointer transition-all duration-200 
+                    hover:scale-105 rounded-md overflow-hidden
+                    ${
+                      image === item
+                        ? "ring-2 ring-black shadow-md"
+                        : "border border-gray-200"
+                    }
                   `}
-                  onClick={() => setSelectedSize(size)}
+                  onClick={() => setImage(item)}
                 >
-                  {size}
-                </button>
+                  <img
+                    src={`http://localhost:3001/public/${item}`}
+                    className="w-full h-20 object-cover"
+                    alt={`${productData.productName} - view ${index + 1}`}
+                  />
+                </div>
               ))}
             </div>
-            {!selectedSize && (
-              <p className="text-sm text-red-500 mt-2">Please select a size</p>
-            )}
           </div>
 
-          {/* Quantity Selector with improved UI */}
-          <div className="border-t border-gray-200 pt-4">
-            <p className="font-semibold text-lg mb-2">Quantity:</p>
-            <div className="inline-flex border border-gray-300 rounded-md overflow-hidden shadow-sm">
-              <button
-                className="w-10 h-10 bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
-                onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
-              >
-                <span className="text-xl font-medium">-</span>
-              </button>
-              <div className="w-12 h-10 flex items-center justify-center border-l border-r border-gray-300 bg-white">
-                {quantity}
-              </div>
-              <button
-                className="w-10 h-10 bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
-                onClick={() => setQuantity((prev) => prev + 1)}
-              >
-                <span className="text-xl font-medium">+</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Action Buttons with improved UI */}
-          <div className="flex gap-4 pt-4">
-            <button
-              onClick={handleAddToCart}
-              className="flex-1 bg-black text-white h-12 rounded-md font-medium 
-                hover:bg-gray-800 transition-colors duration-300 flex items-center justify-center"
-            >
-              Add to Cart
-            </button>
-            <Link to="/placeOrder" className="flex-1">
-              <button className="w-full h-12 bg-yellow-500 text-white rounded-md font-medium 
-                hover:bg-yellow-600 transition-colors duration-300 flex items-center justify-center">
-                Buy Now
-              </button>
-            </Link>
-          </div>
-
-          {/* Product guarantees with icons - Improved UI */}
-          <div className="border-t border-gray-200 pt-4 text-sm text-gray-600 space-y-3">
-            <div className="flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <p>100% Original product</p>
-            </div>
-            <div className="flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" />
-              </svg>
-              <p>Cash on delivery available</p>
-            </div>
-            <div className="flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              <p>Easy 7-day returns & exchanges</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Description and Reviews Section - Improved UI */}
-      <div className="mt-16">
-        <div className="flex border-b border-gray-300 overflow-x-auto">
-          <button
-            className={`px-6 py-3 text-base font-semibold whitespace-nowrap transition-colors duration-200 ${
-              activeTab === "description"
-                ? "border-b-2 border-black text-black"
-                : "text-gray-500 hover:text-black"
-            }`}
-            onClick={() => setActiveTab("description")}
-          >
-            DESCRIPTION
-          </button>
-          <button
-            className={`px-6 py-3 text-base font-semibold whitespace-nowrap transition-colors duration-200 ${
-              activeTab === "additional"
-                ? "border-b-2 border-black text-black"
-                : "text-gray-500 hover:text-black"
-            }`}
-            onClick={() => setActiveTab("additional")}
-          >
-            ADDITIONAL INFORMATION
-          </button>
-          <button
-            className={`px-6 py-3 text-base font-semibold whitespace-nowrap transition-colors duration-200 ${
-              activeTab === "reviews"
-                ? "border-b-2 border-black text-black"
-                : "text-gray-500 hover:text-black"
-            }`}
-            onClick={() => setActiveTab("reviews")}
-          >
-            REVIEWS (0)
-          </button>
-          <button
-            className={`px-6 py-3 text-base font-semibold whitespace-nowrap transition-colors duration-200 ${
-              activeTab === "shipping"
-                ? "border-b-2 border-black text-black"
-                : "text-gray-500 hover:text-black"
-            }`}
-            onClick={() => setActiveTab("shipping")}
-          >
-            SHIPPING & DELIVERY
-          </button>
-        </div>
-
-        {/* Content for each tab - Improved UI */}
-        <div className="py-8">
-          {activeTab === "description" && (
-            <div className="space-y-6">
-              <p className="text-gray-700 leading-relaxed">
-                Going for a more casual look? You cannot thumb your noses at
-                these minimal pair of microfiber casuals from Caliber which is
-                fantastic at portraying a casual yet neat look. Slide this
-                sneaker on for an easy footwear option that can be styled with
-                anything.
+          {/* Product Info - adjusted width to accommodate larger image */}
+          <div className="md:w-2/5 space-y-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold">
+                {productData.productName}
+              </h1>
+              <p className="text-xl md:text-2xl font-bold text-red-600 mt-1">
+                Rs. {productData.price.toLocaleString()}
               </p>
-
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-lg">COMFORTABLE FIT</h3>
-                <p className="text-gray-700 mt-2">
-                  The lace-up closure and closed toe style gives your feet a
-                  perfect fit to the shoe.
-                </p>
+              {/* Rating display */}
+              <div className="flex items-center mt-2">
+                <div className="flex items-center">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <svg
+                      key={star}
+                      xmlns="http://www.w3.org/2000/svg"
+                      className={`h-4 w-4 ${
+                        star <= Math.round(productData.averageRating)
+                          ? "text-yellow-400"
+                          : "text-gray-300"
+                      }`}
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                  ))}
+                </div>
+                <span className="ml-2 text-gray-600 text-sm">
+                  ({productData.averageRating.toFixed(1)})
+                </span>
               </div>
+              {/* Availability info */}
+              <p className="text-sm mt-1 text-gray-600">
+                {productData.totalQuantity > 0 ? (
+                  <span className="text-green-600 font-medium">
+                    In Stock ({productData.totalQuantity} available)
+                  </span>
+                ) : (
+                  <span className="text-red-600 font-medium">Out of Stock</span>
+                )}
+              </p>
+            </div>
 
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-lg">IMPRESSIVE DESIGN</h3>
-                <p className="text-gray-700 mt-2">
-                  Keeping in mind the latest trends in fashion, this sleek pair
-                  adds to the style of the outfit. The ways these can be worn
-                  are virtually endless, thanks to the stylish street style
-                  circuits we're continuously blessed with.
-                </p>
+            <div className="border-t border-gray-200 pt-3">
+              <p className="text-base font-semibold">Description</p>
+              <p className="mt-1 text-gray-600 text-sm line-clamp-3">
+                {productData.description}
+              </p>
+            </div>
+
+            {/* Size Selection */}
+            <div className="border-t border-gray-200 pt-3">
+              <p className="font-semibold text-base mb-2">Select Size:</p>
+              <div className="flex flex-wrap gap-2">
+                {productData.size.map((size) => (
+                  <button
+                    key={size}
+                    className={`h-10 w-10 flex items-center justify-center rounded-md 
+                      font-medium text-sm transition-all duration-200 hover:bg-gray-700 hover:text-white
+                      ${
+                        selectedSize === size
+                          ? "bg-black text-white shadow-md transform scale-105"
+                          : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                      }
+                    `}
+                    onClick={() => setSelectedSize(size)}
+                  >
+                    {size}
+                  </button>
+                ))}
               </div>
-
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-lg">MADE FOR COMFORT</h3>
-                <p className="text-gray-700 mt-2">
-                  Sneakers are designed to give maximum comfort.
+              {!selectedSize && (
+                <p className="text-xs text-red-500 mt-1">
+                  Please select a size
                 </p>
-              </div>
+              )}
+            </div>
 
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-lg">CARE INSTRUCTIONS</h3>
-                <p className="text-gray-700 mt-2">
-                  Allow your pair of footwear to air and deodorize at regular
-                  basis; use shoe bags to prevent any stains or mildew; dust any
-                  dry dirt from the surface using a clean cloth.
-                </p>
+            {/* Color Display */}
+            <div className="border-t border-gray-200 pt-3">
+              <p className="font-semibold text-base mb-2">Available Colors:</p>
+              <div className="flex flex-wrap gap-2">
+                {productData.color.map((color, index) => (
+                  <div key={index} className="flex flex-col items-center">
+                    <div
+                      className="h-6 w-6 rounded-full border border-gray-300"
+                      style={{ backgroundColor: color.toLowerCase() }}
+                    ></div>
+                    <span className="text-xs mt-1">{color}</span>
+                  </div>
+                ))}
               </div>
             </div>
-          )}
 
-          {activeTab === "reviews" && (
-            <ReviewSection reviews={productData.reviews || []} />
-          )}
-
-          {activeTab === "shipping" && (
-            <div className="space-y-6">
-              <div className="flex items-start bg-gray-50 p-4 rounded-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3 mt-1 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <div>
-                  <h3 className="font-medium text-gray-900">Delivery Time</h3>
-                  <p className="text-gray-700 mt-1">Delivery within 3-7 business days.</p>
+            {/* Quantity Selector */}
+            <div className="border-t border-gray-200 pt-3">
+              <p className="font-semibold text-base mb-2">Quantity:</p>
+              <div className="inline-flex border border-gray-300 rounded-md overflow-hidden shadow-sm">
+                <button
+                  className="w-8 h-8 bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+                  onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
+                  disabled={quantity <= 1}
+                >
+                  <span className="text-lg font-medium">-</span>
+                </button>
+                <div className="w-10 h-8 flex items-center justify-center border-l border-r border-gray-300 bg-white">
+                  {quantity}
                 </div>
-              </div>
-              
-              <div className="flex items-start bg-gray-50 p-4 rounded-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3 mt-1 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                </svg>
-                <div>
-                  <h3 className="font-medium text-gray-900">Free Shipping</h3>
-                  <p className="text-gray-700 mt-1">Free shipping on orders over Rs. 2000.</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start bg-gray-50 p-4 rounded-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3 mt-1 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                <div>
-                  <h3 className="font-medium text-gray-900">Returns & Exchanges</h3>
-                  <p className="text-gray-700 mt-1">Easy return and exchange within 7 days of delivery.</p>
-                </div>
+                <button
+                  className="w-8 h-8 bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+                  onClick={() =>
+                    setQuantity((prev) =>
+                      Math.min(productData.totalQuantity, prev + 1)
+                    )
+                  }
+                  disabled={quantity >= productData.totalQuantity}
+                >
+                  <span className="text-lg font-medium">+</span>
+                </button>
               </div>
             </div>
-          )}
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-3">
+              <button
+                onClick={handleAddToCart}
+                className={`flex-1 h-10 rounded-md font-medium text-sm
+                  flex items-center justify-center transition-colors duration-300
+                  ${
+                    productData.totalQuantity > 0 && selectedSize
+                      ? "bg-black text-white hover:bg-gray-800"
+                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  }`}
+                disabled={productData.totalQuantity === 0 || !selectedSize}
+              >
+                Add to Cart
+              </button>
+              <Link to="/placeOrder" className="flex-1">
+                <button
+                  className={`w-full h-10 rounded-md font-medium text-sm
+                    flex items-center justify-center transition-colors duration-300
+                    ${
+                      productData.totalQuantity > 0 && selectedSize
+                        ? "bg-yellow-500 text-white hover:bg-yellow-600"
+                        : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    }`}
+                  disabled={productData.totalQuantity === 0 || !selectedSize}
+                >
+                  Buy Now
+                </button>
+              </Link>
+            </div>
+
+            {/* Product guarantees with icons */}
+            <div className="border-t border-gray-200 pt-3 text-xs text-gray-600 space-y-2">
+              <div className="flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 mr-2 text-green-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+                <p>100% Original product</p>
+              </div>
+              <div className="flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 mr-2 text-green-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"
+                  />
+                </svg>
+                <p>Cash on delivery available</p>
+              </div>
+              <div className="flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 mr-2 text-green-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                <p>Easy 7-day returns & exchanges</p>
+              </div>
+              <div className="flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 mr-2 text-green-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <p>Fast shipping within 3-7 business days</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Description and Reviews Section */}
+        <div className="mt-10">
+          <div className="flex border-b border-gray-300 overflow-x-auto">
+            <button
+              className={`px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors duration-200 ${
+                activeTab === "description"
+                  ? "border-b-2 border-black text-black"
+                  : "text-gray-500 hover:text-black"
+              }`}
+              onClick={() => setActiveTab("description")}
+            >
+              DESCRIPTION
+            </button>
+            <button
+              className={`px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors duration-200 ${
+                activeTab === "additional"
+                  ? "border-b-2 border-black text-black"
+                  : "text-gray-500 hover:text-black"
+              }`}
+              onClick={() => setActiveTab("additional")}
+            >
+              ADDITIONAL INFO
+            </button>
+            <button
+              className={`px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors duration-200 ${
+                activeTab === "reviews"
+                  ? "border-b-2 border-black text-black"
+                  : "text-gray-500 hover:text-black"
+              }`}
+              onClick={() => setActiveTab("reviews")}
+            >
+              REVIEWS (
+              {productData.averageRating > 0
+                ? Math.round(productData.averageRating)
+                : "0"}
+              )
+            </button>
+            <button
+              className={`px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors duration-200 ${
+                activeTab === "shipping"
+                  ? "border-b-2 border-black text-black"
+                  : "text-gray-500 hover:text-black"
+              }`}
+              onClick={() => setActiveTab("shipping")}
+            >
+              SHIPPING & DELIVERY
+            </button>
+          </div>
+
+          {/* Content for each tab */}
+          <div className="py-6">
+            {activeTab === "description" && (
+              <Description description={productData.description} />
+            )}
+            {activeTab === "additional" && (
+              <AdditionalInfo productData={productData} />
+            )}
+            {activeTab === "reviews" && (
+              <ReviewSection reviews={productData.reviews || []} />
+            )}
+            {activeTab === "shipping" && <ShippingInfo />}
+          </div>
         </div>
       </div>
 
-      
-    </div>
-    {/* Related Products - Using new component */}
-    <div className="mt-16">
-        <h2 className="text-2xl font-semibold mb-6">Related Products</h2>
-        <RelatedProducts 
-          products={paginatedProducts} 
-          totalPages={totalPages}
-          currentPage={currentPage}
-          onPageChange={setCurrentPage}
-        />
-      </div>
+      {/* Related Products */}
+      {/* {relatedProducts.length > 0 && (
+        <div className="mt-10 container mx-auto px-4">
+          <h2 className="text-xl font-semibold mb-4">Related Products</h2>
+          <RelatedProducts
+            products={paginatedProducts}
+            totalPages={totalPages}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+          />
+        </div>
+      )} */}
     </div>
   ) : (
     <div className="flex justify-center items-center h-screen">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
+      <div className="text-xl text-gray-700">Product not found</div>
     </div>
   );
 };

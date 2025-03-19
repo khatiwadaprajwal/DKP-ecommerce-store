@@ -9,13 +9,13 @@ import {
   Heart,
   LogOut,
 } from "lucide-react";
-import { ShopContext } from "../context/Shopcontext";
+import { ShopContext } from "../context/ShopContext";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const { getCartCount, logout } = useContext(ShopContext);
+  const { getCartCount, logout, navigate } = useContext(ShopContext);
   const location = useLocation();
 
   useEffect(() => {

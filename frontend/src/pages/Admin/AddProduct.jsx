@@ -1,6 +1,6 @@
 import React, { useContext, useState } from 'react';
 import axios from 'axios'; 
-import { ShopContext } from '../../context/Shopcontext';
+import { ShopContext } from '../../context/ShopContext';
 import { toast } from "react-toastify";
 
 const AddProduct = () => {
@@ -25,8 +25,8 @@ const AddProduct = () => {
   
   const sizeOptions = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
   const colorOptions = ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Gray', 'Brown'];
-  const categoryOptions = ['Shirts', 'Pants', 'Dresses', 'Jackets', 'Accessories', 'Shoes'];
-  const genderOptions = ['Male', 'Female'];
+  const categoryOptions = ['Formal','Casual', 'Ethnic'];
+  const genderOptions = ['Men', 'Women', 'Kids'];
   
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -150,7 +150,10 @@ const AddProduct = () => {
       formData.append('totalSold', product.totalSold);
       product.size.forEach(size => formData.append('size[]', size));
       product.color.forEach(color => formData.append('color[]', color));
-      product.images.forEach(img => formData.append('images', img.files));
+      product.images.forEach(img => formData.append('images', img.file));
+
+
+      console.log(formData);
   
       const response = await axios.post("http://localhost:3001/v1/product", formData, {
         headers: {
@@ -159,7 +162,7 @@ const AddProduct = () => {
         }
       });
   
-      console.log('Product added:', response.data);
+      console.log('Product added:', response.data.product);
       toast.success(response.data.message || 'Product added successfully!');
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000); // Auto-hide after 3 sec
@@ -404,10 +407,10 @@ const AddProduct = () => {
           
           {product.images.length > 0 ? (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
-              {product.images.map((imageUrl, index) => (
+              {product.images.map((imageObj, index) => (
                 <div key={index} className="relative group">
                   <img
-                    src={imageUrl}
+                    src={imageObj.preview}
                     alt={`Product preview ${index + 1}`}
                     className="h-24 w-24 object-cover rounded-md"
                   />

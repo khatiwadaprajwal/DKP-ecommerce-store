@@ -98,7 +98,7 @@ const ListProducts = () => {
     };
 
     try {
-      await axios.put(
+      const response = await axios.put(
         `http://localhost:3001/v1/product/${productId}`,
         updatedProduct,
         {
@@ -115,6 +115,7 @@ const ListProducts = () => {
             : product
         )
       );
+      console.log(re)
     } catch (error) {
       console.error("Error updating product status:", error);
       alert("Failed to update product status!");
@@ -271,7 +272,7 @@ const ListProducts = () => {
                             <div className="h-10 w-10 bg-gray-200 rounded-md mr-3">
                               {product.images && product.images.length > 0 && (
                                 <img
-                                  src={`${product.images[0]}`}
+                                  src={`http://localhost:3001/public/${product.images[0]}`}
                                   alt={product.productName}
                                   className="h-10 w-10 object-cover rounded-md"
                                   onError={(e) => {
@@ -431,7 +432,7 @@ const ListProducts = () => {
                                         className="h-16 w-16 bg-gray-200 rounded-md overflow-hidden"
                                       >
                                         <img
-                                          src={`/images/${img}`}
+                                          src={`http://localhost:3001/public/${img}`}
                                           alt={`${product.productName} ${index}`}
                                           className="h-16 w-16 object-cover"
                                           onError={(e) => {
@@ -713,7 +714,7 @@ const ListProducts = () => {
                       className="relative h-16 w-16 bg-gray-200 rounded-md overflow-hidden group"
                     >
                       <img
-                        src={`/images/${img}`}
+                        src={`http://localhost:3001/public/${img}`}
                         alt={`${editingProduct.productName} ${index}`}
                         className="h-16 w-16 object-cover"
                         onError={(e) => {

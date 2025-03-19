@@ -1,7 +1,7 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation } from 'swiper/modules';
-import { ShopContext } from "../context/Shopcontext";
+import { ShopContext } from "../context/ShopContext";
 import ProductItem from "../component/ProductItem";
 
 import 'swiper/css';
@@ -10,64 +10,88 @@ import 'swiper/css/navigation';
 const ProductCollection = ({ title, collectionType }) => {
   const { products } = useContext(ShopContext);
   const [collectionProducts, setCollectionProducts] = useState([]);
-
+  
   useEffect(() => {
     let filteredProducts = [];
-
+    
     switch(collectionType) {
       case 'bestseller':
-        filteredProducts = products.filter(product => product.bestseller).slice(0, 8);
+        // Use totalSold to determine bestsellers
+        filteredProducts = products
+          .sort((a, b) => b.totalSold - a.totalSold)
+          .slice(0, 8);
         break;
       case 'topRated':
-        filteredProducts = products.filter(product => product.rating >= 4.5).slice(0, 8);
+        // Use averageRating from the model
+        filteredProducts = products
+          .filter(product => product.averageRating >= 4.5)
+          .slice(0, 8);
         break;
       case 'latest':
+        // Use createdAt from timestamps
         filteredProducts = products
           .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          .slice(0, 8);
+        break;
+      case 'popular':
+        // New collection type based on combination of rating and sales
+        filteredProducts = products
+          .sort((a, b) => {
+            const aPopularity = (a.averageRating || 0) * (a.totalSold || 0);
+            const bPopularity = (b.averageRating || 0) * (b.totalSold || 0);
+            return bPopularity - aPopularity;
+          })
+          .slice(0, 8);
+        break;
+      case 'trending':
+        // Assuming trending is based on recent sales
+        filteredProducts = products
+          .filter(product => product.totalSold > 20)
+          .sort((a, b) => b.updatedAt - a.updatedAt)
           .slice(0, 8);
         break;
       default:
         filteredProducts = [];
     }
-
+    
     setCollectionProducts(filteredProducts);
   }, [products, collectionType]);
-
+  
   return (
     <div className=''>
-      <h3 className="text-3xl font-bold mb-8 ">{title}</h3>
+      <h3 className="text-3xl font-bold mb-8">{title}</h3>
       <Swiper
         modules={[Navigation]}
         spaceBetween={20}
         slidesPerView={4}
         navigation
         breakpoints={{
-            0: {
-                slidesPerView: 2,
-                spaceBetween: 10,
-              },
-              640: {
-                slidesPerView: 3,
-                spaceBetween: 20,
-              },
-              768: {
-                slidesPerView: 4,
-                spaceBetween: 30,
-              },
-              1024: {
-                slidesPerView: 5,
-                spaceBetween: 40,
-              },
+          0: {
+            slidesPerView: 2,
+            spaceBetween: 10,
+          },
+          640: {
+            slidesPerView: 3,
+            spaceBetween: 20,
+          },
+          768: {
+            slidesPerView: 4,
+            spaceBetween: 30,
+          },
+          1024: {
+            slidesPerView: 5,
+            spaceBetween: 40,
+          },
         }}
       >
         {collectionProducts.map((product) => (
           <SwiperSlide key={product._id} className=''>
-            
             <ProductItem
               id={product._id}
-              image={product.image[0]}
-              name={product.name}
+              image={product.images[0]} // Updated from image[0] to images[0]
+              name={product.productName} // Updated from name to productName
               price={product.price}
+              rating={product.averageRating} // Added rating
             />
           </SwiperSlide>
         ))}

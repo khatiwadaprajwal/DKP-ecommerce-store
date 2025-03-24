@@ -10,12 +10,14 @@ const ShopcontextProvider = ({ children }) => {
   const currency = "Rs";
   const delivery_fee = 100;
   const backend_url = import.meta.env.VITE_BACKEND_URL;
-  const [token, setToken] = useState(localStorage.getItem("token") || "");
-  const [user, setUser] = useState({})
+  const [token, setToken] = useState(localStorage.getItem("token"));
+  const [user, setUser] = useState(null);
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(true);
   const [cartData, setCartData] = useState([]);
   const [products, setProducts] = useState([]);
+  const [averageRating, setAverageRating] = useState(0);
+  const [totalReviews, setTotalReviews] = useState(0);
 
   // Filter states
   const [gender, setGender] = useState([]);
@@ -27,12 +29,13 @@ const ShopcontextProvider = ({ children }) => {
 
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   useEffect(() => {
     if (token) {
       try {
         const decoded = jwtDecode(token);
-        setUser(decoded);
+        localStorage.setItem("user", JSON.stringify(decoded));
+        setUser(JSON.parse(localStorage.getItem("user")));
       } catch (error) {
         console.error("Invalid token:", error);
       }
@@ -61,7 +64,7 @@ const ShopcontextProvider = ({ children }) => {
       setCartData([]);
       return;
     }
-  
+
     try {
       const response = await axios.get("http://localhost:3001/v1/getcart", {
         headers: { Authorization: `Bearer ${token}` },
@@ -77,7 +80,7 @@ const ShopcontextProvider = ({ children }) => {
             image: item.productId.images,
             quantity: item.quantity,
           }));
-          
+
           setCartData(formattedCart);
         } else {
           setCartData([]);
@@ -88,7 +91,7 @@ const ShopcontextProvider = ({ children }) => {
       setCartData([]);
     }
   };
-  
+
   useEffect(() => {
     fetchCartData();
   }, [token]);
@@ -99,14 +102,14 @@ const ShopcontextProvider = ({ children }) => {
       toast.error("Login to add items to cart");
       return;
     }
-  
+
     try {
       const response = await axios.post(
         "http://localhost:3001/v1/add",
         { productId: itemId, quantity, size },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-  
+
       if (response.status === 201) {
         toast.success("Product added to cart");
         fetchCartData(); // Fetch the updated cart after adding the item
@@ -116,7 +119,7 @@ const ShopcontextProvider = ({ children }) => {
       toast.error("Failed to add product to cart");
     }
   };
-  
+
   // Get Cart Count
   const getCartCount = () => {
     return cartData.reduce((total, item) => total + item.quantity, 0);
@@ -184,7 +187,7 @@ const ShopcontextProvider = ({ children }) => {
       );
     }
 
-    // Filter by size 
+    // Filter by size
     if (sizes.length > 0) {
       productsCopy = productsCopy.filter((item) =>
         item.size.some((s) => sizes.includes(s))
@@ -215,9 +218,9 @@ const ShopcontextProvider = ({ children }) => {
 
   const logout = () => {
     setToken("");
+    setCartData([]);
     localStorage.removeItem("user");
     localStorage.removeItem("token");
-    setCartData([]);
     console.log("User logged out");
   };
 
@@ -285,7 +288,12 @@ const ShopcontextProvider = ({ children }) => {
     resetPriceFilter,
     resetAllFilters,
     logout,
-    user
+    user,
+    setUser,
+    averageRating,
+    setAverageRating,
+    totalReviews,
+    setTotalReviews,
   };
 
   return <ShopContext.Provider value={value}>{children}</ShopContext.Provider>;

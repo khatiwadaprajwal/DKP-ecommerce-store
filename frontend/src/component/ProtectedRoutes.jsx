@@ -50,7 +50,7 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
-  return <AuthContext.Provider value={{ user }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, setUser }}>{children}</AuthContext.Provider>;
 };
 
 // ----- ADMIN ROUTE -----
@@ -76,7 +76,7 @@ export const CustomerRoute = () => {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
-        <Navigate to="/login" replace />
+        {/* <Navigate to="/login" replace /> */}
       </div>
     );
   }

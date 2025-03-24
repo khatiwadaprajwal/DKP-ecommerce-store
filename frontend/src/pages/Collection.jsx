@@ -204,10 +204,10 @@ const Collection = () => {
                           : product.images
                       }
                       price={product.price}
-                      colors={product.color} // Updated from colors to color
-                      category={product.category}
+                      // colors={product.color} // Updated from colors to color
+                      // category={product.category}
                       rating={product.averageRating} // Added rating
-                      gender={product.gender} // Added gender
+                      // gender={product.gender} // Added gender
                     />
                   </motion.div>
                 ))}

@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { assets } from "../assets/assets";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { ShopContext } from "../context/Shopcontext";
+import { ShopContext } from "../context/ShopContext";
 
 const Register = () => {
   const [name, setName] = useState("");

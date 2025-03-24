@@ -10,7 +10,7 @@ import axios from "axios";
 
 const Product = () => {
   const { productId } = useParams();
-  const { addToCart, products } = useContext(ShopContext);
+  const { addToCart, products, totalReviews} = useContext(ShopContext);
   const [productData, setProductData] = useState(null);
   const [image, setImage] = useState("");
   const [selectedSize, setSelectedSize] = useState(null);
@@ -52,11 +52,11 @@ const Product = () => {
   // Fetch related products
   const fetchRelatedProducts = async (gender, category) => {
     try {
-      const response = await axios.get(`http://localhost:3001/v1/products`);
+      // const response = await axios.get(`http://localhost:3001/v1/products`);
 
-      if (response.status === 200) {
+      if (products) {
         // Filter related products by category and gender, excluding current product
-        const related = response.data.products.filter(
+        const related = products.filter(
           (item) =>
             (item.category === category || item.gender === gender) &&
             item._id !== productId
@@ -438,7 +438,7 @@ const Product = () => {
             >
               REVIEWS (
               {productData.averageRating > 0
-                ? Math.round(productData.averageRating)
+                ? totalReviews
                 : "0"}
               )
             </button>
@@ -463,7 +463,7 @@ const Product = () => {
               <AdditionalInfo productData={productData} />
             )}
             {activeTab === "reviews" && (
-              <ReviewSection reviews={productData.reviews || []} />
+              <ReviewSection  productId={productId}/>
             )}
             {activeTab === "shipping" && <ShippingInfo />}
           </div>

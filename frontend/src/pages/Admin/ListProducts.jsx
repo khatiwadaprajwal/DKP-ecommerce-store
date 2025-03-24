@@ -16,10 +16,9 @@ const ListProducts = () => {
   // Updated category options based on your product model
   const categoryOptions = [
     "All",
-    "Electronics",
-    "Clothing",
-    "Accessories",
-    "Footwear",
+    "Formal",
+    "Casual",
+    "Ethnic"
   ];
   const genderOptions = ["Men", "Women", "Unisex"];
 

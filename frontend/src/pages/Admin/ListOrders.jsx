@@ -57,6 +57,7 @@ const ListOrders = () => {
         }
       );
       
+      // console.log(response.data.order);
       if (response.data && response.data.order) {
         // Update local state with the updated order
         setOrders(
@@ -288,6 +289,7 @@ const ListOrders = () => {
                             <table className="min-w-full divide-y divide-gray-200">
                               <thead>
                                 <tr className="bg-gray-100">
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Product ID</th>
                                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Product</th>
                                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Quantity</th>
                                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Price</th>
@@ -297,14 +299,15 @@ const ListOrders = () => {
                               <tbody className="divide-y divide-gray-200">
                                 {order.orderItems && order.orderItems.map(item => (
                                   <tr key={item._id}>
-                                    <td className="px-4 py-2 text-sm">{item.productId?.name || 'N/A'}</td>
+                                    <td className="px-4 py-2 text-sm">{item.productId?._id|| 'N/A'}</td>
+                                    <td className="px-4 py-2 text-sm">{item.productId?.productName || 'N/A'}</td>
                                     <td className="px-4 py-2 text-sm">{item.quantity || 0}</td>
                                     <td className="px-4 py-2 text-sm">${item.price ? item.price.toFixed(2) : '0.00'}</td>
                                     <td className="px-4 py-2 text-sm">${item.totalPrice ? item.totalPrice.toFixed(2) : '0.00'}</td>
                                   </tr>
                                 ))}
                                 <tr className="bg-gray-50">
-                                  <td colSpan="3" className="px-4 py-2 text-sm font-medium text-right">Order Total:</td>
+                                  <td colSpan="4" className="px-4 py-2 text-sm font-medium text-right">Order Total:</td>
                                   <td className="px-4 py-2 text-sm font-medium">${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}</td>
                                 </tr>
                               </tbody>
@@ -330,7 +333,7 @@ const ListOrders = () => {
                             </div>
                           </div>
                           
-                          <div>
+                          {/* <div>
                             <h4 className="font-medium text-sm mb-2">Update Payment Status</h4>
                             <div className="flex flex-wrap gap-2">
                               {paymentStatuses.map(status => (
@@ -347,7 +350,7 @@ const ListOrders = () => {
                                 </button>
                               ))}
                             </div>
-                          </div>
+                          </div> */}
                           
                           <div className="mt-4 text-xs text-gray-500">
                             <p>Created: {order.createdAt ? new Date(order.createdAt).toLocaleString() : 'N/A'}</p>

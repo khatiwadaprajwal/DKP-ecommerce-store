@@ -64,7 +64,7 @@ const App = () => {
 
             {/* Protected Customer Routes */}
             <Route element={<CustomerRoute />}>
-            
+              
               {/* <Route path="/change-password" element={<ChangePassword />} /> */}
             </Route>
           </Route>

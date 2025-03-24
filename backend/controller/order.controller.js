@@ -9,109 +9,116 @@ const { generateAccessToken, PAYPAL_API } = require("../utils/paypal");
 
 exports.createOrder = async (req, res) => {
   try {
-      console.log("📌 Creating order - Token User ID:", req.user?._id);
+    console.log("📌 Creating order - Token User ID:", req.user?._id);
 
-      const { productId, quantity, address, location, paymentMethod } = req.body;
-      
-      
-      // Ensure user is logged in
-      if (!req.user || !req.user._id) {
-          return res.status(401).json({ error: "Unauthorized: User not found" });
-      }
+    const { productId, quantity, address, location, paymentMethod } = req.body;
 
-      const userId = req.user._id.toString(); // ✅ Convert ObjectId to string
+    // Ensure user is logged in
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ error: "Unauthorized: User not found" });
+    }
 
-      // Find the product
-      const product = await Product.findById(productId);
-      if (!product || product.totalQuantity < quantity) {
-          return res.status(400).json({ error: "Product not available or insufficient stock" });
-      }
+    const userId = req.user._id.toString(); // ✅ Convert ObjectId to string
 
-      const totalAmount = quantity * product.price;
+    // Find the product
+    const product = await Product.findById(productId);
+    if (!product || product.totalQuantity < quantity) {
+      return res
+        .status(400)
+        .json({ error: "Product not available or insufficient stock" });
+    }
 
-      // Create Order Item
-      const orderItem = new OrderItem({
-          orderId: null, // Set after order creation
-          productId,
-          quantity,
-          price: product.price,
-          totalPrice: totalAmount
-      });
-      await orderItem.save();
+    const totalAmount = quantity * product.price;
 
-      // Create Order
-      const order = new Order({
-          userId,  // ✅ User ID comes from `req.user._id`, not body
-          orderItems: [orderItem._id], // ✅ Store order item reference
-          totalAmount,
-          address,
-          location,
-          paymentMethod,
-          status: "Pending",
-          paymentStatus: paymentMethod === "PayPal" ? "Pending" : "Paid"
-      });
+    // Create Order Item
+    const orderItem = new OrderItem({
+      orderId: null, // Set after order creation
+      productId,
+      quantity,
+      price: product.price,
+      totalPrice: totalAmount,
+    });
+    await orderItem.save();
 
-      await order.save();
+    // Create Order
+    const order = new Order({
+      userId, // ✅ User ID comes from `req.user._id`, not body
+      orderItems: [orderItem._id], // ✅ Store order item reference
+      totalAmount,
+      address,
+      location,
+      paymentMethod,
+      status: "Pending",
+      paymentStatus: paymentMethod === "PayPal" ? "Pending" : "Paid",
+    });
 
-      // Update OrderItem with the correct Order ID
-      await OrderItem.findByIdAndUpdate(orderItem._id, { orderId: order._id });
+    await order.save();
 
-      // Handle PayPal Payment
-      if (paymentMethod === "PayPal") {
-          try {
-              const accessToken = await generateAccessToken();
+    // Update OrderItem with the correct Order ID
+    await OrderItem.findByIdAndUpdate(orderItem._id, { orderId: order._id });
 
-              // Create PayPal Payment
-              const paymentData = {
-                  intent: "sale",
-                  payer: { payment_method: "paypal" },
-                  redirect_urls: {
-                      return_url: `http://localhost:3001/v1/paypal/success?orderId=${order._id}`,
-                      cancel_url: "http://localhost:3001/v1/paypal/cancel"
-                  },
-                  transactions: [{ amount: { currency: "USD", total: totalAmount.toFixed(2) } }]
-              };
+    // Handle PayPal Payment
+    if (paymentMethod === "PayPal") {
+      try {
+        const accessToken = await generateAccessToken();
 
-              // Call PayPal API
-              const response = await axios.post(
-                  `${PAYPAL_API}/v1/payments/payment`,
-                  paymentData,
-                  {
-                      headers: {
-                          Authorization: `Bearer ${accessToken}`,
-                          "Content-Type": "application/json"
-                      }
-                  }
-              );
+        // Create PayPal Payment
+        const paymentData = {
+          intent: "sale",
+          payer: { payment_method: "paypal" },
+          redirect_urls: {
+            return_url: `http://localhost:3001/v1/paypal/success?orderId=${order._id}`,
+            cancel_url: "http://localhost:3001/v1/paypal/cancel",
+          },
+          transactions: [
+            { amount: { currency: "USD", total: totalAmount.toFixed(2) } },
+          ],
+        };
 
-              // Extract approval URL
-              const approvalUrl = response.data.links.find(link => link.rel === "approval_url").href;
-
-              return res.json({ message: "Redirect to PayPal", approvalUrl });
-
-          } catch (paypalError) {
-              console.error("❌ PayPal Payment Error:", paypalError.response?.data || paypalError.message);
-              return res.status(500).json({ error: "PayPal payment initialization failed" });
+        // Call PayPal API
+        const response = await axios.post(
+          `${PAYPAL_API}/v1/payments/payment`,
+          paymentData,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
           }
+        );
+
+        // Extract approval URL
+        const approvalUrl = response.data.links.find(
+          (link) => link.rel === "approval_url"
+        ).href;
+
+        return res.json({ message: "Redirect to PayPal", approvalUrl });
+      } catch (paypalError) {
+        console.error(
+          "❌ PayPal Payment Error:",
+          paypalError.response?.data || paypalError.message
+        );
+        return res
+          .status(500)
+          .json({ error: "PayPal payment initialization failed" });
       }
+    }
 
-      // Reduce product stock for COD payments
-      product.totalQuantity -= quantity;
-      product.totalSold += quantity;
-      await product.save();
+    // Reduce product stock for COD payments
+    product.totalQuantity -= quantity;
+    product.totalSold += quantity;
+    await product.save();
 
-      return res.status(201).json({ message: "✅ Order placed successfully", order });
-
+    return res
+      .status(201)
+      .json({ message: "✅ Order placed successfully", order });
   } catch (error) {
-      console.error("❌ Order Creation Error:", error);
-      return res.status(500).json({ error: "Order creation failed" });
+    console.error("❌ Order Creation Error:", error);
+    return res.status(500).json({ error: "Order creation failed" });
   }
 };
 
-
-
 // Assuming you have the Cart model and the function to remove items from it
-
 
 exports.paypalSuccess = async (req, res) => {
   try {
@@ -119,24 +126,34 @@ exports.paypalSuccess = async (req, res) => {
 
     console.log(`✅ PayPal Success - Order ID: ${orderId}`);
 
-    
-
     // Generate PayPal Access Token
     const accessToken = await generateAccessToken();
     if (!accessToken) {
       console.error("❌ Failed to generate PayPal access token");
-      return res.status(500).json({ error: "Failed to generate PayPal access token" });
+      return res
+        .status(500)
+        .json({ error: "Failed to generate PayPal access token" });
     }
 
     // Execute the PayPal payment
     const executePaymentUrl = `${PAYPAL_API}/v1/payments/payment/${paymentId}/execute`;
     const executePaymentData = { payer_id: PayerID };
 
-    const paymentResponse = await axios.post(executePaymentUrl, executePaymentData, {
-      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-    });
+    const paymentResponse = await axios.post(
+      executePaymentUrl,
+      executePaymentData,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
-    console.log("✅ PayPal Payment Executed:", JSON.stringify(paymentResponse.data, null, 2));
+    console.log(
+      "✅ PayPal Payment Executed:",
+      JSON.stringify(paymentResponse.data, null, 2)
+    );
 
     if (paymentResponse.data.state !== "approved") {
       console.error("❌ PayPal Payment not approved");
@@ -158,62 +175,62 @@ exports.paypalSuccess = async (req, res) => {
     // Remove the items from the cart
     const cart = await Cart.findOne({ userId }).populate("cartItems");
     if (cart) {
-      const productIdList = productIds.split(',');
+      const productIdList = productIds.split(",");
       const cartItemIdsToRemove = cart.cartItems
-        .filter(item => productIdList.includes(item.productId.toString()))
-        .map(item => item._id);
+        .filter((item) => productIdList.includes(item.productId.toString()))
+        .map((item) => item._id);
 
       await CartItem.deleteMany({ _id: { $in: cartItemIdsToRemove } });
       console.log(`✅ Cart items cleared for order ID: ${orderId}`);
     }
 
-    return res.json({ message: "Payment successful", order  });
-
+    return res.json({ message: "Payment successful", order });
   } catch (error) {
     console.error("❌ PayPal Success Error:", error);
     return res.status(500).json({ error: "Payment confirmation failed" });
   }
 };
 
-
-
-
-
 exports.cancelOrder = async (req, res) => {
   try {
-      const { orderId } = req.params;
+    const { orderId } = req.params;
 
-      // Fetch the order
-      const order = await Order.findById(orderId);
-      if (!order) return res.status(404).json({ error: "Order not found" });
+    // Fetch the order
+    const order = await Order.findById(orderId);
+    if (!order) return res.status(404).json({ error: "Order not found" });
 
-      // Ensure the order can only be cancelled if it's pending
-      if (order.status !== "Pending") {
-          return res.status(400).json({ error: "Order can only be cancelled if it's pending" });
-      }
+    // Ensure the order can only be cancelled if it's pending
+    if (order.status !== "Pending") {
+      return res
+        .status(400)
+        .json({ error: "Order can only be cancelled if it's pending" });
+    }
 
-      // Restore product stock
-      const orderItems = await OrderItem.find({ orderId });
-      const bulkUpdates = orderItems.map(item => ({
-          updateOne: {
-              filter: { _id: item.productId },
-              update: { 
-                  $inc: { totalQuantity: item.quantity, totalSold: -item.quantity } 
-              }
-          }
-      }));
+    // Restore product stock
+    const orderItems = await OrderItem.find({ orderId });
+    const bulkUpdates = orderItems.map((item) => ({
+      updateOne: {
+        filter: { _id: item.productId },
+        update: {
+          $inc: { totalQuantity: item.quantity, totalSold: -item.quantity },
+        },
+      },
+    }));
 
-      if (bulkUpdates.length) await Product.bulkWrite(bulkUpdates);
+    if (bulkUpdates.length) await Product.bulkWrite(bulkUpdates);
 
-      // Update order status to "Cancelled"
-      order.status = "Cancelled";
-      await order.save();
+    // Update order status to "Cancelled"
+    order.status = "Cancelled";
+    await order.save();
 
-      return res.status(200).json({ message: "✅ Order cancelled successfully", order });
-
+    return res
+      .status(200)
+      .json({ message: "✅ Order cancelled successfully", order });
   } catch (error) {
-      console.error("❌ Order Cancellation Error:", error);
-      return res.status(500).json({ error: "Something went wrong, please try again" });
+    console.error("❌ Order Cancellation Error:", error);
+    return res
+      .status(500)
+      .json({ error: "Something went wrong, please try again" });
   }
 };
 
@@ -236,7 +253,7 @@ exports.getOrders = async (req, res) => {
     const orders = await Order.find({ userId: userId })
       .populate({
         path: "orderItems",
-        populate: { path: "productId", select: "name price" },
+        populate: { path: "productId", select: "productName price images" },
       })
       .sort({ createdAt: -1 });
 
@@ -258,62 +275,80 @@ exports.getOrders = async (req, res) => {
 
 exports.getAllOrders = async (req, res) => {
   try {
-      console.log("📌 Fetching all orders...");
+    console.log("📌 Fetching all orders...");
 
-      const orders = await Order.find()
-          .populate({
-              path: "userId",
-              select: "name email" // Fetch user details
-          })
-          .populate({
-              path: "orderItems",
-              populate: {
-                  path: "productId",
-                  select: "name price" // Fetch product details
-              }
-          })
-          .sort({ createdAt: -1 }); // Sort orders by latest
+    const orders = await Order.find()
+      .populate({
+        path: "userId",
+        select: "name email", // Fetch user details
+      })
+      .populate({
+        path: "orderItems",
+        populate: {
+          path: "productId",
+          select: "_id productName price images ", // Fetch product details
+        },
+      })
+      .sort({ createdAt: -1 }); // Sort orders by latest
 
-      return res.status(200).json({ message: "✅ Orders fetched successfully", orders });
-
+    return res
+      .status(200)
+      .json({ message: "✅ Orders fetched successfully", orders });
   } catch (error) {
-      console.error("❌ Error fetching orders:", error);
-      return res.status(500).json({ error: "Failed to fetch orders" });
+    console.error("❌ Error fetching orders:", error);
+    return res.status(500).json({ error: "Failed to fetch orders" });
   }
 };
 
-
 exports.changeOrderStatus = async (req, res) => {
   try {
-      const { orderId } = req.params;
-      const { status } = req.body;
+    const { orderId } = req.params;
+    const { status } = req.body;
 
-      // Allowed status updates
-      const validStatuses = ["Pending", "Processing", "Shipped", "Delivered", "Cancelled"];
+    // Allowed status updates
+    const validStatuses = [
+      "Pending",
+      "Processing",
+      "Shipped",
+      "Delivered",
+      "Cancelled",
+    ];
 
-      if (!validStatuses.includes(status)) {
-          return res.status(400).json({ error: "Invalid status update" });
-      }
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: "Invalid status update" });
+    }
 
-      // Fetch the order
-      const order = await Order.findById(orderId);
-      if (!order) return res.status(404).json({ error: "Order not found" });
+    // Fetch the order
+    const order = await Order.findById(orderId)
+      .populate({
+        path: "userId",
+        select: "name email", // Fetch user details
+      })
+      .populate({
+        path: "orderItems",
+        populate: {
+          path: "productId",
+          select: "_id productName price images ", // Fetch product details
+        },
+      });
+    if (!order) return res.status(404).json({ error: "Order not found" });
 
-      
+    // Prevent changing status of cancelled orders
+    if (order.status === "Cancelled") {
+      return res.status(400).json({ error: "Cannot update a cancelled order" });
+    }
 
-      // Prevent changing status of cancelled orders
-      if (order.status === "Cancelled") {
-          return res.status(400).json({ error: "Cannot update a cancelled order" });
-      }
+    // Update the order status
+    order.status = status;
+    await order.save();
 
-      // Update the order status
-      order.status = status;
-      await order.save();
-
-      return res.status(200).json({ message: `✅ Order status updated to ${status}`, order });
-
+    return res
+      .status(200)
+      .json({ message: `✅ Order status updated to ${status}`, order });
   } catch (error) {
-      console.error("❌ Order Status Update Error:", error);
-      return res.status(500).json({ error: "Something went wrong, please try again" });
+    console.error("❌ Order Status Update Error:", error);
+    return res
+      .status(500)
+      .json({ error: "Something went wrong, please try again" });
   }
 };

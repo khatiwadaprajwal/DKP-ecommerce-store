@@ -71,6 +71,7 @@ const Cart = () => {
     }
   };
 
+  
   // Handle item removal
   const removeItem = async (itemId) => {
     setIsLoading(true);

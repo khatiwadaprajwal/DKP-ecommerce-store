@@ -40,6 +40,7 @@ const Adminpage = () => {
         </main>
       </div>
     </div>
+    
   );
 };
 

@@ -30,7 +30,7 @@ const Navbar = () => {
 
   const handleLogout = () => {
     logout(); // Call logout function from context
-    navigate("/register"); // Redirect to register or login page
+    navigate("/login"); // Redirect to register or login page
     setIsMenuOpen(false); // Close mobile menu if open
   };
 
@@ -129,7 +129,7 @@ const Navbar = () => {
           {/* Profile Dropdown */}
           <div className="relative group">
             <Link
-              to="/register"
+              to="/login"
               className="p-2 rounded-full transition-colors"
               onClick={() => setIsMenuOpen(false)}
             >

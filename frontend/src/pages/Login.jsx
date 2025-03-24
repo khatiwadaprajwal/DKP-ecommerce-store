@@ -5,6 +5,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { ShopContext } from "../context/ShopContext";
 import { jwtDecode } from "jwt-decode";
+import { useAuth } from "../component/ProtectedRoutes";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -12,7 +13,9 @@ const Login = () => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const {  setToken, setUser } = useContext(ShopContext);
+  const {  setToken} = useContext(ShopContext);
+  const {user, setUser} = useAuth();
+
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -32,10 +35,12 @@ const Login = () => {
 
         // Decode token to get role (Optional here as AuthProvider will handle this on refresh)
         const decoded = jwtDecode(response.data.token);
-        localStorage.setItem("user", decoded);
-        // setUser(decoded);
+        localStorage.setItem("user", JSON.stringify(decoded));
+        
 
         // Redirect based on role
+        const user = JSON.parse(localStorage.getItem("user"));
+        setUser(user);
         if (decoded.role === "Admin") {
           navigate("/admin");
         } else if (decoded.role === "Customer") {

@@ -51,7 +51,7 @@ const Order = () => {
     fetchOrders();
   }, []);
 
-  console.log(orders);
+  // console.log(orders);
 
   const handleViewDetails = (order) => {
     setSelectedOrder(order);

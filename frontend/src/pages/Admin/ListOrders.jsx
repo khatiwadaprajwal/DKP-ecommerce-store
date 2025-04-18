@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { EyeIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, MapPinIcon } from '@heroicons/react/24/outline';
 import axios from "axios";
 
 const ListOrders = () => {
@@ -30,6 +30,7 @@ const ListOrders = () => {
         // Check if response contains orders
         if (response.data && response.data.orders) {
           setOrders(response.data.orders);
+          // console.log(response.data.orders)
         } else {
           setOrders([]);
           setError("No orders found or invalid response format");
@@ -131,6 +132,20 @@ const ListOrders = () => {
   const calculateTotalItems = (orderItems) => {
     if (!orderItems || !Array.isArray(orderItems)) return 0;
     return orderItems.reduce((total, item) => total + (item.quantity || 0), 0);
+  };
+
+  // Generate Google Maps link from latitude and longitude
+  const generateGoogleMapsLink = (lat, lng) => {
+    if (!lat || !lng) return null;
+    return `https://www.google.com/maps?q=${lat},${lng}`;
+  };
+
+  // Navigate to Google Maps
+  const openGoogleMaps = (lat, lng) => {
+    const mapsUrl = generateGoogleMapsLink(lat, lng);
+    if (mapsUrl) {
+      window.open(mapsUrl, '_blank');
+    }
   };
 
   return (
@@ -267,9 +282,18 @@ const ListOrders = () => {
                                 <h4 className="font-medium text-sm">Shipping Address</h4>
                                 <p className="text-sm">{order.address || 'N/A'}</p>
                                 {order.location && (
-                                  <p className="text-sm text-gray-500">
-                                    Lat: {order.location.latitude}, Long: {order.location.longitude}
-                                  </p>
+                                  <div className="mt-2">
+                                    <p className="text-sm text-gray-500 mb-1">
+                                      Lat: {order.location.lat}, Long: {order.location.lng}
+                                    </p>
+                                    <button
+                                      onClick={() => openGoogleMaps(order.location.lat, order.location.lng)}
+                                      className="flex items-center gap-1 px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded transition-colors"
+                                    >
+                                      <MapPinIcon className="h-4 w-4" />
+                                      View on Google Maps
+                                    </button>
+                                  </div>
                                 )}
                               </div>
                               <div>

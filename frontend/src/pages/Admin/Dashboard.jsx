@@ -42,7 +42,7 @@ const Dashboard = () => {
         const sortedOrders = [...orders].sort((a, b) => 
           new Date(b.createdAt) - new Date(a.createdAt)
         );
-        setRecentOrders(sortedOrders.slice(0, 3));
+        setRecentOrders(sortedOrders.slice(0, 5));
         
         // Calculate top selling products
         calculateTopSellingProducts(products);
@@ -87,7 +87,7 @@ const Dashboard = () => {
     // Sort products by totalSold in descending order
     const sortedProducts = [...products]
       .sort((a, b) => b.totalSold - a.totalSold)
-      .slice(0, 3) // Get top 3 products
+      .slice(0, 5) // Get top 3 products
       .map(product => ({
         id: product._id,
         name: product.productName,

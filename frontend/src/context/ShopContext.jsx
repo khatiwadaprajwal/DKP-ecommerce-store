@@ -243,6 +243,37 @@ const ShopcontextProvider = ({ children }) => {
     }
   };
 
+  //Paypal Popup for the payment 
+  const openPayPalPopup = (approvalUrl) => {
+      const width = 600;
+      const height = 700;
+      const left = (window.innerWidth - width) / 2;
+      const top = (window.innerHeight - height) / 2;
+    
+      const paypalWindow = window.open(
+        approvalUrl,
+        "PayPal Payment",
+        `width=${width},height=${height},top=${top},left=${left},scrollbars=yes`
+      );
+    
+      // Check if the window was successfully opened
+      if (!paypalWindow) {
+        toast.error("Popup blocked! Please allow popups and try again.");
+        return;
+      }
+    
+      // Polling to check if the window is closed
+      const interval = setInterval(() => {
+        if (paypalWindow.closed) {
+          clearInterval(interval);
+          toast.success("Payment processing completed!");
+    
+          // Redirect to the order page
+          navigate("/order");
+        }
+      }, 1000);
+    };
+
   useEffect(() => {
     getProductsData();
   }, []);
@@ -294,6 +325,7 @@ const ShopcontextProvider = ({ children }) => {
     setAverageRating,
     totalReviews,
     setTotalReviews,
+    openPayPalPopup,
   };
 
   return <ShopContext.Provider value={value}>{children}</ShopContext.Provider>;

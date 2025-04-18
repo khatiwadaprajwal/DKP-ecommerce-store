@@ -49,7 +49,7 @@ exports.createOrder = async (req, res) => {
       location,
       paymentMethod,
       status: "Pending",
-      paymentStatus: paymentMethod === "PayPal" ? "Pending" : "Paid",
+      paymentStatus: paymentMethod === "PayPal" ? "Paid" : "Pending",
     });
 
     await order.save();

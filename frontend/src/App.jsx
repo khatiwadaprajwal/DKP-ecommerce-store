@@ -50,10 +50,10 @@ const App = () => {
           {/* Customer Routes - Some Protected */}
           <Route element={<UserLayout />}>
             {/* Public Routes */}
+            <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/" element={<Home />} />
             <Route path="/collection" element={<Collection />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />

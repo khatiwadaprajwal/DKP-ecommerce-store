@@ -8,12 +8,40 @@ import {
   CreditCard, 
   Truck, 
   DollarSign,
-  ArrowLeft
+  ArrowLeft,
+  MapIcon
 } from "lucide-react";
 import axios from "axios";
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix for default marker icon in Leaflet
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+// Location picker component
+const LocationPicker = ({ onLocationSelected }) => {
+  const [position, setPosition] = useState(null);
+
+  const map = useMapEvents({
+    click(e) {
+      setPosition(e.latlng);
+      onLocationSelected(e.latlng);
+    },
+  });
+
+  return position === null ? null : (
+    <Marker position={position} />
+  );
+};
 
 const PlaceOrder = () => {
-  const { cartData, token, delivery_fee } = useContext(ShopContext);
+  const { cartData, token, delivery_fee, fetchCartData, openPayPalPopup} = useContext(ShopContext);
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
@@ -28,11 +56,14 @@ const PlaceOrder = () => {
     phone: ""
   });
 
-  // Location state (in a real app, you might get this from a map component)
-  const [location] = useState({
-    lat: 0,
-    lng: 0
+  // Location state with default coordinates (can be set to your city's center)
+  const [location, setLocation] = useState({
+    lat: 27.7172, // Default to Kathmandu, Nepal (or any default location you prefer)
+    lng: 85.3240
   });
+  
+  // State to track if location has been selected
+  const [locationSelected, setLocationSelected] = useState(false);
 
   useEffect(() => {
     // Retrieve selected items from localStorage
@@ -64,6 +95,22 @@ const PlaceOrder = () => {
       toast.error("Something went wrong. Please try again.");
       navigate("/cart");
     }
+    
+    // Try to get user's current location
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+          // Keep default location if error occurs
+        }
+      );
+    }
   }, [cartData, navigate]);
 
   // Calculate order summary
@@ -76,6 +123,16 @@ const PlaceOrder = () => {
     const { name, value } = e.target;
     setShippingInfo(prev => ({ ...prev, [name]: value }));
   };
+  
+  // Handle location selection
+  const handleLocationSelected = (latlng) => {
+    setLocation({
+      lat: latlng.lat,
+      lng: latlng.lng
+    });
+    setLocationSelected(true);
+    toast.success("Location selected successfully!");
+  };
 
   // Handle form submission
   const handleSubmit = async (e) => {
@@ -87,6 +144,12 @@ const PlaceOrder = () => {
         toast.error(`Please enter your ${key.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
         return;
       }
+    }
+    
+    // Validate location selection
+    if (!locationSelected) {
+      toast.error("Please select your location on the map");
+      return;
     }
     
     setIsLoading(true);
@@ -124,6 +187,7 @@ const PlaceOrder = () => {
         openPayPalPopup(response.data.approvalUrl);
       } else {
         // For other payment methods, navigate to order confirmation
+        fetchCartData();
         toast.success("Order placed successfully!");
         navigate("/order", { state: { order: response.data.order } });
       }
@@ -133,36 +197,6 @@ const PlaceOrder = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const openPayPalPopup = (approvalUrl) => {
-    const width = 600;
-    const height = 700;
-    const left = (window.innerWidth - width) / 2;
-    const top = (window.innerHeight - height) / 2;
-  
-    const paypalWindow = window.open(
-      approvalUrl,
-      "PayPal Payment",
-      `width=${width},height=${height},top=${top},left=${left},scrollbars=yes`
-    );
-  
-    // Check if the window was successfully opened
-    if (!paypalWindow) {
-      toast.error("Popup blocked! Please allow popups and try again.");
-      return;
-    }
-  
-    // Polling to check if the window is closed
-    const interval = setInterval(() => {
-      if (paypalWindow.closed) {
-        clearInterval(interval);
-        toast.success("Payment processing completed!");
-  
-        // Redirect to the order page
-        navigate("/order");
-      }
-    }, 1000);
   };
   
   return (
@@ -273,6 +307,36 @@ const PlaceOrder = () => {
                 </div>
               </div>
               
+              {/* Location Map */}
+              <div className="mt-6 mb-6">
+                <h2 className="text-xl font-semibold mb-4 flex items-center">
+                  <MapIcon className="mr-2 text-blue-600" />
+                  Select Your Location
+                </h2>
+                
+                <div className="border rounded-lg overflow-hidden" style={{ height: "300px" }}>
+                  <MapContainer 
+                    center={[location.lat, location.lng]} 
+                    zoom={13} 
+                    style={{ height: "100%", width: "100%" }}
+                  >
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    <LocationPicker onLocationSelected={handleLocationSelected} />
+                    {locationSelected && <Marker position={[location.lat, location.lng]} />}
+                  </MapContainer>
+                </div>
+                
+                <div className="mt-2 text-sm text-gray-600 flex items-center">
+                  <MapPin size={14} className="mr-1" />
+                  {locationSelected 
+                    ? `Selected location: ${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}` 
+                    : "Click on the map to select your delivery location"}
+                </div>
+              </div>
+              
               <h2 className="text-xl font-semibold mb-4 mt-6 flex items-center">
                 <CreditCard className="mr-2 text-blue-600" />
                 Payment Method
@@ -373,7 +437,7 @@ const PlaceOrder = () => {
       
       <ToastContainer 
         position="bottom-right" 
-        autoClose={3000}
+        autoClose={500}
         hideProgressBar={false}
         newestOnTop={false}
         closeOnClick

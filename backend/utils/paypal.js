@@ -1,7 +1,7 @@
 const axios = require("axios");
 require("dotenv").config();
 
-const PAYPAL_API = "https://api-m.sandbox.paypal.com"; // Use "https://api-m.paypal.com" for live mode
+const PAYPAL_API = "https://api-m.sandbox.paypal.com"; //  "https://api-m.paypal.com" for live mode
 
 async function generateAccessToken() {
     const auth = Buffer.from(

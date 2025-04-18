@@ -7,110 +7,106 @@ const axios = require("axios");
 const mongoose = require("mongoose");
 const { generateAccessToken, PAYPAL_API } = require("../utils/paypal");
 
+const EXCHANGE_RATE_NPR_TO_USD = 135; 
+
 exports.createOrder = async (req, res) => {
   try {
-      console.log("📌 Creating order - Token User ID:", req.user?._id);
+    console.log("📌 Creating order - Token User ID:", req.user?._id);
 
-      const { productId, quantity, address, location, paymentMethod } = req.body;
-      
-      // Ensure user is logged in
-      if (!req.user || !req.user._id) {
-          return res.status(401).json({ error: "Unauthorized: User not found" });
-      }
+    const { productId, quantity, address, location, paymentMethod } = req.body;
 
-      const userId = req.user._id.toString(); // ✅ Convert ObjectId to string
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ error: "Unauthorized: User not found" });
+    }
 
-      // Find the product
-      const product = await Product.findById(productId);
-      if (!product || product.totalQuantity < quantity) {
-          return res.status(400).json({ error: "Product not available or insufficient stock" });
-      }
+    const userId = req.user._id.toString();
 
-      const totalAmount = quantity * product.price;
+    const product = await Product.findById(productId);
+    if (!product || product.totalQuantity < quantity) {
+      return res.status(400).json({ error: "Product not available or insufficient stock" });
+    }
 
-      // Create Order Item
-      const orderItem = new OrderItem({
-          orderId: null, // Set after order creation
-          productId,
-          quantity,
-          price: product.price,
-          totalPrice: totalAmount
-      });
-      await orderItem.save();
+    const totalAmount = quantity * product.price; // NPR
 
-      // Create Order
-      const order = new Order({
-          userId,  // ✅ User ID comes from `req.user._id`, not body
-          orderItems: [orderItem._id], // ✅ Store order item reference
-          totalAmount,
-          address,
-          location,
-          paymentMethod,
-          status: "Pending",
-          paymentStatus: paymentMethod === "PayPal" ? "Pending" : "Paid"
-      });
+    const orderItem = new OrderItem({
+      orderId: null,
+      productId,
+      quantity,
+      price: product.price,
+      totalPrice: totalAmount
+    });
+    await orderItem.save();
 
-      await order.save();
+    const order = new Order({
+      userId,
+      orderItems: [orderItem._id],
+      totalAmount,
+      address,
+      location,
+      paymentMethod,
+      status: "Pending",
+      paymentStatus: paymentMethod === "PayPal" ? "Pending" : "Paid",
+      currency:"NPR"
+    });
 
-      // Update OrderItem with the correct Order ID
-      await OrderItem.findByIdAndUpdate(orderItem._id, { orderId: order._id });
+    await order.save();
 
-      // Handle PayPal Payment
-      if (paymentMethod === "PayPal") {
-          try {
-              const accessToken = await generateAccessToken();
+    await OrderItem.findByIdAndUpdate(orderItem._id, { orderId: order._id });
 
-              // Create PayPal Payment
-              const paymentData = {
-                  intent: "sale",
-                  payer: { payment_method: "paypal" },
-                  redirect_urls: {
-                      return_url: `http://localhost:3001/v1/paypal/success?orderId=${order._id}`,
-                      cancel_url: "http://localhost:3001/v1/paypal/cancel"
-                  },
-                  transactions: [{ amount: { currency: "USD", total: totalAmount.toFixed(2) } }]
-              };
+    if (paymentMethod === "PayPal") {
+      try {
+        const accessToken = await generateAccessToken();
 
-              // Call PayPal API
-              const response = await axios.post(
-                  `${PAYPAL_API}/v1/payments/payment`,
-                  paymentData,
-                  {
-                      headers: {
-                          Authorization: `Bearer ${accessToken}`,
-                          "Content-Type": "application/json"
-                      }
-                  }
-              );
+        const usdAmount = Number((totalAmount / EXCHANGE_RATE_NPR_TO_USD).toFixed(2)).toString();
 
-              // Extract approval URL
-              const approvalUrl = response.data.links.find(link => link.rel === "approval_url").href;
 
-              return res.json({ message: "Redirect to PayPal", approvalUrl });
+        const paymentData = {
+          intent: "sale",
+          payer: { payment_method: "paypal" },
+          redirect_urls: {
+            return_url: `http://localhost:3001/v1/paypal/success?orderId=${order._id}&userId=${userId}&productIds=${productId}`,
+            cancel_url: "http://localhost:3001/v1/paypal/cancel"
+          },
+          transactions: [
+            {
+              amount: {
+                currency: "USD", // ✅ PayPal requires USD
+                total: usdAmount
+              },
+              description: `Payment for ${quantity} x ${product.productName}`
+            }
+          ]
+        };
 
-          } catch (paypalError) {
-              console.error("❌ PayPal Payment Error:", paypalError.response?.data || paypalError.message);
-              return res.status(500).json({ error: "PayPal payment initialization failed" });
+        const response = await axios.post(`${PAYPAL_API}/v1/payments/payment`, paymentData, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
           }
+        });
+
+        const approvalUrl = response.data.links.find(link => link.rel === "approval_url").href;
+
+        return res.json({ message: "Redirect to PayPal", approvalUrl });
+
+      } catch (paypalError) {
+        console.error("❌ PayPal Payment Error:", paypalError.response?.data || paypalError.message);
+        return res.status(500).json({ error: "PayPal payment initialization failed" });
       }
+    }
 
-      // Reduce product stock for COD payments
-      product.totalQuantity -= quantity;
-      product.totalSold += quantity;
-      await product.save();
+    // COD: Reduce stock
+    product.totalQuantity -= quantity;
+    product.totalSold += quantity;
+    await product.save();
 
-      return res.status(201).json({ message: "✅ Order placed successfully", order });
+    return res.status(201).json({ message: "✅ Order placed successfully", order });
 
   } catch (error) {
-      console.error("❌ Order Creation Error:", error);
-      return res.status(500).json({ error: "Order creation failed" });
+    console.error("❌ Order Creation Error:", error);
+    return res.status(500).json({ error: "Order creation failed" });
   }
 };
-
-
-
-// Assuming you have the Cart model and the function to remove items from it
-
 
 exports.paypalSuccess = async (req, res) => {
   try {
@@ -118,43 +114,36 @@ exports.paypalSuccess = async (req, res) => {
 
     console.log(`✅ PayPal Success - Order ID: ${orderId}`);
 
-    
-
-    // Generate PayPal Access Token
     const accessToken = await generateAccessToken();
     if (!accessToken) {
       console.error("❌ Failed to generate PayPal access token");
       return res.status(500).json({ error: "Failed to generate PayPal access token" });
     }
 
-    // Execute the PayPal payment
     const executePaymentUrl = `${PAYPAL_API}/v1/payments/payment/${paymentId}/execute`;
     const executePaymentData = { payer_id: PayerID };
 
     const paymentResponse = await axios.post(executePaymentUrl, executePaymentData, {
-      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      }
     });
 
     console.log("✅ PayPal Payment Executed:", JSON.stringify(paymentResponse.data, null, 2));
 
     if (paymentResponse.data.state !== "approved") {
-      console.error("❌ PayPal Payment not approved");
       return res.status(400).json({ error: "Payment not approved by PayPal" });
     }
 
-    // Update the order status to "Paid"
     const order = await Order.findById(orderId);
     if (!order) {
-      console.error("❌ Order not found");
       return res.status(400).json({ error: "Order not found" });
     }
 
     order.paymentStatus = "Paid";
     await order.save();
 
-    console.log(`✅ Order Status Updated: ${orderId} - Paid and Confirmed`);
-
-    // Remove the items from the cart
     const cart = await Cart.findOne({ userId }).populate("cartItems");
     if (cart) {
       const productIdList = productIds.split(',');
@@ -166,15 +155,13 @@ exports.paypalSuccess = async (req, res) => {
       console.log(`✅ Cart items cleared for order ID: ${orderId}`);
     }
 
-    return res.json({ message: "Payment successful", order  });
+    return res.json({ message: "Payment successful", order });
 
   } catch (error) {
     console.error("❌ PayPal Success Error:", error);
     return res.status(500).json({ error: "Payment confirmation failed" });
   }
 };
-
-
 
 
 

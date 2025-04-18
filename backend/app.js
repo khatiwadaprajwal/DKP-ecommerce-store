@@ -2,13 +2,15 @@ const express = require('express');
 const app = express();
 require('./config/mongoconfig');
 const cors = require("cors");
+const path = require("path");
+
 
 //const path = require('path');
 
 // Express setup
 app.use(express.json());
 app.use(cors());
-
+app.use("/public", express.static(path.join(__dirname, "public")));
 //routes connected
 const routes = require("./routes/index")
 app.use("/v1", routes);

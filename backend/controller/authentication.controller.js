@@ -12,6 +12,7 @@ const signup = async (req, res) => {
     try {
         const { name, email, password, role } = req.body;
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        
         if (!emailRegex.test(email)) {
             return res.status(400).json({ message: "Invalid email format" });
         }
@@ -84,7 +85,7 @@ const login = async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(401).json({ message: "Invalid email or password" });
 
-        const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+        const token = jwt.sign({ userId: user._id,email:user.email,role:user.role }, process.env.JWT_SECRET, { expiresIn: "1h" });
 
         res.status(200).json({ message: "User logged in successfully", token });
     } catch (error) {

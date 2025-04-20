@@ -102,6 +102,9 @@ exports.createOrder = async (req, res) => {
 
     return res.status(201).json({ message: "✅ Order placed successfully", order });
 
+    return res
+      .status(201)
+      .json({ message: "✅ Order placed successfully", order });
   } catch (error) {
     console.error("❌ Order Creation Error:", error);
     return res.status(500).json({ error: "Order creation failed" });
@@ -117,7 +120,9 @@ exports.paypalSuccess = async (req, res) => {
     const accessToken = await generateAccessToken();
     if (!accessToken) {
       console.error("❌ Failed to generate PayPal access token");
-      return res.status(500).json({ error: "Failed to generate PayPal access token" });
+      return res
+        .status(500)
+        .json({ error: "Failed to generate PayPal access token" });
     }
 
     const executePaymentUrl = `${PAYPAL_API}/v1/payments/payment/${paymentId}/execute`;
@@ -130,7 +135,10 @@ exports.paypalSuccess = async (req, res) => {
       }
     });
 
-    console.log("✅ PayPal Payment Executed:", JSON.stringify(paymentResponse.data, null, 2));
+    console.log(
+      "✅ PayPal Payment Executed:",
+      JSON.stringify(paymentResponse.data, null, 2)
+    );
 
     if (paymentResponse.data.state !== "approved") {
       return res.status(400).json({ error: "Payment not approved by PayPal" });
@@ -146,17 +154,16 @@ exports.paypalSuccess = async (req, res) => {
 
     const cart = await Cart.findOne({ userId }).populate("cartItems");
     if (cart) {
-      const productIdList = productIds.split(',');
+      const productIdList = productIds.split(",");
       const cartItemIdsToRemove = cart.cartItems
-        .filter(item => productIdList.includes(item.productId.toString()))
-        .map(item => item._id);
+        .filter((item) => productIdList.includes(item.productId.toString()))
+        .map((item) => item._id);
 
       await CartItem.deleteMany({ _id: { $in: cartItemIdsToRemove } });
       console.log(`✅ Cart items cleared for order ID: ${orderId}`);
     }
 
     return res.json({ message: "Payment successful", order });
-
   } catch (error) {
     console.error("❌ PayPal Success Error:", error);
     return res.status(500).json({ error: "Payment confirmation failed" });
@@ -167,39 +174,44 @@ exports.paypalSuccess = async (req, res) => {
 
 exports.cancelOrder = async (req, res) => {
   try {
-      const { orderId } = req.params;
+    const { orderId } = req.params;
 
-      // Fetch the order
-      const order = await Order.findById(orderId);
-      if (!order) return res.status(404).json({ error: "Order not found" });
+    // Fetch the order
+    const order = await Order.findById(orderId);
+    if (!order) return res.status(404).json({ error: "Order not found" });
 
-      // Ensure the order can only be cancelled if it's pending
-      if (order.status !== "Pending") {
-          return res.status(400).json({ error: "Order can only be cancelled if it's pending" });
-      }
+    // Ensure the order can only be cancelled if it's pending
+    if (order.status !== "Pending") {
+      return res
+        .status(400)
+        .json({ error: "Order can only be cancelled if it's pending" });
+    }
 
-      // Restore product stock
-      const orderItems = await OrderItem.find({ orderId });
-      const bulkUpdates = orderItems.map(item => ({
-          updateOne: {
-              filter: { _id: item.productId },
-              update: { 
-                  $inc: { totalQuantity: item.quantity, totalSold: -item.quantity } 
-              }
-          }
-      }));
+    // Restore product stock
+    const orderItems = await OrderItem.find({ orderId });
+    const bulkUpdates = orderItems.map((item) => ({
+      updateOne: {
+        filter: { _id: item.productId },
+        update: {
+          $inc: { totalQuantity: item.quantity, totalSold: -item.quantity },
+        },
+      },
+    }));
 
-      if (bulkUpdates.length) await Product.bulkWrite(bulkUpdates);
+    if (bulkUpdates.length) await Product.bulkWrite(bulkUpdates);
 
-      // Update order status to "Cancelled"
-      order.status = "Cancelled";
-      await order.save();
+    // Update order status to "Cancelled"
+    order.status = "Cancelled";
+    await order.save();
 
-      return res.status(200).json({ message: "✅ Order cancelled successfully", order });
-
+    return res
+      .status(200)
+      .json({ message: "✅ Order cancelled successfully", order });
   } catch (error) {
-      console.error("❌ Order Cancellation Error:", error);
-      return res.status(500).json({ error: "Something went wrong, please try again" });
+    console.error("❌ Order Cancellation Error:", error);
+    return res
+      .status(500)
+      .json({ error: "Something went wrong, please try again" });
   }
 };
 
@@ -222,7 +234,7 @@ exports.getOrders = async (req, res) => {
     const orders = await Order.find({ userId: userId })
       .populate({
         path: "orderItems",
-        populate: { path: "productId", select: "name price" },
+        populate: { path: "productId", select: "productName price images" },
       })
       .sort({ createdAt: -1 });
 
@@ -244,62 +256,80 @@ exports.getOrders = async (req, res) => {
 
 exports.getAllOrders = async (req, res) => {
   try {
-      console.log("📌 Fetching all orders...");
+    console.log("📌 Fetching all orders...");
 
-      const orders = await Order.find()
-          .populate({
-              path: "userId",
-              select: "name email" // Fetch user details
-          })
-          .populate({
-              path: "orderItems",
-              populate: {
-                  path: "productId",
-                  select: "name price" // Fetch product details
-              }
-          })
-          .sort({ createdAt: -1 }); // Sort orders by latest
+    const orders = await Order.find()
+      .populate({
+        path: "userId",
+        select: "name email", // Fetch user details
+      })
+      .populate({
+        path: "orderItems",
+        populate: {
+          path: "productId",
+          select: "_id productName price images ", // Fetch product details
+        },
+      })
+      .sort({ createdAt: -1 }); // Sort orders by latest
 
-      return res.status(200).json({ message: "✅ Orders fetched successfully", orders });
-
+    return res
+      .status(200)
+      .json({ message: "✅ Orders fetched successfully", orders });
   } catch (error) {
-      console.error("❌ Error fetching orders:", error);
-      return res.status(500).json({ error: "Failed to fetch orders" });
+    console.error("❌ Error fetching orders:", error);
+    return res.status(500).json({ error: "Failed to fetch orders" });
   }
 };
 
-
 exports.changeOrderStatus = async (req, res) => {
   try {
-      const { orderId } = req.params;
-      const { status } = req.body;
+    const { orderId } = req.params;
+    const { status } = req.body;
 
-      // Allowed status updates
-      const validStatuses = ["Pending", "Processing", "Shipped", "Delivered", "Cancelled"];
+    // Allowed status updates
+    const validStatuses = [
+      "Pending",
+      "Processing",
+      "Shipped",
+      "Delivered",
+      "Cancelled",
+    ];
 
-      if (!validStatuses.includes(status)) {
-          return res.status(400).json({ error: "Invalid status update" });
-      }
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: "Invalid status update" });
+    }
 
-      // Fetch the order
-      const order = await Order.findById(orderId);
-      if (!order) return res.status(404).json({ error: "Order not found" });
+    // Fetch the order
+    const order = await Order.findById(orderId)
+      .populate({
+        path: "userId",
+        select: "name email", // Fetch user details
+      })
+      .populate({
+        path: "orderItems",
+        populate: {
+          path: "productId",
+          select: "_id productName price images ", // Fetch product details
+        },
+      });
+    if (!order) return res.status(404).json({ error: "Order not found" });
 
-      
+    // Prevent changing status of cancelled orders
+    if (order.status === "Cancelled") {
+      return res.status(400).json({ error: "Cannot update a cancelled order" });
+    }
 
-      // Prevent changing status of cancelled orders
-      if (order.status === "Cancelled") {
-          return res.status(400).json({ error: "Cannot update a cancelled order" });
-      }
+    // Update the order status
+    order.status = status;
+    await order.save();
 
-      // Update the order status
-      order.status = status;
-      await order.save();
-
-      return res.status(200).json({ message: `✅ Order status updated to ${status}`, order });
-
+    return res
+      .status(200)
+      .json({ message: `✅ Order status updated to ${status}`, order });
   } catch (error) {
-      console.error("❌ Order Status Update Error:", error);
-      return res.status(500).json({ error: "Something went wrong, please try again" });
+    console.error("❌ Order Status Update Error:", error);
+    return res
+      .status(500)
+      .json({ error: "Something went wrong, please try again" });
   }
 };

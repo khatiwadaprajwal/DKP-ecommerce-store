@@ -1,18 +1,14 @@
 @import "tailwindcss";
 
-
-
-@media (max-width:640px){
-    a.active{
-        background-color: black;
-        color: white;
-    
-}
+@media (max-width: 640px) {
+  a.active {
+    background-color: black;
+    color: white;
+  }
 }
 
 button:hover {
-    background-color: #e53e3e; /* Darker shade of red */
-    transform: scale(1.05);
-    transition: all 0.3s ease-in-out;
-  }
-  
+  background-color: #e53e3e; /* Darker shade of red */
+  transform: scale(1.05);
+  transition: all 0.3s ease-in-out;
+}

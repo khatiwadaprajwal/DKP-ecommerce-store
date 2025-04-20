@@ -8,6 +8,9 @@ export default defineConfig({
     react(),
     tailwindcss({
       config: {
+        content: [
+          "./src/**/*.{js,jsx,ts,tsx}", // Make sure this exists
+        ],
         theme: {
           extend: {},
         },

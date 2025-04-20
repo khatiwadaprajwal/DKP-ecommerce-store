@@ -1,6 +1,6 @@
-// File: src/pages/UserManagement.js
 import React, { useState, useEffect } from 'react';
 import { PencilIcon, TrashIcon, EyeIcon } from '@heroicons/react/24/outline';
+import axios from 'axios';
 
 const ListUsers = () => {
   const [users, setUsers] = useState([]);
@@ -11,119 +11,42 @@ const ListUsers = () => {
   const [sortDirection, setSortDirection] = useState('asc');
   const [showUserDetails, setShowUserDetails] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const token = localStorage.getItem("token");
   
-  const roleOptions = ['All', 'Admin', 'Customer', 'Staff'];
+  // Updated to match the mongoose model roles
+  const roleOptions = ['All', 'Admin', 'Customer'];
+  
+  // API base URL
+  const API_BASE_URL = 'http://localhost:3001/v1';
+  
+  // Setup axios instance with default headers
+  const api = axios.create({
+    baseURL: API_BASE_URL,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    }
+  });
+  
+
+  
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get("/customers");
+      setUsers(response.data);
+      setErrorMessage('');
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      setErrorMessage('Failed to load users. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
   
   useEffect(() => {
-    // Fetch users
-    const fetchUsers = async () => {
-      try {
-        // Mock API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Mock data
-        const mockUsers = [
-          {
-            id: 1,
-            name: 'John Doe',
-            email: 'john.doe@example.com',
-            phone: '(555) 123-4567',
-            role: 'Customer',
-            status: 'Active',
-            joined: '2024-10-05',
-            address: '123 Main St, New York, NY 10001',
-            orders: 12,
-            lastLogin: '2025-02-28T14:30:00',
-            totalSpent: 1250.99
-          },
-          {
-            id: 2,
-            name: 'Jane Smith',
-            email: 'jane.smith@example.com',
-            phone: '(555) 987-6543',
-            role: 'Admin',
-            status: 'Active',
-            joined: '2023-05-12',
-            address: '456 Oak Ave, Boston, MA 02108',
-            orders: 0,
-            lastLogin: '2025-03-01T09:15:00',
-            totalSpent: 0
-          },
-          {
-            id: 3,
-            name: 'Robert Johnson',
-            email: 'robert.johnson@example.com',
-            phone: '(555) 456-7890',
-            role: 'Customer',
-            status: 'Inactive',
-            joined: '2024-01-23',
-            address: '789 Pine Blvd, Chicago, IL 60601',
-            orders: 5,
-            lastLogin: '2025-01-15T11:45:00',
-            totalSpent: 489.50
-          },
-          {
-            id: 4,
-            name: 'Sarah Wilson',
-            email: 'sarah.wilson@example.com',
-            phone: '(555) 789-0123',
-            role: 'Staff',
-            status: 'Active',
-            joined: '2024-07-30',
-            address: '321 Maple Dr, Seattle, WA 98101',
-            orders: 0,
-            lastLogin: '2025-02-27T16:20:00',
-            totalSpent: 0
-          },
-          {
-            id: 5,
-            name: 'Michael Brown',
-            email: 'michael.brown@example.com',
-            phone: '(555) 321-6547',
-            role: 'Customer',
-            status: 'Active',
-            joined: '2024-11-15',
-            address: '654 Cedar Ln, Miami, FL 33101',
-            orders: 7,
-            lastLogin: '2025-02-26T10:05:00',
-            totalSpent: 752.33
-          },
-          {
-            id: 6,
-            name: 'Emily Davis',
-            email: 'emily.davis@example.com',
-            phone: '(555) 654-9870',
-            role: 'Customer',
-            status: 'Active',
-            joined: '2024-08-05',
-            address: '987 Birch Rd, Denver, CO 80201',
-            orders: 3,
-            lastLogin: '2025-02-20T13:40:00',
-            totalSpent: 219.75
-          },
-          {
-            id: 7,
-            name: 'David Miller',
-            email: 'david.miller@example.com',
-            phone: '(555) 234-5678',
-            role: 'Customer',
-            status: 'Inactive',
-            joined: '2023-12-18',
-            address: '543 Elm St, San Francisco, CA 94105',
-            orders: 2,
-            lastLogin: '2024-11-05T09:30:00',
-            totalSpent: 149.98
-          }
-        ];
-        
-        setUsers(mockUsers);
-      } catch (error) {
-        console.error('Error fetching users:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     fetchUsers();
   }, []);
   
@@ -136,40 +59,100 @@ const ListUsers = () => {
     }
   };
   
-  const updateUserStatus = (userId, newStatus) => {
-    setUsers(
-      users.map(user => 
-        user.id === userId ? { ...user, status: newStatus } : user
-      )
-    );
-    // In a real app, you would make an API call here
-  };
-  
-  const updateUserRole = (userId, newRole) => {
-    setUsers(
-      users.map(user => 
-        user.id === userId ? { ...user, role: newRole } : user
-      )
-    );
-    // In a real app, you would make an API call here
-  };
-  
-  const deleteUser = (userId) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
-      setUsers(users.filter(user => user.id !== userId));
-      // In a real app, you would make an API call here
+  const updateUserStatus = async (userId, newStatus) => {
+    try {
+      const userToUpdate = users.find(user => user._id === userId);
+      if (!userToUpdate) return;
+      
+      // Find user by email first since the update endpoint uses email
+      const updatedUser = { ...userToUpdate, status: newStatus };
+      
+      // Make API call to update the user
+      await api.put(`/user/${userToUpdate.email}`, { status: newStatus });
+      
+      // Update local state
+      setUsers(users.map(user => user._id === userId ? { ...user, status: newStatus } : user));
+      setSuccessMessage(`User status updated to ${newStatus}`);
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      setErrorMessage('Failed to update user status. Please try again.');
+      setTimeout(() => setErrorMessage(''), 3000);
     }
   };
   
-  const saveEditedUser = () => {
+  const updateUserRole = async (userId, newRole) => {
+    try {
+      const userToUpdate = users.find(user => user._id === userId);
+      if (!userToUpdate) return;
+      
+      if (newRole === 'Admin') {
+        // Use the special make-admin endpoint for promoting to admin
+        await api.put('/make-admin', { email: userToUpdate.email });
+      } else {
+        // Use the normal update endpoint for other role changes
+        await api.put(`/user/${userToUpdate.email}`, { role: newRole });
+      }
+      
+      // Update local state
+      setUsers(users.map(user => user._id === userId ? { ...user, role: newRole } : user));
+      setSuccessMessage(`User role updated to ${newRole}`);
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      setErrorMessage('Failed to update user role. Please try again.');
+      setTimeout(() => setErrorMessage(''), 3000);
+    }
+  };
+  
+  const deleteUser = async (userId) => {
+    if (window.confirm('Are you sure you want to delete this user?')) {
+      try {
+        const userToDelete = users.find(user => user._id === userId);
+        if (!userToDelete) return;
+        
+        // Since there's no delete endpoint in your API, you might want to implement
+        // a soft delete by updating the user status to "Inactive" or similar
+        await api.put(`/user/${userToDelete.email}`, { status: 'Inactive' });
+        
+        // Update local state (either remove or mark as inactive)
+        setUsers(users.filter(user => user._id !== userId));
+        setSuccessMessage('User successfully deleted');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      } catch (error) {
+        console.error('Error deleting user:', error);
+        setErrorMessage('Failed to delete user. Please try again.');
+        setTimeout(() => setErrorMessage(''), 3000);
+      }
+    }
+  };
+  
+  const saveEditedUser = async () => {
     if (editingUser) {
-      setUsers(
-        users.map(user => 
-          user.id === editingUser.id ? { ...editingUser } : user
-        )
-      );
-      setEditingUser(null);
-      // In a real app, you would make an API call here
+      try {
+        const { _id, ...userDataToUpdate } = editingUser;
+        
+        // If password field is empty, remove it from the update data
+        if (!userDataToUpdate.password) {
+          delete userDataToUpdate.password;
+        } else {
+          // Note: The backend should handle password hashing
+          // This is just sending the plain password to the backend
+        }
+        
+        // Make API call to update the user
+        await api.put(`/user/${editingUser.email}`, userDataToUpdate);
+        
+        // Update local state
+        setUsers(users.map(user => user._id === editingUser._id ? { ...editingUser } : user));
+        setEditingUser(null);
+        setSuccessMessage('User updated successfully');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      } catch (error) {
+        console.error('Error saving user:', error);
+        setErrorMessage('Failed to save user changes. Please try again.');
+        setTimeout(() => setErrorMessage(''), 3000);
+      }
     }
   };
   
@@ -177,8 +160,6 @@ const ListUsers = () => {
     switch (role) {
       case 'Admin':
         return 'bg-purple-100 text-purple-800';
-      case 'Staff':
-        return 'bg-blue-100 text-blue-800';
       case 'Customer':
         return 'bg-green-100 text-green-800';
       default:
@@ -199,9 +180,8 @@ const ListUsers = () => {
   
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.phone.includes(searchQuery);
+      user.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      user.email?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesRole = roleFilter === '' || roleFilter === 'All' || user.role === roleFilter;
     
@@ -227,11 +207,13 @@ const ListUsers = () => {
   });
   
   const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
   
   const formatDateTime = (dateTimeString) => {
+    if (!dateTimeString) return 'N/A';
     const options = { 
       year: 'numeric', 
       month: 'short', 
@@ -244,6 +226,18 @@ const ListUsers = () => {
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
+      {/* Notification Messages */}
+      {errorMessage && (
+        <div className="mb-4 p-3 bg-red-100 text-red-800 rounded">
+          {errorMessage}
+        </div>
+      )}
+      {successMessage && (
+        <div className="mb-4 p-3 bg-green-100 text-green-800 rounded">
+          {successMessage}
+        </div>
+      )}
+      
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-semibold">User Management</h2>
         <div className="text-sm text-gray-500">
@@ -255,7 +249,7 @@ const ListUsers = () => {
         <div className="flex-1">
           <input
             type="text"
-            placeholder="Search by name, email, or phone..."
+            placeholder="Search by name or email..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -289,10 +283,10 @@ const ListUsers = () => {
               <tr>
                 <th 
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('id')}
+                  onClick={() => handleSort('_id')}
                 >
                   ID
-                  {sortField === 'id' && (
+                  {sortField === '_id' && (
                     <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                   )}
                 </th>
@@ -355,10 +349,10 @@ const ListUsers = () => {
                 </tr>
               ) : (
                 sortedUsers.map(user => (
-                  <React.Fragment key={user.id}>
+                  <React.Fragment key={user._id}>
                     <tr>
                       <td className="px-6 py-4 whitespace-nowrap font-medium">
-                        {user.id}
+                        {user._id.substring(0, 8)}...
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {user.name}
@@ -381,7 +375,7 @@ const ListUsers = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
-                          onClick={() => setShowUserDetails(showUserDetails === user.id ? null : user.id)}
+                          onClick={() => setShowUserDetails(showUserDetails === user._id ? null : user._id)}
                           className="text-indigo-600 hover:text-indigo-900 mr-3"
                           title="View Details"
                         >
@@ -395,7 +389,7 @@ const ListUsers = () => {
                           <PencilIcon className="h-5 w-5" />
                         </button>
                         <button
-                          onClick={() => deleteUser(user.id)}
+                          onClick={() => deleteUser(user._id)}
                           className="text-red-600 hover:text-red-900"
                           title="Delete User"
                         >
@@ -404,16 +398,15 @@ const ListUsers = () => {
                       </td>
                     </tr>
                     
-                    {showUserDetails === user.id && (
+                    {showUserDetails === user._id && (
                       <tr>
                         <td colSpan="7" className="px-6 py-4 bg-gray-50">
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
-                              <h4 className="font-medium text-sm mb-2">Contact Information</h4>
+                              <h4 className="font-medium text-sm mb-2">User Information</h4>
+                              <p className="text-sm"><span className="font-medium">ID:</span> {user._id}</p>
                               <p className="text-sm"><span className="font-medium">Name:</span> {user.name}</p>
                               <p className="text-sm"><span className="font-medium">Email:</span> {user.email}</p>
-                              <p className="text-sm"><span className="font-medium">Phone:</span> {user.phone}</p>
-                              <p className="text-sm"><span className="font-medium">Address:</span> {user.address}</p>
                             </div>
                             <div>
                               <h4 className="font-medium text-sm mb-2">Account Details</h4>
@@ -421,11 +414,6 @@ const ListUsers = () => {
                               <p className="text-sm"><span className="font-medium">Status:</span> {user.status}</p>
                               <p className="text-sm"><span className="font-medium">Joined:</span> {formatDate(user.joined)}</p>
                               <p className="text-sm"><span className="font-medium">Last Login:</span> {formatDateTime(user.lastLogin)}</p>
-                            </div>
-                            <div>
-                              <h4 className="font-medium text-sm mb-2">Shopping Information</h4>
-                              <p className="text-sm"><span className="font-medium">Total Orders:</span> {user.orders}</p>
-                              <p className="text-sm"><span className="font-medium">Total Spent:</span> ${user.totalSpent.toFixed(2)}</p>
                             </div>
                           </div>
                           
@@ -435,7 +423,7 @@ const ListUsers = () => {
                               <div>
                                 <span className="text-xs mr-2">Status:</span>
                                 <button
-                                  onClick={() => updateUserStatus(user.id, 'Active')}
+                                  onClick={() => updateUserStatus(user._id, 'Active')}
                                   className={`px-3 py-1 text-xs rounded mr-1 ${
                                     user.status === 'Active'
                                       ? 'bg-green-100 text-green-800'
@@ -445,7 +433,7 @@ const ListUsers = () => {
                                   Active
                                 </button>
                                 <button
-                                  onClick={() => updateUserStatus(user.id, 'Inactive')}
+                                  onClick={() => updateUserStatus(user._id, 'Inactive')}
                                   className={`px-3 py-1 text-xs rounded ${
                                     user.status === 'Inactive'
                                       ? 'bg-red-100 text-red-800'
@@ -461,7 +449,7 @@ const ListUsers = () => {
                                 {roleOptions.filter(role => role !== 'All').map(role => (
                                   <button
                                     key={role}
-                                    onClick={() => updateUserRole(user.id, role)}
+                                    onClick={() => updateUserRole(user._id, role)}
                                     className={`px-3 py-1 text-xs rounded mr-1 ${
                                       user.role === role
                                         ? getRoleBadgeClass(role)
@@ -496,7 +484,7 @@ const ListUsers = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
                 <input
                   type="text"
-                  value={editingUser.name}
+                  value={editingUser.name || ''}
                   onChange={(e) => setEditingUser({...editingUser, name: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -506,18 +494,8 @@ const ListUsers = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input
                   type="email"
-                  value={editingUser.email}
+                  value={editingUser.email || ''}
                   onChange={(e) => setEditingUser({...editingUser, email: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                <input
-                  type="text"
-                  value={editingUser.phone}
-                  onChange={(e) => setEditingUser({...editingUser, phone: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -525,7 +503,7 @@ const ListUsers = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                 <select
-                  value={editingUser.role}
+                  value={editingUser.role || ''}
                   onChange={(e) => setEditingUser({...editingUser, role: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
@@ -540,7 +518,7 @@ const ListUsers = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select
-                  value={editingUser.status}
+                  value={editingUser.status || ''}
                   onChange={(e) => setEditingUser({...editingUser, status: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
@@ -548,16 +526,16 @@ const ListUsers = () => {
                   <option value="Inactive">Inactive</option>
                 </select>
               </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-              <input
-                type="text"
-                value={editingUser.address}
-                onChange={(e) => setEditingUser({...editingUser, address: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input
+                  type="password"
+                  placeholder="Leave blank to keep current password"
+                  onChange={(e) => setEditingUser({...editingUser, password: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
             
             <div className="flex justify-end mt-6 gap-3">

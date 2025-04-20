@@ -1,5 +1,5 @@
-import React, { useContext, useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import React, { useContext, useState, useEffect } from "react";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import {
   Search,
   User,
@@ -9,13 +9,38 @@ import {
   Heart,
   LogOut,
 } from "lucide-react";
-import { ShopContext } from "../context/Shopcontext";
+import { ShopContext } from "../context/ShopContext";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const { getCartCount } = useContext(ShopContext);
+  const { getCartCount, logout, navigate } = useContext(ShopContext);
+  const location = useLocation();
+
+  useEffect(() => {
+    // Configure smooth scrolling for the entire window
+    document.documentElement.style.scrollBehavior = "smooth";
+    
+    // Cleanup function to reset scroll behavior when component unmounts
+    return () => {
+      document.documentElement.style.scrollBehavior = "";
+    };
+  }, []);
+
+  const handleLogout = () => {
+    logout(); // Call logout function from context
+    navigate("/login"); // Redirect to register or login page
+    setIsMenuOpen(false); // Close mobile menu if open
+  };
+
+  // Scroll to top when route changes
+  useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
+  }, [location.pathname]);
 
   const navLinks = [
     { label: "HOME", path: "/" },
@@ -32,11 +57,38 @@ const Navbar = () => {
     // You might want to navigate to a search results page or filter products
   };
 
+  // Function to handle smooth scrolling for in-page links
+  const handleNavClick = (e, path) => {
+    // If it's a hash link (in-page navigation)
+    if (path.includes('#') && location.pathname === path.split('#')[0]) {
+      e.preventDefault();
+      const targetId = path.split('#')[1];
+      const targetElement = document.getElementById(targetId);
+      
+      if (targetElement) {
+        targetElement.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+    
+    // Close mobile menu regardless of link type
+    setIsMenuOpen(false);
+  };
+
   return (
     <nav className="sticky top-0 z-50 bg-white shadow-sm">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="flex flex-col items-center">
+        <Link 
+          to="/" 
+          className="flex flex-col items-center"
+          onClick={() => {
+            window.scrollTo({
+              top: 0,
+              behavior: "smooth"
+            });
+            setIsMenuOpen(false);
+          }}
+        >
           <h1 className="text-3xl font-bold tracking-wider">DKP</h1>
           <p className="text-xs text-gray-600 tracking-widest">CLOTHING</p>
         </Link>
@@ -56,6 +108,7 @@ const Navbar = () => {
                       : "text-gray-600 hover:text-black hover:border-b-2 hover:border-gray-300"
                   }
                 `}
+                onClick={(e) => handleNavClick(e, link.path)}
               >
                 {link.label}
               </NavLink>
@@ -76,8 +129,9 @@ const Navbar = () => {
           {/* Profile Dropdown */}
           <div className="relative group">
             <Link
-              to="/register"
-              className="hover:bg-gray-100 p-2 rounded-full transition-colors"
+              to="/login"
+              className="p-2 rounded-full transition-colors"
+              onClick={() => setIsMenuOpen(false)}
             >
               <User className="w-5 h-5 text-gray-700" />
             </Link>
@@ -86,10 +140,13 @@ const Navbar = () => {
                 <Link
                   to="/profile"
                   className="flex items-center px-4 py-2 hover:bg-gray-100 text-sm"
+                  onClick={() => setIsMenuOpen(false)}
                 >
                   <Heart className="w-4 h-4 mr-2" /> My Profile
                 </Link>
-                <button className="flex items-center w-full px-4 py-2 hover:bg-gray-100 text-sm">
+                <button 
+                onClick={()=>handleLogout()}
+                className="flex items-center w-full px-4 py-2 hover:bg-gray-100 text-sm">
                   <LogOut className="w-4 h-4 mr-2" /> Logout
                 </button>
               </div>
@@ -100,6 +157,7 @@ const Navbar = () => {
           <Link
             to="/cart"
             className="relative hover:bg-gray-100 p-2 rounded-full transition-colors"
+            onClick={() => setIsMenuOpen(false)}
           >
             <ShoppingCart className="w-5 h-5 text-gray-700" />
             {getCartCount() > 0 && (
@@ -176,7 +234,7 @@ const Navbar = () => {
       {/* Mobile Menu */}
       {isMenuOpen && (
         <div
-          className="fixed inset-0 bg-opacity-0  z-40 md:hidden transition-all duration-300 ease-in-out"
+          className="fixed inset-0 bg-opacity-0 z-40 md:hidden transition-all duration-300 ease-in-out"
           onClick={() => setIsMenuOpen(false)}
         >
           <div
@@ -198,13 +256,13 @@ const Navbar = () => {
                   <NavLink
                     key={link.path}
                     to={link.path}
-                    onClick={() => setIsMenuOpen(false)}
+                    onClick={(e) => handleNavClick(e, link.path)}
                     className={({ isActive }) => `
-                text-base font-medium text-gray-700 
-                py-3 px-4 rounded-md 
-                transition-colors duration-200
-                ${isActive ? " text-red-500" : "hover:bg-gray-100"}
-              `}
+                      text-base font-medium text-gray-700 
+                      py-3 px-4 rounded-md 
+                      transition-colors duration-200
+                      ${isActive ? "text-red-500" : "hover:bg-gray-100"}
+                    `}
                   >
                     {link.label}
                   </NavLink>
@@ -224,8 +282,7 @@ const Navbar = () => {
                   </Link>
                   <button
                     onClick={() => {
-                      setIsMenuOpen(false);
-                      // Add logout logic
+                      handleLogout()
                     }}
                     className="w-full flex items-center text-base font-medium text-gray-700 py-3 px-4 hover:bg-gray-50 rounded-md text-left"
                   >

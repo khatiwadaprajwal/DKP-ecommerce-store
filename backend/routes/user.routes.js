@@ -6,6 +6,8 @@ const isAdmin = require("../middleware/isadmin");
 
 const router = express.Router();
 
+
+
 // Admin-only routes:
 router.get("/customers",isLoggedIn,isAdmin,getAllCustomers);
 router.get("/customer/:email",  getCustomerByEmail);

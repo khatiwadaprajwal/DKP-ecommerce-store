@@ -6,6 +6,7 @@ import RelatedProducts from "../component/RelatedProducts";
 import Description from "../component/Description";
 import AdditionalInfo from "../component/AdditionalInfo";
 import ShippingInfo from "../component/ShippingInfo";
+import QuickOrder from "../component/QuickOrder"; // Import the QuickOrder component
 import axios from "axios";
 
 const Product = () => {
@@ -20,8 +21,11 @@ const Product = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Add state for QuickOrder popup
+  const [isQuickOrderOpen, setIsQuickOrderOpen] = useState(false);
 
-  const itemsPerPage = 2;
+  const itemsPerPage = 4;
 
   // Fetch single product data using API
   const fetchProductData = async () => {
@@ -69,6 +73,8 @@ const Product = () => {
     }
   };
 
+console.log(relatedProducts);
+
   useEffect(() => {
     fetchProductData();
     window.scrollTo(0, 0); // Scroll to top when product changes
@@ -102,6 +108,13 @@ const Product = () => {
       );
       // Reset quantity after adding to cart
       setQuantity(1);
+    }
+  };
+  
+  // Handle Buy Now click to open QuickOrder popup
+  const handleBuyNow = () => {
+    if (selectedSize) {
+      setIsQuickOrderOpen(true);
     }
   };
 
@@ -315,20 +328,19 @@ const Product = () => {
               >
                 Add to Cart
               </button>
-              <Link to="/placeOrder" className="flex-1">
-                <button
-                  className={`w-full h-10 rounded-md font-medium text-sm
-                    flex items-center justify-center transition-colors duration-300
-                    ${
-                      productData.totalQuantity > 0 && selectedSize
-                        ? "bg-yellow-500 text-white hover:bg-yellow-600"
-                        : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    }`}
-                  disabled={productData.totalQuantity === 0 || !selectedSize}
-                >
-                  Buy Now
-                </button>
-              </Link>
+              <button
+                onClick={handleBuyNow}
+                className={`flex-1 h-10 rounded-md font-medium text-sm
+                  flex items-center justify-center transition-colors duration-300
+                  ${
+                    productData.totalQuantity > 0 && selectedSize
+                      ? "bg-yellow-500 text-white hover:bg-yellow-600"
+                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  }`}
+                disabled={productData.totalQuantity === 0 || !selectedSize}
+              >
+                Buy Now
+              </button>
             </div>
 
             {/* Product guarantees with icons */}
@@ -471,9 +483,9 @@ const Product = () => {
       </div>
 
       {/* Related Products */}
-      {/* {relatedProducts.length > 0 && (
+      {relatedProducts.length > 0 && (
         <div className="mt-10 container mx-auto px-4">
-          <h2 className="text-xl font-semibold mb-4">Related Products</h2>
+          {/* <h2 className="text-xl font-semibold mb-4">Related Products</h2> */}
           <RelatedProducts
             products={paginatedProducts}
             totalPages={totalPages}
@@ -481,7 +493,16 @@ const Product = () => {
             onPageChange={setCurrentPage}
           />
         </div>
-      )} */}
+      )}
+      
+      {/* QuickOrder Popup */}
+      <QuickOrder 
+        isOpen={isQuickOrderOpen}
+        onClose={() => setIsQuickOrderOpen(false)}
+        productData={productData}
+        selectedSize={selectedSize}
+        quantity={quantity}
+      />
     </div>
   ) : (
     <div className="flex justify-center items-center h-screen">

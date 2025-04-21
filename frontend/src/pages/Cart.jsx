@@ -6,9 +6,9 @@ import {
   ShoppingCart, 
   Trash2, 
   Plus, 
-  Minus, 
+  Minus,
   Tag, 
-  CreditCard 
+  CreditCard
 } from "lucide-react";
 import axios from "axios";
 

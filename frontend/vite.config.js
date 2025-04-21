@@ -12,7 +12,9 @@ export default defineConfig({
           "./src/**/*.{js,jsx,ts,tsx}", // Make sure this exists
         ],
         theme: {
-          extend: {},
+          extend: {fontFamily: {
+            poppins: ['Poppins', 'sans-serif'],
+          },},
         },
         plugins: [forms()],
       },

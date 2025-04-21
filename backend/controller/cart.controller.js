@@ -8,6 +8,8 @@ const mongoose = require("mongoose");
 const axios = require("axios");
 const { generateAccessToken, PAYPAL_API } = require("../utils/paypal");
 
+const EXCHANGE_RATE_NPR_TO_USD = 135; 
+
 // ✅ Extract User ID
 const extractUserId = (req) => {
   if (!req.user || !req.user._id) throw new Error("User ID not found in request");
@@ -171,7 +173,7 @@ exports.placeOrderFromCart = async (req, res) => {
         productId: productId,
         quantity: quantity,
         price: product.price,
-        totalPrice: (quantity * product.price),
+        totalPrice: (quantity * product.price), //usd
       });
 
       await orderItem.save();
@@ -189,6 +191,7 @@ exports.placeOrderFromCart = async (req, res) => {
       paymentMethod,
       status: "Pending",
       paymentStatus: paymentMethod === "PayPal" ? "Paid" : "Pending",
+      
     });
 
     await order.save();
@@ -199,6 +202,9 @@ exports.placeOrderFromCart = async (req, res) => {
     // PayPal Payment Processing
     if (paymentMethod === "PayPal") {
       const accessToken = await generateAccessToken();
+
+      // const amount = Number((totalAmount / EXCHANGE_RATE_NPR_TO_USD).toFixed(2)).toString();
+
       const paymentData = {
         intent: "sale",
         payer: { payment_method: "paypal" },

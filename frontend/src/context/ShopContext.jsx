@@ -8,7 +8,7 @@ export const ShopContext = createContext();
 
 const ShopcontextProvider = ({ children }) => {
   const currency = "Rs";
-  const delivery_fee = 100;
+  const delivery_fee = 0;
   const backend_url = import.meta.env.VITE_BACKEND_URL;
   const [token, setToken] = useState(localStorage.getItem("token"));
   const [user, setUser] = useState(null);

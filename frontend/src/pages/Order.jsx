@@ -8,6 +8,7 @@ import {
   ReceiptRefundIcon,
 } from "@heroicons/react/24/outline";
 import axios from "axios";
+import PrintInvoice from "../component/PrintInvoice"; // Import the PrintInvoice component
 
 const Order = () => {
   const { currency = "Rs", navigate, token } = useContext(ShopContext);
@@ -272,7 +273,7 @@ const Order = () => {
 
                 <div className="mt-4 flex justify-between items-center">
                   <div className="text-lg font-semibold text-gray-900">
-                    Total: {order.currency || currency}{" "}
+                    Total: {`${currency} `}
                     {order.totalAmount?.toFixed(2)}
                   </div>
                   <div className="flex space-x-2">
@@ -422,11 +423,11 @@ const Order = () => {
                                   {item.quantity || 1}
                                 </td>
                                 <td className="p-2 text-right">
-                                  {selectedOrder?.currency || currency}{" "}
+                                  { currency}{" "}
                                   {(item.price || 0).toFixed(2)}
                                 </td>
                                 <td className="p-2 text-right">
-                                  {selectedOrder?.currency || currency}{" "}
+                                  { currency}{" "}
                                   {(
                                     item.totalPrice ||
                                     item.price * item.quantity ||
@@ -442,7 +443,7 @@ const Order = () => {
                               Total:
                             </td>
                             <td className="p-2 text-right">
-                              {selectedOrder?.currency || currency}{" "}
+                              { currency}{" "}
                               {selectedOrder?.totalAmount?.toFixed(2) || "0.00"}
                             </td>
                           </tr>
@@ -459,9 +460,9 @@ const Order = () => {
                         Close
                       </button>
                       <div className="flex space-x-2">
-                        <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                          <PrinterIcon className="h-5 w-5 mr-2" /> Print Invoice
-                        </button>
+                        {/* Replace the default print button with our PrintInvoice component */}
+                        {selectedOrder && <PrintInvoice order={selectedOrder} />}
+                        
                         {selectedOrder?.status === "Pending" && (
                           <button
                             onClick={() => {

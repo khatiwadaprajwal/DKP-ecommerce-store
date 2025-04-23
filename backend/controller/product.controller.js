@@ -1,20 +1,48 @@
 const Product = require("../model/productmodel");
+const mongoose = require('mongoose');
 
 // Create a new product
 exports.createProduct = async (req, res) => {
     try {
-        const { productName, description, category, price, images, gender, size, color, totalQuantity, totalSold } = req.body;
-        let imagePaths = req.files ? req.files.map(file => file.filename) : undefined;
-        const newProduct = new Product({ productName, description, category, price, images, gender, size, color, totalQuantity, totalSold, createdAt: new Date() });
-        if (imagePaths) {
-            newProduct.images = imagePaths;
-        }
+        const { productName, description, category, price, gender, variants, totalSold } = req.body;
+
+        // Handle file uploads (if any)
+        let imagePaths = req.files ? req.files.map(file => file.filename) : [];
+
+        // Parse variants safely (handle both string and object)
+        const parsedVariants = typeof variants === 'string' ? JSON.parse(variants) : variants;
+
+        // Calculate total quantity from parsedVariants
+        const totalQuantity = parsedVariants.reduce((acc, curr) => acc + curr.quantity, 0);
+
+        const newProduct = new Product({
+            productName,
+            description,
+            category,
+            price,
+            gender,
+            images: imagePaths,
+            variants: parsedVariants,
+            totalQuantity,
+            totalSold
+        });
+
         await newProduct.save();
-        return res.status(201).json({ message: "Product created successfully", product: newProduct,imageUrls: newProduct.images.map(img => `${req.protocol}://${req.get("host")}/public/${img}`) });
+
+        return res.status(201).json({
+            message: "Product created successfully",
+            product: newProduct,
+            imageUrls: newProduct.images.map(img => `${req.protocol}://${req.get("host")}/public/${img}`)
+        });
     } catch (error) {
-        return res.status(500).json({ message: "Error creating product", error: error.message });
+        return res.status(500).json({
+            message: "Error creating product",
+            error: error.message
+        });
     }
 };
+
+
 
 // Get all products
 exports.getAllProducts = async (req, res) => {
@@ -41,34 +69,58 @@ exports.getProductById = async (req, res) => {
 };
 
 // Update a product by ID
- exports.updateProduct = async (req, res) => {
+
+
+exports.updateProduct = async (req, res) => {
     try {
         const { id } = req.params;
-        const { productName, description, category, price, gender, size, color, totalQuantity, totalSold } = req.body;
+        const { productName, description, category, price, gender, variants, totalSold } = req.body;
 
-        // Check if files were uploaded
+        // Check if ID is a valid ObjectId before proceeding
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: "Invalid product ID" });
+        }
+
         let imagePaths = req.files ? req.files.map(file => file.filename) : undefined;
 
-        // Prepare update data
-        let updateData = { productName, description, category, price, gender, size, color, totalQuantity, totalSold };
+        // Check if variants is a string and parse it, otherwise use it directly as an array
+        const parsedVariants = Array.isArray(variants) ? variants : JSON.parse(variants);
 
-        // If new images are uploaded, update images field
+        // Calculate total quantity from parsedVariants
+        const totalQuantity = parsedVariants.reduce((acc, curr) => acc + curr.quantity, 0);
+
+        let updateData = {
+            productName,
+            description,
+            category,
+            price,
+            gender,
+            variants: parsedVariants,
+            totalQuantity,
+            totalSold
+        };
+
         if (imagePaths) {
             updateData.images = imagePaths;
         }
 
-        const product = await Product.findByIdAndUpdate(id, updateData, { new: true });
+        // Update the product by its ObjectId
+        const updatedProduct = await Product.findByIdAndUpdate(id, updateData, { new: true });
 
-        if (!product) {
+        if (!updatedProduct) {
             return res.status(404).json({ message: "Product not found" });
         }
 
-        return res.status(200).json({ message: "Product updated successfully", product });
+        return res.status(200).json({
+            message: "Product updated successfully",
+            product: updatedProduct
+        });
 
     } catch (error) {
         return res.status(500).json({ message: "Error updating product", error: error.message });
     }
 };
+
 
 
 // Delete a product by ID

@@ -13,7 +13,7 @@ exports.createOrder = async (req, res) => {
   try {
     console.log("📌 Creating order - Token User ID:", req.user?._id);
 
-    const { productId, quantity, address, location, paymentMethod } = req.body;
+    const { productId, quantity, address, location, paymentMethod, color, size } = req.body;
 
     if (!req.user || !req.user._id) {
       return res.status(401).json({ error: "Unauthorized: User not found" });
@@ -26,39 +26,49 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ error: "Product not available or insufficient stock" });
     }
 
-    const totalAmount = quantity * product.price; // NPR
+    const variant = product.variants.find(v => v.color === color && v.size === size);
+    if (!variant || variant.quantity < quantity) {
+      return res.status(400).json({ error: "Selected variant is out of stock or insufficient" });
+    }
 
-    const orderItem = new OrderItem({
-      orderId: null,
-      productId,
-      quantity,
-      price: product.price,
-      totalPrice: totalAmount
-    });
-    await orderItem.save();
+    const totalAmount = quantity * product.price;
 
+    // ✅ Create Order first
     const order = new Order({
       userId,
-      orderItems: [orderItem._id],
+      orderItems: [], // empty for now
       totalAmount,
       address,
       location,
       paymentMethod,
       status: "Pending",
       paymentStatus: paymentMethod === "PayPal" ? "Pending" : "Paid",
-      currency:"NPR"
+      currency: "NPR"
     });
 
     await order.save();
 
-    await OrderItem.findByIdAndUpdate(orderItem._id, { orderId: order._id });
+    // ✅ Now create OrderItem with valid orderId
+    const orderItem = new OrderItem({
+      orderId: order._id,
+      productId,
+      quantity,
+      price: product.price,
+      totalPrice: totalAmount,
+      color,
+      size
+    });
+
+    await orderItem.save();
+
+    // ✅ Push orderItem to order and save
+    order.orderItems.push(orderItem._id);
+    await order.save();
 
     if (paymentMethod === "PayPal") {
       try {
         const accessToken = await generateAccessToken();
-
         const usdAmount = Number((totalAmount / EXCHANGE_RATE_NPR_TO_USD).toFixed(2)).toString();
-
 
         const paymentData = {
           intent: "sale",
@@ -70,7 +80,7 @@ exports.createOrder = async (req, res) => {
           transactions: [
             {
               amount: {
-                currency: "USD", // ✅ PayPal requires USD
+                currency: "USD",
                 total: usdAmount
               },
               description: `Payment for ${quantity} x ${product.productName}`
@@ -95,21 +105,21 @@ exports.createOrder = async (req, res) => {
       }
     }
 
-    // COD: Reduce stock
+    // ✅ Update product quantity for COD
+    variant.quantity -= quantity;
     product.totalQuantity -= quantity;
     product.totalSold += quantity;
     await product.save();
 
     return res.status(201).json({ message: "✅ Order placed successfully", order });
 
-    return res
-      .status(201)
-      .json({ message: "✅ Order placed successfully", order });
   } catch (error) {
     console.error("❌ Order Creation Error:", error);
     return res.status(500).json({ error: "Order creation failed" });
   }
 };
+
+
 
 exports.paypalSuccess = async (req, res) => {
   try {
@@ -176,44 +186,84 @@ exports.cancelOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
 
-    // Fetch the order
     const order = await Order.findById(orderId);
-    if (!order) return res.status(404).json({ error: "Order not found" });
-
-    // Ensure the order can only be cancelled if it's pending
-    if (order.status !== "Pending") {
-      return res
-        .status(400)
-        .json({ error: "Order can only be cancelled if it's pending" });
+    if (!order) {
+      console.log("❌ Order not found for ID:", orderId);
+      return res.status(404).json({ error: "Order not found" });
     }
 
-    // Restore product stock
+    if (order.status !== "Pending") {
+      console.log("⚠️ Order is not pending. Current status:", order.status);
+      return res.status(400).json({ error: "Only pending orders can be cancelled" });
+    }
+
     const orderItems = await OrderItem.find({ orderId });
-    const bulkUpdates = orderItems.map((item) => ({
-      updateOne: {
-        filter: { _id: item.productId },
-        update: {
-          $inc: { totalQuantity: item.quantity, totalSold: -item.quantity },
-        },
-      },
-    }));
 
-    if (bulkUpdates.length) await Product.bulkWrite(bulkUpdates);
+    console.log(`📦 Found ${orderItems.length} order items for cancellation.`);
 
-    // Update order status to "Cancelled"
+    for (const item of orderItems) {
+      console.log(`🔄 Processing OrderItem: ${item._id}`);
+
+      const product = await Product.findById(item.productId);
+      if (!product) {
+        console.warn(`❗ Product not found for ID: ${item.productId}`);
+        continue;
+      }
+
+      const color = item.color?.toLowerCase?.();
+      const size = item.size?.toLowerCase?.();
+      const quantity = Number(item.quantity);
+
+      console.log(`🧩 Looking for variant (color: ${color}, size: ${size}, quantity: ${quantity})`);
+
+      const variantIndex = product.variants.findIndex(
+        (variant) =>
+          variant.color?.toLowerCase?.() === color &&
+          variant.size?.toLowerCase?.() === size
+      );
+
+      if (variantIndex === -1) {
+        console.warn("⚠️ Variant not matched! Skipping update.");
+        continue;
+      }
+
+      const variant = product.variants[variantIndex];
+
+      console.log("✅ Before Update - Variant Quantity:", variant.quantity);
+
+      // 👉 Increase back variant quantity
+      product.variants[variantIndex].quantity += quantity;
+      product.markModified("variants");
+
+      console.log("✅ After Update - Variant Quantity:", product.variants[variantIndex].quantity);
+
+      // 👉 Adjust totalQuantity and totalSold
+      product.totalQuantity += quantity;
+      product.totalSold -= quantity;
+
+      console.log("🔢 Product totalQuantity:", product.totalQuantity);
+      console.log("🔢 Product totalSold:", product.totalSold);
+
+      const saveResult = await product.save();
+      console.log("💾 Product save result:", saveResult ? "Saved" : "Not saved");
+    }
+
+    // ✅ Update order status
     order.status = "Cancelled";
     await order.save();
+    console.log("✅ Order status updated to Cancelled");
 
-    return res
-      .status(200)
-      .json({ message: "✅ Order cancelled successfully", order });
+    return res.status(200).json({
+      message: "✅ Order cancelled successfully",
+      order,
+    });
   } catch (error) {
     console.error("❌ Order Cancellation Error:", error);
-    return res
-      .status(500)
-      .json({ error: "Something went wrong, please try again" });
+    return res.status(500).json({ error: "Something went wrong, please try again" });
   }
 };
+
+
 
 // Get All Orders for Logged-in User
 

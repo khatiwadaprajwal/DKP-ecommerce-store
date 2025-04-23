@@ -135,14 +135,13 @@ exports.placeOrderFromCart = async (req, res) => {
     const userId = req.user._id;
     const { selectedProducts, address, location, paymentMethod } = req.body;
 
-    // Ensure selectedProducts is an array
+    // Check if there are selected products
     if (!Array.isArray(selectedProducts) || selectedProducts.length === 0) {
       return res.status(400).json({ error: "No products selected for order" });
     }
 
-    // Fetch user's cart with populated cartItems
+    // Fetch the cart for the user
     const cart = await Cart.findOne({ userId }).populate("cartItems");
-
     if (!cart || cart.cartItems.length === 0) {
       return res.status(400).json({ error: "Cart is empty" });
     }
@@ -152,36 +151,66 @@ exports.placeOrderFromCart = async (req, res) => {
     let orderItems = [];
     let totalAmount = 0;
 
+    // Loop through each selected product to process the order
     for (let item of selectedProducts) {
-      const { productId, quantity } = item;
-      console.log(`🔎 Processing Product ID: ${productId} (Quantity: ${quantity})`);
+      const { productId, quantity, color, size } = item;
+      console.log(`🔎 Processing Product ID: ${productId} (Quantity: ${quantity}, Color: ${color}, Size: ${size})`);
 
+      // Fetch the product details from the database
       const product = await Product.findById(productId);
       if (!product) {
-        console.log(`❌ Product with ID ${productId} not found.`);
         return res.status(400).json({ error: `Product with ID ${productId} not found` });
       }
 
-      if (product.totalQuantity < quantity) {
-        console.log(`⚠️ Insufficient stock for ${product.name}`);
-        return res.status(400).json({ error: `Insufficient stock for ${product.name}` });
+      // Find the variant based on color and size
+      const variantIndex = product.variants.findIndex(
+        (v) => v.color === color && v.size === size
+      );
+
+      if (variantIndex === -1) {
+        return res.status(400).json({ error: `Variant not found for product ${product.productName} (Color: ${color}, Size: ${size})` });
       }
 
-      // Create OrderItem
+      const variant = product.variants[variantIndex];
+
+      // Log the available stock for this variant
+      console.log(`Available stock for ${product.productName} (${color} - ${size}): ${variant.quantity}`);
+
+      // Check if the quantity requested is available in stock
+      if (variant.quantity < quantity) {
+        return res.status(400).json({
+          error: `Insufficient stock for ${product.productName} (${color} - ${size}). Available stock: ${variant.quantity}`,
+        });
+      }
+
+      // Decrease the stock quantity of the variant
+      product.variants[variantIndex].quantity -= quantity;
+
+      // Update the totalQuantity and totalSold for the product
+      product.totalQuantity = product.variants.reduce((sum, v) => sum + v.quantity, 0);
+      product.totalSold += quantity;
+
+      // Save the updated product details
+      await product.save();
+
+      // Create an order item for this product (with orderId placeholder for now)
       const orderItem = new OrderItem({
-        orderId: null, // Will be assigned after order creation
         productId: productId,
         quantity: quantity,
         price: product.price,
-        totalPrice: (quantity * product.price), //usd
+        totalPrice: quantity * product.price,
+        color,
+        size,
+        orderId: null // Set to null temporarily
       });
 
+      // Save the order item (but it doesn't have a valid orderId yet)
       await orderItem.save();
       orderItems.push(orderItem._id);
       totalAmount += orderItem.totalPrice;
     }
 
-    // Create Order
+    // Create the new order after processing all items
     const order = new Order({
       userId,
       orderItems,
@@ -190,53 +219,64 @@ exports.placeOrderFromCart = async (req, res) => {
       location,
       paymentMethod,
       status: "Pending",
-      paymentStatus: paymentMethod === "PayPal" ? "Paid" : "Pending",
-      
+      paymentStatus: paymentMethod === "PayPal" ? "Pending" : "Paid",
+      currency: "NPR"
     });
 
+    // Save the new order
     await order.save();
 
-    // Update OrderItem with orderId after order creation
-    await OrderItem.updateMany({ _id: { $in: orderItems } }, { orderId: order._id });
+    // Now that the order is saved, update the orderId for each order item
+    await OrderItem.updateMany(
+      { _id: { $in: orderItems } },
+      { $set: { orderId: order._id } }
+    );
 
-    // PayPal Payment Processing
+    // Handle PayPal payment (if chosen)
     if (paymentMethod === "PayPal") {
-      const accessToken = await generateAccessToken();
+      try {
+        const accessToken = await generateAccessToken();
+        const usdAmount = Number((totalAmount / EXCHANGE_RATE_NPR_TO_USD).toFixed(2)).toString();
 
-      // const amount = Number((totalAmount / EXCHANGE_RATE_NPR_TO_USD).toFixed(2)).toString();
+        const paymentData = {
+          intent: "sale",
+          payer: { payment_method: "paypal" },
+          redirect_urls: {
+            return_url: `http://localhost:3001/v1/paypal/success?orderId=${order._id}&userId=${userId}&productIds=${selectedProducts.map(p => p.productId).join(',')}`,
+            cancel_url: "http://localhost:3001/v1/paypal/cancel"
+          },
+          transactions: [
+            {
+              amount: {
+                currency: "USD",
+                total: usdAmount
+              },
+              description: "Payment for cart items"
+            }
+          ]
+        };
 
-      const paymentData = {
-        intent: "sale",
-        payer: { payment_method: "paypal" },
-        redirect_urls: {
-          return_url: `http://localhost:3001/v1/paypal/success?orderId=${order._id}&userId=${userId}&productIds=${selectedProducts.map(p => p.productId).join(',')}`,
-          cancel_url: "http://localhost:3001/v1/paypal/cancel",
-        },
-        transactions: [{ amount: { currency: "USD", total: totalAmount.toFixed(2) } }],
-      };
+        const response = await axios.post(`${PAYPAL_API}/v1/payments/payment`, paymentData, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
+          }
+        });
 
-      const response = await axios.post(`${PAYPAL_API}/v1/payments/payment`, paymentData, {
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-      });
+        const approvalUrl = response.data.links.find(link => link.rel === "approval_url").href;
+        return res.json({ message: "Redirect to PayPal", approvalUrl });
 
-      const approvalUrl = response.data.links.find(link => link.rel === "approval_url").href;
-      return res.json({ message: "Redirect to PayPal", approvalUrl });
-    }
-
-    // Deduct stock after order placement
-    for (let item of selectedProducts) {
-      const product = await Product.findById(item.productId);
-      if (product) {
-        product.totalQuantity -= item.quantity;
-        product.totalSold += item.quantity;
-        await product.save();
+      } catch (paypalError) {
+        console.error("❌ PayPal Payment Error:", paypalError.response?.data || paypalError.message);
+        return res.status(500).json({ error: "PayPal payment initialization failed" });
       }
     }
 
-    // Remove ordered items from cart
+    // Remove the ordered items from the cart
     const orderedProductIds = selectedProducts.map(p => p.productId);
     await CartItem.deleteMany({ cartId: cart._id, productId: { $in: orderedProductIds } });
 
+    // Return success response
     return res.json({ message: "Order placed successfully", order });
 
   } catch (error) {
@@ -244,10 +284,3 @@ exports.placeOrderFromCart = async (req, res) => {
     return res.status(500).json({ error: "Order placement failed, please try again" });
   }
 };
-
-
-
-
-
-
-

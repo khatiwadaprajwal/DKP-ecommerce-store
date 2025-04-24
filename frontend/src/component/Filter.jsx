@@ -69,7 +69,6 @@ const Filter = ({ showFilter, setShowFilter }) => {
         Men: false,
         Women: false,
         Kids: false,
-        Unisex: false,
       });
       resetGenderFilter();
     } else {
@@ -97,8 +96,7 @@ const Filter = ({ showFilter, setShowFilter }) => {
       if (
         !updatedChecked.Men &&
         !updatedChecked.Women &&
-        !updatedChecked.Kids &&
-        !updatedChecked.Unisex
+        !updatedChecked.Kids 
       ) {
         setCheckedGenders((prev) => ({
           ...prev,
@@ -192,7 +190,6 @@ const Filter = ({ showFilter, setShowFilter }) => {
       Men: gender.includes("Men"),
       Women: gender.includes("Women"),
       Kids: gender.includes("Kids"),
-      Unisex: gender.includes("Unisex"),
     });
   }, [gender]);
 
@@ -267,11 +264,11 @@ const Filter = ({ showFilter, setShowFilter }) => {
             Reset
           </button>
         </div>
-        <div className="space-y-3">
-          {["All", "Men", "Women", "Kids", "Unisex"].map((item) => (
+        <div className="space-y-1">
+          {["All", "Men", "Women", "Kids"].map((item) => (
             <label
               key={item}
-              className="flex items-center gap-2 cursor-pointer group"
+              className="flex items-center  text-lg gap-2 cursor-pointer group"
             >
               <input
                 className="form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out"
@@ -299,14 +296,14 @@ const Filter = ({ showFilter, setShowFilter }) => {
             Reset
           </button>
         </div>
-        <div className="space-y-3">
+        <div className="space-y-1">
           {["All", "Formal", "Casual", "Ethnic"].map((item) => (
             <label
               key={item}
-              className="flex items-center gap-2 cursor-pointer group"
+              className="flex items-center text-lg gap-2 cursor-pointer group"
             >
               <input
-                className="form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out"
+                className="form-checkbox h-4 w-4 text-blue-600  transition duration-150 ease-in-out"
                 type="checkbox"
                 checked={checkedCategories[item] || false}
                 onChange={() => handleCategoryChange(item)}
@@ -335,7 +332,7 @@ const Filter = ({ showFilter, setShowFilter }) => {
           {["S", "M", "L", "XL", "XXL"].map((size) => (
             <label
               key={size}
-              className={`flex items-center justify-center h-10 rounded-lg cursor-pointer transition-all ${
+              className={`flex items-center  text-sm justify-center h-10 rounded-lg cursor-pointer transition-all ${
                 checkedSizes[size]
                   ? "bg-blue-600 text-white"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -401,7 +398,7 @@ const Filter = ({ showFilter, setShowFilter }) => {
           </button>
         </div>
         <div className="px-2">
-          <div className="flex justify-between mb-2">
+          <div className="flex justify-between  text-lg mb-2">
             <span>₹{priceRange[0]}</span>
             <span>₹{priceRange[1]}</span>
           </div>
@@ -431,13 +428,13 @@ const Filter = ({ showFilter, setShowFilter }) => {
       {/* Apply and Reset Buttons */}
       <div className="flex gap-2">
         <button
-          className="flex-1 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-lg hover:bg-blue-700 transition-colors font-medium"
           onClick={applyFilter}
         >
           Apply Filters
         </button>
         <button
-          className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+          className="flex-1 py-2 bg-gray-200 text-lg text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
           onClick={resetAllFilters}
         >
           Reset All

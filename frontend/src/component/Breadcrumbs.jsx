@@ -6,7 +6,7 @@ const Breadcrumbs = ({ items }) => {
   const validItems = items.filter(item => item.name);
   
   return (
-    <nav className="bg-gray-100 py-3 px-4 md:px-6">
+    <nav className="bg-gray-100 py-1 px-4 md:px-6 text-lg">
       <div className="container mx-auto">
         <ol className="flex items-center flex-wrap">
           {validItems.map((item, index) => {

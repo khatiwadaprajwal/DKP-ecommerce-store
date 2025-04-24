@@ -20,9 +20,17 @@ const Navbar = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("SELECT CATEGORY");
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const { getCartCount, logout, navigate } = useContext(ShopContext);
+  const { 
+    getCartCount, 
+    token, 
+    logout, 
+    user, 
+    search, 
+    setSearch, 
+    showSearch, 
+    handleSearchFunction 
+  } = useContext(ShopContext);
   const location = useLocation();
   const profileDropdownRef = useRef(null);
   const searchInputRef = useRef(null);
@@ -37,24 +45,6 @@ const Navbar = () => {
     "Footwear",
     "Sale Items"
   ];
-
-  // Check for auth token on mount and when localStorage changes
-  useEffect(() => {
-    const checkLoginStatus = () => {
-      const token = localStorage.getItem("token");
-      setIsLoggedIn(true);
-    };
-
-    // Check initially
-    checkLoginStatus();
-
-    // Set up event listener for localStorage changes
-    window.addEventListener("storage", checkLoginStatus);
-    
-    return () => {
-      window.removeEventListener("storage", checkLoginStatus);
-    };
-  }, []);
 
   // Handle clicks outside of the profile dropdown
   useEffect(() => {
@@ -80,10 +70,9 @@ const Navbar = () => {
     }
   }, [isSearchOpen]);
 
+  // Configure smooth scrolling
   useEffect(() => {
-    // Configure smooth scrolling
-    document.documentElement.style.scrollBehavior = "smooth";
-    
+    document.documentElement.style.scrollBehavior = "smooth"; 
     return () => {
       document.documentElement.style.scrollBehavior = "";
     };
@@ -94,11 +83,9 @@ const Navbar = () => {
     setIsSearchOpen(false);
   }, [location.pathname]);
 
+  // Handle logout function
   const handleLogout = () => {
     logout(); // Call logout function from context
-    localStorage.removeItem("token"); // Remove token
-    setIsLoggedIn(false);
-    navigate("/login");
     setIsMenuOpen(false);
     setIsProfileOpen(false);
   };
@@ -118,11 +105,10 @@ const Navbar = () => {
     { label: "CONTACT", path: "/contact" },
   ];
 
+  // Handle search submission
   const handleSearch = (e) => {
     e.preventDefault();
-    console.log("Searching for:", searchQuery, "in category:", selectedCategory);
-    // Implement search functionality here
-    // For example: navigate(`/search?q=${encodeURIComponent(searchQuery)}&category=${encodeURIComponent(selectedCategory)}`);
+    handleSearchFunction(searchQuery);
     setIsSearchOpen(false);
   };
 
@@ -152,15 +138,6 @@ const Navbar = () => {
   const selectCategory = (category) => {
     setSelectedCategory(category);
     setIsCategoryDropdownOpen(false);
-  };
-
-  // New function to handle cart click
-  const handleCartClick = (e) => {
-    if (!isLoggedIn) {
-      e.preventDefault();
-      navigate("/login");
-    }
-    setIsMenuOpen(false);
   };
 
   return (
@@ -217,35 +194,6 @@ const Navbar = () => {
               className="flex-grow py-3 px-4 rounded-l-md border border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-400 text-sm text-gray-800 font-medium bg-white"
             />
             
-            {/* Middle category dropdown */}
-            {/* <div className="relative" ref={categoryDropdownRef}>
-              <button 
-                type="button"
-                onClick={toggleCategoryDropdown}
-                className="flex items-center justify-between w-48 h-full bg-white border-t border-b border-gray-300 px-4 text-gray-800 text-sm font-medium focus:outline-none"
-              >
-                <span className="truncate">{selectedCategory}</span>
-                <ChevronDown size={16} className="ml-2" />
-              </button>
-              
-              {isCategoryDropdownOpen && (
-                <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 shadow-lg z-50 mt-0.5">
-                  {categories.map((category) => (
-                    <button
-                      key={category}
-                      type="button"
-                      onClick={() => selectCategory(category)}
-                      className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
-                        selectedCategory === category ? 'bg-gray-100 font-medium' : ''
-                      }`}
-                    >
-                      {category}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div> */}
-            
             {/* Right search button */}
             <button 
               type="submit" 
@@ -268,7 +216,7 @@ const Navbar = () => {
             <Search className="w-5 h-5 text-gray-700" />
           </button>
           
-          {/* Profile Dropdown - Increased Size */}
+          {/* Profile Dropdown */}
           <div className="relative" ref={profileDropdownRef}>
             <button 
               onClick={toggleProfileDropdown}
@@ -283,7 +231,7 @@ const Navbar = () => {
             {isProfileOpen && (
               <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-100 z-50 transition-all duration-200 ease-in-out transform origin-top-right">
                 <div className="py-2 rounded-md ring-1 ring-black ring-opacity-5">
-                  {isLoggedIn ? (
+                  {token ? (
                     <>
                       <Link
                         to="/profile"
@@ -348,11 +296,10 @@ const Navbar = () => {
             )}
           </div>
 
-          {/* Cart - Increased Size and Added Auth Check */}
+          {/* Cart */}
           <Link
             to="/cart"
             className="relative hover:bg-gray-100 p-2.5 rounded-full transition-colors"
-            onClick={(e) => handleCartClick(e)}
           >
             <ShoppingCart className="w-6 h-6 text-gray-800" />
             {getCartCount() > 0 && (
@@ -455,7 +402,7 @@ const Navbar = () => {
               {/* User Related Options in Mobile Menu */}
               <div className="mt-6 border-t border-gray-100 pt-4">
                 <div className="space-y-1">
-                  {isLoggedIn ? (
+                  {token ? (
                     <>
                       <Link
                         to="/profile"

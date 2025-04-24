@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { PencilIcon, TrashIcon, EyeIcon } from "@heroicons/react/24/outline";
+import { PencilIcon, TrashIcon, EyeIcon, PlusIcon } from "@heroicons/react/24/outline";
 import axios from "axios";
 
 const ListProducts = () => {
@@ -11,6 +11,7 @@ const ListProducts = () => {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [showProductDetails, setShowProductDetails] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [editingVariant, setEditingVariant] = useState(null);
   const token = localStorage.getItem("token");
 
   // Updated category options based on your product model
@@ -20,7 +21,10 @@ const ListProducts = () => {
     "Casual",
     "Ethnic"
   ];
-  const genderOptions = ["Men", "Women", "Unisex"];
+  const genderOptions = ["Men", "Women", "Kids"];
+  
+  // Common size options
+  const sizeOptions = ["XS", "S", "M", "L", "XL", "XXL"];
 
   useEffect(() => {
     // Fetch products
@@ -114,7 +118,6 @@ const ListProducts = () => {
             : product
         )
       );
-      console.log(re)
     } catch (error) {
       console.error("Error updating product status:", error);
       alert("Failed to update product status!");
@@ -161,16 +164,65 @@ const ListProducts = () => {
 
   const getCategoryBadgeClass = (category) => {
     switch (category) {
-      case "Electronics":
+      case "Formal":
         return "bg-blue-100 text-blue-800";
-      case "Clothing":
+      case "Casual":
         return "bg-green-100 text-green-800";
-      case "Accessories":
+      case "Ethnic":
         return "bg-yellow-100 text-yellow-800";
-      case "Footwear":
-        return "bg-purple-100 text-purple-800";
       default:
         return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  // Handle adding a new variant
+  const addVariant = () => {
+    if (editingProduct) {
+      const newVariants = [...(editingProduct.variants || [])];
+      newVariants.push({
+        color: "",
+        size: "",
+        quantity: 0
+      });
+      
+      setEditingProduct({
+        ...editingProduct,
+        variants: newVariants
+      });
+    }
+  };
+
+  // Handle removing a variant
+  const removeVariant = (index) => {
+    if (editingProduct) {
+      const newVariants = [...editingProduct.variants];
+      newVariants.splice(index, 1);
+      
+      setEditingProduct({
+        ...editingProduct,
+        variants: newVariants,
+        totalQuantity: newVariants.reduce((sum, variant) => sum + variant.quantity, 0)
+      });
+    }
+  };
+
+  // Handle updating a variant
+  const updateVariant = (index, field, value) => {
+    if (editingProduct) {
+      const newVariants = [...editingProduct.variants];
+      newVariants[index] = {
+        ...newVariants[index],
+        [field]: field === 'quantity' ? parseInt(value) : value
+      };
+      
+      // Recalculate total quantity
+      const totalQuantity = newVariants.reduce((sum, variant) => sum + variant.quantity, 0);
+      
+      setEditingProduct({
+        ...editingProduct,
+        variants: newVariants,
+        totalQuantity: totalQuantity
+      });
     }
   };
 
@@ -386,6 +438,12 @@ const ListProducts = () => {
                                   </span>{" "}
                                   {product.description}
                                 </p>
+                                {product.averageRating > 0 && (
+                                  <p className="text-sm">
+                                    <span className="font-medium">Rating:</span>{" "}
+                                    {product.averageRating.toFixed(1)}/5
+                                  </p>
+                                )}
                               </div>
                               <div>
                                 <h4 className="font-medium text-sm mb-2">
@@ -451,116 +509,66 @@ const ListProducts = () => {
                               </div>
                             </div>
 
+                            {/* Variants Section */}
+                            <div className="mb-4">
+                              <h4 className="font-medium text-sm mb-2">
+                                Product Variants
+                              </h4>
+                              {product.variants && product.variants.length > 0 ? (
+                                <div className="overflow-x-auto">
+                                  <table className="min-w-full divide-y divide-gray-200">
+                                    <thead>
+                                      <tr>
+                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                          Color
+                                        </th>
+                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                          Size
+                                        </th>
+                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                          Quantity
+                                        </th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                      {product.variants.map((variant, index) => (
+                                        <tr key={index}>
+                                          <td className="px-3 py-2 whitespace-nowrap text-sm">
+                                            <div 
+                                              className="w-4 h-4 rounded-full inline-block mr-2" 
+                                              style={{ backgroundColor: variant.color }}
+                                            ></div>
+                                            {variant.color}
+                                          </td>
+                                          <td className="px-3 py-2 whitespace-nowrap text-sm">
+                                            {variant.size}
+                                          </td>
+                                          <td className="px-3 py-2 whitespace-nowrap text-sm">
+                                            {variant.quantity}
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              ) : (
+                                <div className="text-sm text-gray-500">
+                                  No variants available
+                                </div>
+                              )}
+                            </div>
+
                             <div>
                               <h4 className="font-medium text-sm mb-2">
                                 Quick Actions
                               </h4>
                               <div className="flex flex-wrap gap-2">
-                                <div>
-                                  <span className="text-xs mr-2">
-                                    Manage Stock:
-                                  </span>
-                                  <button
-                                    onClick={() => {
-                                      const quantity = prompt(
-                                        "Enter new total quantity:",
-                                        product.totalQuantity
-                                      );
-                                      if (
-                                        quantity &&
-                                        !isNaN(quantity) &&
-                                        parseInt(quantity) >= 0
-                                      ) {
-                                        const updatedProduct = {
-                                          ...product,
-                                          totalQuantity: parseInt(quantity),
-                                        };
-                                        axios
-                                          .put(
-                                            `http://localhost:3001/v1/product/${product._id}`,
-                                            updatedProduct,
-                                            {
-                                              headers: {
-                                                Authorization: `Bearer ${token}`,
-                                              },
-                                            }
-                                          )
-                                          .then(() => {
-                                            setProducts(
-                                              products.map((p) =>
-                                                p._id === product._id
-                                                  ? updatedProduct
-                                                  : p
-                                              )
-                                            );
-                                          })
-                                          .catch((err) => {
-                                            console.error(
-                                              "Error updating stock:",
-                                              err
-                                            );
-                                            alert("Failed to update stock!");
-                                          });
-                                      }
-                                    }}
-                                    className="px-3 py-1 text-xs rounded bg-blue-500 text-white hover:bg-blue-600"
-                                  >
-                                    Update Stock
-                                  </button>
-                                </div>
-
-                                <div className="ml-4">
-                                  <span className="text-xs mr-2">
-                                    Update Price:
-                                  </span>
-                                  <button
-                                    onClick={() => {
-                                      const price = prompt(
-                                        "Enter new price:",
-                                        product.price
-                                      );
-                                      if (
-                                        price &&
-                                        !isNaN(price) &&
-                                        parseFloat(price) >= 0
-                                      ) {
-                                        const updatedProduct = {
-                                          ...product,
-                                          price: parseFloat(price),
-                                        };
-                                        axios
-                                          .put(
-                                            `http://localhost:3001/v1/product/${product._id}`,
-                                            updatedProduct,
-                                            {
-                                              headers: {
-                                                Authorization: `Bearer ${token}`,
-                                              },
-                                            }
-                                          )
-                                          .then(() => {
-                                            setProducts(
-                                              products.map((p) =>
-                                                p._id === product._id
-                                                  ? updatedProduct
-                                                  : p
-                                              )
-                                            );
-                                          })
-                                          .catch((err) => {
-                                            console.error(
-                                              "Error updating price:",
-                                              err
-                                            );
-                                            alert("Failed to update price!");
-                                          });
-                                      }
-                                    }}
-                                    className="px-3 py-1 text-xs rounded bg-green-500 text-white hover:bg-green-600"
-                                  >
-                                    Update Price
-                                  </button>
-                                </div>
+                                <button
+                                  onClick={() => setEditingProduct(product)}
+                                  className="px-3 py-1 text-xs rounded bg-blue-500 text-white hover:bg-blue-600"
+                                >
+                                  Edit All Details
+                                </button>
                               </div>
                             </div>
                           </td>
@@ -578,7 +586,7 @@ const ListProducts = () => {
       {/* Edit Product Modal */}
       {editingProduct && (
         <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-screen overflow-y-auto">
             <h3 className="text-xl font-semibold mb-4">Edit Product</h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -640,46 +648,26 @@ const ListProducts = () => {
                 </select>
               </div>
 
-              {editingProduct.gender !== undefined && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Gender
-                  </label>
-                  <select
-                    value={editingProduct.gender || ""}
-                    onChange={(e) =>
-                      setEditingProduct({
-                        ...editingProduct,
-                        gender: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Not Specified</option>
-                    {genderOptions.map((gender) => (
-                      <option key={gender} value={gender}>
-                        {gender}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Total Quantity
+                  Gender
                 </label>
-                <input
-                  type="number"
-                  value={editingProduct.totalQuantity}
+                <select
+                  value={editingProduct.gender || ""}
                   onChange={(e) =>
                     setEditingProduct({
                       ...editingProduct,
-                      totalQuantity: parseInt(e.target.value),
+                      gender: e.target.value,
                     })
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                >
+                  {genderOptions.map((gender) => (
+                    <option key={gender} value={gender}>
+                      {gender}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -698,9 +686,29 @@ const ListProducts = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Average Rating
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="5"
+                  step="0.1"
+                  value={editingProduct.averageRating || 0}
+                  onChange={(e) =>
+                    setEditingProduct({
+                      ...editingProduct,
+                      averageRating: parseFloat(e.target.value),
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
 
-            {/* New Image Field */}
+            {/* Product Images Section */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Product Images
@@ -793,6 +801,7 @@ const ListProducts = () => {
               </div>
             </div>
 
+            {/* Product Description */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Description
@@ -810,16 +819,105 @@ const ListProducts = () => {
               />
             </div>
 
-            <div className="flex justify-end mt-6 gap-3">
+            {/* Product Variants Section */}
+            <div className="mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Product Variants
+                </label>
+                <button
+                  type="button"
+                  onClick={addVariant}
+                  className="px-2 py-1 text-xs rounded bg-green-500 text-white hover:bg-green-600 flex items-center"
+                >
+                  <PlusIcon className="h-3 w-3 mr-1" />
+                  Add Variant
+                </button>
+              </div>
+              {editingProduct.variants && editingProduct.variants.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead>
+                      <tr>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Color
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Size
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Quantity
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {editingProduct.variants.map((variant, index) => (
+                        <tr key={index}>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <input
+                              type="text"
+                              value={variant.color}
+                              onChange={(e) => updateVariant(index, 'color', e.target.value)}
+                              className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                            />
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <select
+                              value={variant.size}
+                              onChange={(e) => updateVariant(index, 'size', e.target.value)}
+                              className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                            >
+                              <option value="">Select Size</option>
+                              {sizeOptions.map((size) => (
+                                <option key={size} value={size}>
+                                  {size}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <input
+                              type="number"
+                              min="0"
+                              value={variant.quantity}
+                              onChange={(e) => updateVariant(index, 'quantity', e.target.value)}
+                              className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                            />
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <button
+                              onClick={() => removeVariant(index)}
+                              className="text-red-600 hover:text-red-900"
+                              title="Remove Variant"
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500 mb-2">
+                  No variants available. Add a variant to get started.
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end space-x-3">
               <button
                 onClick={() => setEditingProduct(null)}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
               >
                 Cancel
               </button>
               <button
                 onClick={saveEditedProduct}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
               >
                 Save Changes
               </button>

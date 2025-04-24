@@ -27,6 +27,7 @@ import {
   CustomerRoute,
 } from "./component/ProtectedRoutes";
 import NotFound from "./pages/NotFound";
+import AdminMessagesPage from "./pages/Admin/AdminMessagePage";
 
 const App = () => {
   return (
@@ -41,14 +42,15 @@ const App = () => {
             <Route path="/admin" element={<Adminpage />}>
               <Route index element={<Dashboard />} />
               <Route path="addProduct" element={<AddProduct />} />
-              <Route path="listProducts" element={<ListProducts />} />
+              <Route path="listProducts" element={<ListProducts/>} />
               <Route path="ordersList" element={<ListOrders />} />
               <Route path="listUsers" element={<ListUsers />} />
+              <Route path="message" element={<AdminMessagesPage/>} />
             </Route>
           </Route>
 
           {/* Customer Routes - Some Protected */}
-          <Route element={<UserLayout />}>
+          <Route  element={<UserLayout />}>
             {/* Public Routes */}
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />

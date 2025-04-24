@@ -26,6 +26,8 @@ const ShopcontextProvider = ({ children }) => {
   const [colors, setColors] = useState([]);
   const [priceRange, setPriceRange] = useState([0, 5000]);
   const [filterProducts, setFilterProducts] = useState(products);
+  // Add a new state for search query
+  const [searchQuery, setSearchQuery] = useState("");
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -48,6 +50,8 @@ const ShopcontextProvider = ({ children }) => {
     }
   }, [location.pathname]);
 
+  
+
   // Reset all filters
   const resetAllFilters = () => {
     setGender([]);
@@ -55,6 +59,7 @@ const ShopcontextProvider = ({ children }) => {
     setSizes([]);
     setColors([]);
     setPriceRange([0, 5000]);
+    setSearchQuery("");
     setFilterProducts(products);
   };
 
@@ -173,6 +178,15 @@ const ShopcontextProvider = ({ children }) => {
   const applyFilter = () => {
     let productsCopy = products.slice();
 
+    // Filter by search query first
+    if (searchQuery && searchQuery.trim() !== "") {
+      productsCopy = productsCopy.filter((item) =>
+        item.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()))
+      );
+    }
+
     // Filter by gender
     if (gender.length > 0) {
       productsCopy = productsCopy.filter((item) =>
@@ -215,6 +229,7 @@ const ShopcontextProvider = ({ children }) => {
   const resetSizeFilter = () => setSizes([]);
   const resetColorFilter = () => setColors([]);
   const resetPriceFilter = () => setPriceRange([0, 5000]);
+  const resetSearchQuery = () => setSearchQuery("");
 
   const logout = () => {
     setToken("");
@@ -226,7 +241,7 @@ const ShopcontextProvider = ({ children }) => {
 
   useEffect(() => {
     applyFilter();
-  }, [gender, category, sizes, colors, priceRange, products]);
+  }, [gender, category, sizes, colors, priceRange, searchQuery, products]);
 
   const getProductsData = async () => {
     try {
@@ -240,6 +255,30 @@ const ShopcontextProvider = ({ children }) => {
       }
     } catch (error) {
       console.log(error);
+    }
+  };
+
+  // Handle search function
+  const handleSearchFunction = (query) => {
+    setSearchQuery(query);
+    
+    // Apply search filter to products
+    if (query.trim() !== "") {
+      const searchResults = products.filter((product) =>
+        product.category.toLowerCase().includes(query.toLowerCase()) || 
+        product.productName.toLowerCase().includes(query.toLowerCase()) ||
+        (product.description && product.description.toLowerCase().includes(query.toLowerCase()))
+      );
+      
+      setFilterProducts(searchResults);
+      
+      // Navigate to the collection page if not already there
+      if (location.pathname !== "/collection") {
+        navigate("/collection");
+      }
+    } else {
+      // If search query is empty, reset filters and show all products
+      applyFilter();
     }
   };
 
@@ -326,6 +365,11 @@ const ShopcontextProvider = ({ children }) => {
     totalReviews,
     setTotalReviews,
     openPayPalPopup,
+    // Add the new search functionality
+    searchQuery,
+    setSearchQuery,
+    handleSearchFunction,
+    resetSearchQuery,
   };
 
   return <ShopContext.Provider value={value}>{children}</ShopContext.Provider>;

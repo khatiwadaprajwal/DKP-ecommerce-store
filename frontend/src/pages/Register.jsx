@@ -94,7 +94,7 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col text-lg">
       {/* Top Banner (commented out for consistency with login page) */}
       {/* <div className="bg-black text-white py-2 px-4 text-center text-sm">
         Summer Sale For All Swim Suits And Free Express Delivery - OFF 50%!{" "}

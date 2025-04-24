@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
-import {assets} from "../assets/assets";
+import { assets } from "../assets/assets";
 
 const HeroBanner = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -75,7 +75,7 @@ const HeroBanner = () => {
           <div className="relative z-20 h-full flex items-center justify-center">
             <div className="text-center max-w-2xl px-4">
               <h2 
-                className={`text-4xl md:text-6xl font-bold text-white mb-6 
+                className={`font-heading text-4xl md:text-6xl font-bold text-white mb-6 tracking-tight
                   ${index === currentSlide ? "animate-fade-up" : ""}`}
                 style={{
                   animation: index === currentSlide ? 'fadeIn 0.8s ease-out, slideUp 0.8s ease-out' : '',
@@ -85,17 +85,18 @@ const HeroBanner = () => {
                 {slide.title}
               </h2>
               <p 
-                className={`text-xl md:text-2xl text-white mb-10 opacity-90`}
+                className={`font-primary text-xl md:text-2xl text-white mb-10 opacity-90 font-light`}
                 style={{
                   animation: index === currentSlide ? 'fadeIn 0.8s ease-out 0.3s both, slideUp 0.8s ease-out 0.3s both' : '',
-                  textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                  textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                  letterSpacing: '0.5px'
                 }}
               >
                 {slide.subtitle}
               </p>
               <Link
                 to="/collection"
-                className="px-10 py-4 bg-white text-gray-900 font-semibold rounded-full
+                className="px-10 py-4 bg-white text-gray-900 font-primary font-medium text-base tracking-wide rounded-full
                           hover:bg-gray-100 transition-all duration-300
                           transform hover:scale-105 shadow-lg"
                 style={{

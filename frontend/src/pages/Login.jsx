@@ -35,13 +35,14 @@ const Login = () => {
 
         // Decode token to get role (Optional here as AuthProvider will handle this on refresh)
         const decoded = jwtDecode(response.data.token);
+        console.log(decoded.role);
         localStorage.setItem("user", JSON.stringify(decoded));
         
 
         // Redirect based on role
         const user = JSON.parse(localStorage.getItem("user"));
         setUser(user);
-        if (decoded.role === "Admin") {
+        if (decoded.role === "Admin" || decoded.role === "SuperAdmin") {
           navigate("/admin");
         } else if (decoded.role === "Customer") {
           navigate("/");
@@ -63,12 +64,12 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col text-lg">
       <div className="flex flex-1 flex-col md:flex-row">
         <div className="hidden md:block md:w-1/2 bg-blue-50">
           <img
             src={assets.banner}
-            alt="Shopping Cart with Smartphone"
+            alt="Shopping Cart"
             className="w-full h-full object-cover"
           />
         </div>

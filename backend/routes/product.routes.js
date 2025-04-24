@@ -8,16 +8,17 @@ const {
 } = require("../controller/product.controller");
 const isLoggedIn = require("../middleware/isloggedin");
 const isAdmin = require("../middleware/isadmin");
-const uploader = require("../middleware/multer")
+const uploader = require("../middleware/multer");
+const isAdminOrSuperAdmin = require("../middleware/isAdminorSuperAdmin");
 const router = express.Router();
 
 // Admin-only routes:
 router.route("/product")
-    .post(isLoggedIn, isAdmin, uploader.array("images", 5), createProduct); // Allows up to 5 images
+    .post(isLoggedIn, isAdminOrSuperAdmin, uploader.array("images", 5), createProduct); // Allows up to 5 images
 
-    router.put("/product/:id", isLoggedIn, isAdmin, uploader.array("images", 5), updateProduct);
+    router.put("/product/:id", isLoggedIn, isAdminOrSuperAdmin, uploader.array("images", 5), updateProduct);
 
-router.delete("/product/:id", isLoggedIn, isAdmin, deleteProduct);
+router.delete("/product/:id", isLoggedIn, isAdminOrSuperAdmin, deleteProduct);
 
 // Public routes:
 router.get("/products", getAllProducts);

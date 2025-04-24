@@ -2,7 +2,7 @@ import React from "react";
 
 const ShippingInfo = () => {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-lg">
       <div className="flex items-start bg-gray-50 p-4 rounded-lg">
         <svg
           xmlns="http://www.w3.org/2000/svg"

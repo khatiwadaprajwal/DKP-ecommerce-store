@@ -8,9 +8,10 @@ const {
   getAllMessages,
   getMessagesByEmail
 } = require('../controller/sendmsg.controller');
+const isAdminOrSuperAdmin = require('../middleware/isAdminorSuperAdmin');
 
 router.post('/send', sendMessage,isloggedin);
-router.get('/all', getAllMessages,isloggedin,isAdmin);
-router.get("/msg/:email", getMessagesByEmail,isloggedin,isAdmin);
+router.get('/all',isloggedin,isAdminOrSuperAdmin, getAllMessages);
+router.get("/msg/:email", isloggedin,isAdminOrSuperAdmin, getMessagesByEmail);
 
 module.exports = router;

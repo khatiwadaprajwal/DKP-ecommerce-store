@@ -10,14 +10,14 @@ const ProductItem = ({ id, name, image, price, rating }) => {
 
   return (
     <motion.div 
-      className="group relative bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+      className="group relative bg-white  shadow-sm overflow-hidden hover:shadow-md transition-shadow"
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
       whileHover={{ y: -5 }}
       transition={{ type: "spring", stiffness: 300 }}
     >
       <Link to={`/product/${id}`} className="block">
-        <div className="w-full overflow-hidden rounded-t-xl bg-gray-200 relative h-64">
+        <div className="w-full overflow-hidden  bg-gray-200 relative h-64">
           <img
             src={`http://localhost:3001/public/${image}`}
             alt={name}

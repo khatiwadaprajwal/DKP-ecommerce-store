@@ -129,23 +129,23 @@ const Collection = () => {
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div className="bg-gray-50 min-h-screen text-lg">
       {/* Breadcrumbs */}
-      <Breadcrumbs items={getBreadcrumbItems()} />
+      <Breadcrumbs  className='text-lg' items={getBreadcrumbItems()} />
 
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6 text-gray-800">
+      <div className="container mx-auto px-4 py-4">
+        <h1 className="text-3xl font-bold mb-2 text-gray-800">
           {collectionTitle}
         </h1>
 
         {/* Filter and Sort Controls */}
-        <div className="filter-sort flex justify-between items-center mb-6">
+        <div className="filter-sort flex justify-between items-center mb-0">
           <div
             className="filter-toggle flex items-center gap-2 cursor-pointer bg-white p-3 rounded-lg shadow-sm hover:bg-gray-100 transition"
             onClick={() => setShowFilter(!showFilter)}
           >
-            <img src={assets.filter} alt="filter" className="w-5 h-5" />
-            <p className="font-medium">Filter</p>
+            {/* <img src={assets.filter} alt="filter" className="w-5 h-5" /> */}
+            <p className="">Filter</p>
           </div>
           <div className="sort">
             <select
@@ -161,6 +161,7 @@ const Collection = () => {
               <option value="top-rated">Top Rated</option>
             </select>
           </div>
+          
         </div>
 
         <div className="collection-container flex flex-col lg:flex-row gap-8">
@@ -170,7 +171,7 @@ const Collection = () => {
           {/* Product Grid */}
           <div className="flex-1">
             {/* Product count info */}
-            <div className="bg-white p-4 rounded-xl shadow-sm mb-6">
+            <div className="bg-white p-4 rounded-xl text-lg shadow-sm mb-6">
               <p className="text-gray-600">
                 Showing{" "}
                 <span className="font-semibold">

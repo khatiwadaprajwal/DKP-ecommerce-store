@@ -65,7 +65,7 @@ export const AdminRoute = () => {
     );
   }
 
-  return user.role === 'Admin' ? <Outlet /> : <Navigate to="/login" replace />;
+  return user.role === 'Admin' || user.role ==='SuperAdmin' ? <Outlet /> : <Navigate to="/login" replace />;
 };
 
 // ----- CUSTOMER ROUTE -----

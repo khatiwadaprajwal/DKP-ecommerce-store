@@ -1,22 +1,76 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 import Newsletter from '../component/Newsletter';
 import { motion } from 'framer-motion';
+import axios from 'axios';
 
 const Contact = () => {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    msg: ''
+  });
+  const [status, setStatus] = useState({
+    type: '',
+    message: ''
+  });
+  const [loading, setLoading] = useState(false);
+
   useEffect(() => {
     AOS.init({
-      duration: 1000, // Animation duration
-      easing: 'ease-out', // Easing function
-      once: true, // Trigger animation only once
+      duration: 1000,
+      easing: 'ease-out',
+      once: true,
     });
   }, []);
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      const response = await axios.post('http://localhost:3001/v1/send', formData);
+      
+      setStatus({
+        type: 'success',
+        message: response.data.message || 'Message sent successfully!'
+      });
+      
+      // Clear form fields after successful submission
+      setFormData({
+        name: '',
+        email: '',
+        msg: ''
+      });
+    } catch (error) {
+      setStatus({
+        type: 'error',
+        message: error.response?.data?.error || 'Failed to send message. Please try again.'
+      });
+    } finally {
+      setLoading(false);
+      
+      // Clear status message after 5 seconds
+      setTimeout(() => {
+        setStatus({
+          type: '',
+          message: ''
+        });
+      }, 5000);
+    }
+  };
 
   return (
     <div className="contact-page scroll-smooth">
       {/* Hero Section */}
-      
       <motion.section 
         className="bg-red-100 py-16 md:py-24" 
         initial={{ opacity: 0 }} 
@@ -26,7 +80,7 @@ const Contact = () => {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Contact DKP Clothing</h1>
           <p className="text-gray-600 text-lg leading-relaxed">
-            We’re here to help! Whether you have questions about our products, your order, or just want to say hello, feel free to reach out.
+            We're here to help! Whether you have questions about our products, your order, or just want to say hello, feel free to reach out.
           </p>
         </div>
       </motion.section>
@@ -64,36 +118,57 @@ const Contact = () => {
           {/* Contact Form */}
           <div data-aos="fade-right">
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6">Send Us a Message</h2>
-            <form className="space-y-6">
+            
+            {/* Status Message */}
+            {status.message && (
+              <div className={`mb-4 p-3 rounded-lg ${status.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                {status.message}
+              </div>
+            )}
+            
+            <form className="space-y-6" onSubmit={handleSubmit}>
               <div>
                 <label className="block text-gray-700 mb-2">Your Name</label>
                 <input
                   type="text"
+                  name="name"
                   placeholder="Enter your name"
                   className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-blue-200"
+                  value={formData.name}
+                  onChange={handleChange}
+                  required
                 />
               </div>
               <div>
                 <label className="block text-gray-700 mb-2">Your Email</label>
                 <input
                   type="email"
+                  name="email"
                   placeholder="Enter your email"
                   className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-blue-200"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
                 />
               </div>
               <div>
                 <label className="block text-gray-700 mb-2">Message</label>
                 <textarea
+                  name="msg"
                   placeholder="Write your message"
                   rows="5"
                   className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-blue-200"
+                  value={formData.msg}
+                  onChange={handleChange}
+                  required
                 ></textarea>
               </div>
               <button
                 type="submit"
-                className="w-full bg-red-500 text-white font-semibold py-3 rounded-lg hover:bg-red-600 transition"
+                className={`w-full font-semibold py-3 rounded-lg transition ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600 text-white'}`}
+                disabled={loading}
               >
-                Send Message
+                {loading ? 'Sending...' : 'Send Message'}
               </button>
             </form>
           </div>

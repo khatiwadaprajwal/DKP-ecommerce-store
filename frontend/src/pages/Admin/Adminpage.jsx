@@ -17,7 +17,7 @@ const Adminpage = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-gray-100 text-lg">
       {/* Sidebar - always visible on md+ screens */}
       <div className="w-64 hidden md:block fixed inset-y-0 left-0 z-20">
         <Sidebar isOpen={true} toggleSidebar={toggleSidebar} />

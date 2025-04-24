@@ -6,16 +6,20 @@ import RelatedProducts from "../component/RelatedProducts";
 import Description from "../component/Description";
 import AdditionalInfo from "../component/AdditionalInfo";
 import ShippingInfo from "../component/ShippingInfo";
-import QuickOrder from "../component/QuickOrder"; // Import the QuickOrder component
+import QuickOrder from "../component/QuickOrder";
 import axios from "axios";
 
 const Product = () => {
   const { productId } = useParams();
-  const { addToCart, products, totalReviews} = useContext(ShopContext);
+  const { addToCart, products, totalReviews } = useContext(ShopContext);
   const [productData, setProductData] = useState(null);
   const [image, setImage] = useState("");
+  const [selectedVariant, setSelectedVariant] = useState(null);
+  const [selectedColor, setSelectedColor] = useState(null);
   const [selectedSize, setSelectedSize] = useState(null);
   const [quantity, setQuantity] = useState(1);
+  const [availableSizes, setAvailableSizes] = useState([]);
+  const [availableColors, setAvailableColors] = useState([]);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("description");
   const [currentPage, setCurrentPage] = useState(0);
@@ -38,9 +42,26 @@ const Product = () => {
       if (response.status === 200) {
         const product = response.data.product;
         setProductData(product);
+        
         // Set the first image as the main image
         if (product.images && product.images.length > 0) {
           setImage(product.images[0]);
+        }
+
+        // Extract unique colors and sizes from variants
+        const colors = [...new Set(product.variants.map(variant => variant.color))];
+        setAvailableColors(colors);
+        
+        // If colors are available, set the first color as selected by default
+        if (colors.length > 0) {
+          setSelectedColor(colors[0]);
+          
+          // Get sizes available for the selected color
+          const sizesForColor = product.variants
+            .filter(variant => variant.color === colors[0] && variant.quantity > 0)
+            .map(variant => variant.size);
+          
+          setAvailableSizes(sizesForColor);
         }
 
         // Fetch related products
@@ -56,8 +77,6 @@ const Product = () => {
   // Fetch related products
   const fetchRelatedProducts = async (gender, category) => {
     try {
-      // const response = await axios.get(`http://localhost:3001/v1/products`);
-
       if (products) {
         // Filter related products by category and gender, excluding current product
         const related = products.filter(
@@ -73,12 +92,39 @@ const Product = () => {
     }
   };
 
-console.log(relatedProducts);
-
   useEffect(() => {
     fetchProductData();
     window.scrollTo(0, 0); // Scroll to top when product changes
   }, [productId]);
+
+  // Update available sizes when color changes
+  useEffect(() => {
+    if (productData && selectedColor) {
+      // Get sizes available for the selected color with quantity > 0
+      const sizesForColor = productData.variants
+        .filter(variant => variant.color === selectedColor && variant.quantity > 0)
+        .map(variant => variant.size);
+      
+      setAvailableSizes(sizesForColor);
+      setSelectedSize(null); // Reset size selection when color changes
+      setSelectedVariant(null); // Reset variant selection
+    }
+  }, [selectedColor, productData]);
+
+  // Update selected variant when size changes
+  useEffect(() => {
+    if (productData && selectedColor && selectedSize) {
+      const variant = productData.variants.find(
+        v => v.color === selectedColor && v.size === selectedSize
+      );
+      
+      setSelectedVariant(variant);
+      // Reset quantity if it exceeds available quantity
+      if (variant && quantity > variant.quantity) {
+        setQuantity(Math.min(variant.quantity, 1));
+      }
+    }
+  }, [selectedSize, selectedColor, productData]);
 
   // Generate breadcrumb path
   const getBreadcrumbs = () => {
@@ -97,14 +143,15 @@ console.log(relatedProducts);
   };
 
   const handleAddToCart = () => {
-    if (selectedSize) {
+    if (selectedVariant) {
       addToCart(
         productData._id,
         selectedSize,
         quantity,
         productData.productName,
         productData.price,
-        productData.images[0]
+        productData.images[0],
+        selectedColor
       );
       // Reset quantity after adding to cart
       setQuantity(1);
@@ -113,7 +160,7 @@ console.log(relatedProducts);
   
   // Handle Buy Now click to open QuickOrder popup
   const handleBuyNow = () => {
-    if (selectedSize) {
+    if (selectedVariant) {
       setIsQuickOrderOpen(true);
     }
   };
@@ -126,7 +173,7 @@ console.log(relatedProducts);
   );
 
   return loading ? (
-    <div className="flex justify-center items-center h-screen">
+    <div className="flex justify-center items-center h-screen text-lg">
       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
     </div>
   ) : productData ? (
@@ -241,11 +288,43 @@ console.log(relatedProducts);
               </p>
             </div>
 
+            {/* Color Selection */}
+            <div className="border-t border-gray-200 pt-3">
+              <p className="font-semibold text-base mb-2">Select Color:</p>
+              <div className="flex flex-wrap gap-2">
+                {availableColors.map((color, index) => (
+                  <div 
+                    key={index} 
+                    className={`flex flex-col items-center cursor-pointer transition-all duration-200
+                      ${selectedColor === color ? 'transform scale-110' : ''}`}
+                    onClick={() => setSelectedColor(color)}
+                  >
+                    <div
+                      className={`h-8 w-8 rounded-full border ${
+                        selectedColor === color 
+                          ? 'border-black ring-2 ring-gray-400' 
+                          : 'border-gray-300'
+                      }`}
+                      style={{ backgroundColor: color.toLowerCase() }}
+                    ></div>
+                    <span className={`text-xs mt-1 ${selectedColor === color ? 'font-bold' : ''}`}>
+                      {color}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {!selectedColor && (
+                <p className="text-xs text-red-500 mt-1">
+                  Please select a color
+                </p>
+              )}
+            </div>
+
             {/* Size Selection */}
             <div className="border-t border-gray-200 pt-3">
               <p className="font-semibold text-base mb-2">Select Size:</p>
               <div className="flex flex-wrap gap-2">
-                {productData.size.map((size) => (
+                {availableSizes.map((size) => (
                   <button
                     key={size}
                     className={`h-10 w-10 flex items-center justify-center rounded-md 
@@ -262,27 +341,16 @@ console.log(relatedProducts);
                   </button>
                 ))}
               </div>
-              {!selectedSize && (
+              {selectedColor && availableSizes.length === 0 && (
+                <p className="text-xs text-red-500 mt-1">
+                  No sizes available for selected color
+                </p>
+              )}
+              {selectedColor && availableSizes.length > 0 && !selectedSize && (
                 <p className="text-xs text-red-500 mt-1">
                   Please select a size
                 </p>
               )}
-            </div>
-
-            {/* Color Display */}
-            <div className="border-t border-gray-200 pt-3">
-              <p className="font-semibold text-base mb-2">Available Colors:</p>
-              <div className="flex flex-wrap gap-2">
-                {productData.color.map((color, index) => (
-                  <div key={index} className="flex flex-col items-center">
-                    <div
-                      className="h-6 w-6 rounded-full border border-gray-300"
-                      style={{ backgroundColor: color.toLowerCase() }}
-                    ></div>
-                    <span className="text-xs mt-1">{color}</span>
-                  </div>
-                ))}
-              </div>
             </div>
 
             {/* Quantity Selector */}
@@ -303,14 +371,21 @@ console.log(relatedProducts);
                   className="w-8 h-8 bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
                   onClick={() =>
                     setQuantity((prev) =>
-                      Math.min(productData.totalQuantity, prev + 1)
+                      selectedVariant 
+                        ? Math.min(selectedVariant.quantity, prev + 1)
+                        : prev
                     )
                   }
-                  disabled={quantity >= productData.totalQuantity}
+                  disabled={!selectedVariant || quantity >= selectedVariant.quantity}
                 >
                   <span className="text-lg font-medium">+</span>
                 </button>
               </div>
+              {selectedVariant && (
+                <p className="text-xs text-gray-500 mt-1">
+                  {selectedVariant.quantity} available
+                </p>
+              )}
             </div>
 
             {/* Action Buttons */}
@@ -320,11 +395,11 @@ console.log(relatedProducts);
                 className={`flex-1 h-10 rounded-md font-medium text-sm
                   flex items-center justify-center transition-colors duration-300
                   ${
-                    productData.totalQuantity > 0 && selectedSize
+                    selectedVariant && selectedVariant.quantity > 0
                       ? "bg-black text-white hover:bg-gray-800"
                       : "bg-gray-300 text-gray-500 cursor-not-allowed"
                   }`}
-                disabled={productData.totalQuantity === 0 || !selectedSize}
+                disabled={!selectedVariant || selectedVariant.quantity === 0}
               >
                 Add to Cart
               </button>
@@ -333,11 +408,11 @@ console.log(relatedProducts);
                 className={`flex-1 h-10 rounded-md font-medium text-sm
                   flex items-center justify-center transition-colors duration-300
                   ${
-                    productData.totalQuantity > 0 && selectedSize
+                    selectedVariant && selectedVariant.quantity > 0
                       ? "bg-yellow-500 text-white hover:bg-yellow-600"
                       : "bg-gray-300 text-gray-500 cursor-not-allowed"
                   }`}
-                disabled={productData.totalQuantity === 0 || !selectedSize}
+                disabled={!selectedVariant || selectedVariant.quantity === 0}
               >
                 Buy Now
               </button>
@@ -475,7 +550,7 @@ console.log(relatedProducts);
               <AdditionalInfo productData={productData} />
             )}
             {activeTab === "reviews" && (
-              <ReviewSection  productId={productId}/>
+              <ReviewSection productId={productId} />
             )}
             {activeTab === "shipping" && <ShippingInfo />}
           </div>
@@ -485,7 +560,6 @@ console.log(relatedProducts);
       {/* Related Products */}
       {relatedProducts.length > 0 && (
         <div className="mt-10 container mx-auto px-4">
-          {/* <h2 className="text-xl font-semibold mb-4">Related Products</h2> */}
           <RelatedProducts
             products={paginatedProducts}
             totalPages={totalPages}
@@ -500,7 +574,9 @@ console.log(relatedProducts);
         isOpen={isQuickOrderOpen}
         onClose={() => setIsQuickOrderOpen(false)}
         productData={productData}
+        selectedVariant={selectedVariant}
         selectedSize={selectedSize}
+        selectedColor={selectedColor}
         quantity={quantity}
       />
     </div>

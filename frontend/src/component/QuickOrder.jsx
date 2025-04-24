@@ -40,7 +40,7 @@ const LocationPicker = ({ onLocationSelected }) => {
   );
 };
 
-const QuickOrder = ({ isOpen, onClose, productData, selectedSize, quantity }) => {
+const QuickOrder = ({ isOpen, onClose, productData, selectedSize, selectedcolor ,quantity }) => {
   const { token, delivery_fee, fetchCartData, openPayPalPopup } = useContext(ShopContext);
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
@@ -157,7 +157,9 @@ const QuickOrder = ({ isOpen, onClose, productData, selectedSize, quantity }) =>
         quantity: quantity,
         address: formattedAddress,
         location,
-        paymentMethod
+        paymentMethod, 
+        selectedcolor,
+        selectedSize
       };
       
       // Place order

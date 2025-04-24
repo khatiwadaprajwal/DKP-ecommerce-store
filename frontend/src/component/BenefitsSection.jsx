@@ -7,7 +7,7 @@ const BenefitsSection = () => {
 
     const navigate = useNavigate();
   return (
-    <section className="w-full py-16 bg-white border border-gray-100 rounded-lg">
+    <section className="w-full py-16 bg-white border border-gray-100 rounded-lg text-lg">
       <div className="flex flex-col md:flex-row gap-8">
         {/* Left side with content */}
         <div className="w-full md:w-1/2 px-6 md:px-10 flex flex-col justify-center">

@@ -7,7 +7,8 @@ import {
   ShoppingCartIcon,
   UsersIcon,
   XMarkIcon,
-  UserIcon
+  UserIcon,
+  ChatBubbleLeftEllipsisIcon
 } from '@heroicons/react/24/outline';
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
@@ -38,6 +39,11 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       path: '/admin/listUsers',
       name: 'Users',
       icon: UsersIcon
+    },
+    {
+      path: '/admin/message',
+      name: 'Messages',
+      icon: ChatBubbleLeftEllipsisIcon
     }
   ];
 

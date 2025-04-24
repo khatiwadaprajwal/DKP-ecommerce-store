@@ -1,6 +1,5 @@
-import React, { useContext, useState } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios'; 
-import { ShopContext } from '../../context/ShopContext';
 import { toast } from "react-toastify";
 
 const AddProduct = () => {
@@ -10,17 +9,21 @@ const AddProduct = () => {
     price: '',
     category: '',
     gender: '',
-    size: [],
-    color: [],
-    totalQuantity: '',
-    totalSold: '0', // Default to 0 for new products
+    variants: [],
+    totalQuantity: 0,
+    totalSold: 0,
     images: []
+  });
+  
+  const [variantForm, setVariantForm] = useState({
+    color: '',
+    size: '',
+    quantity: 0
   });
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  // const {token}= useContext(ShopContext);
   const token = localStorage.getItem('token');
   
   const sizeOptions = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
@@ -29,41 +32,90 @@ const AddProduct = () => {
   const genderOptions = ['Men', 'Women', 'Kids'];
   
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value, type } = e.target;
     
-    if (type === 'checkbox') {
-      setProduct({ ...product, [name]: checked });
+    if (type === 'number') {
+      setProduct({ ...product, [name]: Number(value) });
     } else {
       setProduct({ ...product, [name]: value });
     }
   };
   
-  const handleSizeToggle = (size) => {
-    if (product.size.includes(size)) {
-      setProduct({
-        ...product,
-        size: product.size.filter(s => s !== size)
-      });
+  const handleVariantChange = (e) => {
+    const { name, value, type } = e.target;
+    
+    if (type === 'number') {
+      setVariantForm({ ...variantForm, [name]: Number(value) });
     } else {
-      setProduct({
-        ...product,
-        size: [...product.size, size]
-      });
+      setVariantForm({ ...variantForm, [name]: value });
     }
   };
   
-  const handleColorToggle = (color) => {
-    if (product.color.includes(color)) {
+  const addVariant = () => {
+    // Check if this variant already exists
+    const existingVariantIndex = product.variants.findIndex(
+      v => v.color === variantForm.color && v.size === variantForm.size
+    );
+    
+    if (existingVariantIndex !== -1) {
+      // Update existing variant
+      const updatedVariants = [...product.variants];
+      updatedVariants[existingVariantIndex] = {
+        ...updatedVariants[existingVariantIndex],
+        quantity: variantForm.quantity
+      };
+      
       setProduct({
         ...product,
-        color: product.color.filter(c => c !== color)
+        variants: updatedVariants,
+        // Update total quantity
+        totalQuantity: calculateTotalQuantity(updatedVariants)
       });
+      
+      toast.info('Variant updated successfully');
     } else {
-      setProduct({
-        ...product,
-        color: [...product.color, color]
+      // Add new variant
+      const newVariant = {
+        color: variantForm.color,
+        size: variantForm.size,
+        quantity: variantForm.quantity
+      };
+      
+      const updatedVariants = [...product.variants, newVariant];
+
+      setProduct({ 
+        ...product, 
+        variants: updatedVariants,
+        // Update total quantity
+        totalQuantity: calculateTotalQuantity(updatedVariants)
       });
+      
+      toast.success('Variant added successfully');
     }
+    
+    // Reset variant form
+    setVariantForm({
+      color: '',
+      size: '',
+      quantity: 1
+    });
+  };
+  
+  const calculateTotalQuantity = (variants) => {
+    return variants.reduce((total, variant) => total + variant.quantity, 0);
+  };
+  
+  const removeVariant = (index) => {
+    const updatedVariants = [...product.variants];
+    updatedVariants.splice(index, 1);
+    
+    setProduct({
+      ...product,
+      variants: updatedVariants,
+      totalQuantity: calculateTotalQuantity(updatedVariants)
+    });
+    
+    toast.info('Variant removed');
   };
   
   const handleImageChange = (e) => {
@@ -91,7 +143,6 @@ const AddProduct = () => {
     }
   };
   
-  
   const removeImage = (index) => {
     try {
       const imageToRemove = product.images[index];
@@ -118,11 +169,15 @@ const AddProduct = () => {
       price: '',
       category: '',
       gender: '',
-      size: [],
-      color: [],
-      totalQuantity: '',
-      totalSold: '0',
+      variants: [],
+      totalQuantity: 0,
+      totalSold: 0,
       images: []
+    });
+    setVariantForm({
+      color: '',
+      size: '',
+      quantity: 1
     });
     setSuccess(false);
     setError(null);
@@ -135,8 +190,7 @@ const AddProduct = () => {
   
     try {
       // Validation
-      if (product.size.length === 0) throw new Error('Please select at least one size');
-      if (product.color.length === 0) throw new Error('Please select at least one color');
+      if (product.variants.length === 0) throw new Error('Please add at least one variant with size, color and quantity');
       if (product.images.length === 0) throw new Error('Please upload at least one product image');
   
       // Prepare FormData
@@ -148,12 +202,14 @@ const AddProduct = () => {
       formData.append('gender', product.gender);
       formData.append('totalQuantity', product.totalQuantity);
       formData.append('totalSold', product.totalSold);
-      product.size.forEach(size => formData.append('size[]', size));
-      product.color.forEach(color => formData.append('color[]', color));
+      
+      // Append variants as JSON string
+      formData.append('variants', JSON.stringify(product.variants));
+      
+      // Append images
       product.images.forEach(img => formData.append('images', img.file));
 
-
-      console.log(formData);
+      console.log('Submitting product:', product);
   
       const response = await axios.post("http://localhost:3001/v1/product", formData, {
         headers: {
@@ -166,7 +222,7 @@ const AddProduct = () => {
       toast.success(response.data.message || 'Product added successfully!');
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000); // Auto-hide after 3 sec
-      resetForm(); // Don't reset success inside this function
+      resetForm();
   
     } catch (err) {
       console.error('Error adding product:', err);
@@ -176,8 +232,6 @@ const AddProduct = () => {
     }
   };
   
-  
-
   const handleCancel = () => {
     if (window.confirm('Are you sure you want to cancel? All entered data will be lost.')) {
       resetForm();
@@ -286,17 +340,17 @@ const AddProduct = () => {
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Total Quantity*
+              Total Quantity (Calculated)
             </label>
             <input
               type="number"
-              name="totalQuantity"
               value={product.totalQuantity}
-              onChange={handleChange}
-              required
-              min="1"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              readOnly
+              className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Auto-calculated from variants
+            </p>
           </div>
           
           <div>
@@ -328,56 +382,113 @@ const AddProduct = () => {
           ></textarea>
         </div>
         
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Available Sizes*
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {sizeOptions.map(size => (
-              <button
-                key={size}
-                type="button"
-                onClick={() => handleSizeToggle(size)}
-                className={`px-4 py-2 rounded-md ${
-                  product.size.includes(size)
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-200 text-gray-700'
-                }`}
+        {/* Variant Management Section */}
+        <div className="mb-6 p-4 bg-gray-50 rounded-md border border-gray-200">
+          <h3 className="text-lg font-medium text-gray-800 mb-4">Manage Variants</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Color*
+              </label>
+              <select
+                name="color"
+                value={variantForm.color}
+                onChange={handleVariantChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {size}
-              </button>
-            ))}
-          </div>
-          {product.size.length === 0 && (
-            <p className="text-sm text-red-500 mt-2">
-              Please select at least one size
-            </p>
-          )}
-        </div>
-        
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Available Colors*
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {colorOptions.map(color => (
-              <button
-                key={color}
-                type="button"
-                onClick={() => handleColorToggle(color)}
-                className={`px-4 py-2 rounded-md ${
-                  product.color.includes(color)
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-200 text-gray-700'
-                }`}
+                <option value="">Select Color</option>
+                {colorOptions.map(color => (
+                  <option key={color} value={color}>
+                    {color}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Size*
+              </label>
+              <select
+                name="size"
+                value={variantForm.size}
+                onChange={handleVariantChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {color}
-              </button>
-            ))}
+                <option value="">Select Size</option>
+                {sizeOptions.map(size => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Quantity*
+              </label>
+              <input
+                type="number"
+                name="quantity"
+                value={variantForm.quantity}
+                onChange={handleVariantChange}
+                min="1"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
-          {product.color.length === 0 && (
-            <p className="text-sm text-red-500 mt-2">
-              Please select at least one color
+          
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={addVariant}
+              disabled={!variantForm.color || !variantForm.size || variantForm.quantity < 1}
+              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition duration-200 disabled:opacity-70"
+            >
+              Add Variant
+            </button>
+          </div>
+          
+          {/* Variants List */}
+          {product.variants.length > 0 ? (
+            <div className="mt-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Added Variants:</h4>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Color</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {product.variants.map((variant, index) => (
+                      <tr key={index}>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{variant.color}</td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{variant.size}</td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{variant.quantity}</td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm">
+                          <button
+                            type="button"
+                            onClick={() => removeVariant(index)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-red-500 mt-4">
+              Please add at least one variant with size, color and quantity
             </p>
           )}
         </div>
@@ -441,7 +552,7 @@ const AddProduct = () => {
           </button>
           <button
             type="submit"
-            disabled={loading || product.size.length === 0 || product.color.length === 0 || product.images.length === 0}
+            disabled={loading || product.variants.length === 0 || product.images.length === 0}
             className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition duration-200 disabled:opacity-70"
           >
             {loading ? 'Adding...' : 'Add Product'}

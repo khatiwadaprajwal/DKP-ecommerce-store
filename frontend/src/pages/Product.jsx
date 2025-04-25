@@ -25,7 +25,7 @@ const Product = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Add state for QuickOrder popup
   const [isQuickOrderOpen, setIsQuickOrderOpen] = useState(false);
 
@@ -42,25 +42,29 @@ const Product = () => {
       if (response.status === 200) {
         const product = response.data.product;
         setProductData(product);
-        
+
         // Set the first image as the main image
         if (product.images && product.images.length > 0) {
           setImage(product.images[0]);
         }
 
         // Extract unique colors and sizes from variants
-        const colors = [...new Set(product.variants.map(variant => variant.color))];
+        const colors = [
+          ...new Set(product.variants.map((variant) => variant.color)),
+        ];
         setAvailableColors(colors);
-        
+
         // If colors are available, set the first color as selected by default
         if (colors.length > 0) {
           setSelectedColor(colors[0]);
-          
+
           // Get sizes available for the selected color
           const sizesForColor = product.variants
-            .filter(variant => variant.color === colors[0] && variant.quantity > 0)
-            .map(variant => variant.size);
-          
+            .filter(
+              (variant) => variant.color === colors[0] && variant.quantity > 0
+            )
+            .map((variant) => variant.size);
+
           setAvailableSizes(sizesForColor);
         }
 
@@ -102,9 +106,11 @@ const Product = () => {
     if (productData && selectedColor) {
       // Get sizes available for the selected color with quantity > 0
       const sizesForColor = productData.variants
-        .filter(variant => variant.color === selectedColor && variant.quantity > 0)
-        .map(variant => variant.size);
-      
+        .filter(
+          (variant) => variant.color === selectedColor && variant.quantity > 0
+        )
+        .map((variant) => variant.size);
+
       setAvailableSizes(sizesForColor);
       setSelectedSize(null); // Reset size selection when color changes
       setSelectedVariant(null); // Reset variant selection
@@ -115,9 +121,9 @@ const Product = () => {
   useEffect(() => {
     if (productData && selectedColor && selectedSize) {
       const variant = productData.variants.find(
-        v => v.color === selectedColor && v.size === selectedSize
+        (v) => v.color === selectedColor && v.size === selectedSize
       );
-      
+
       setSelectedVariant(variant);
       // Reset quantity if it exceeds available quantity
       if (variant && quantity > variant.quantity) {
@@ -157,7 +163,7 @@ const Product = () => {
       setQuantity(1);
     }
   };
-  
+
   // Handle Buy Now click to open QuickOrder popup
   const handleBuyNow = () => {
     if (selectedVariant) {
@@ -293,21 +299,25 @@ const Product = () => {
               <p className="font-semibold text-base mb-2">Select Color:</p>
               <div className="flex flex-wrap gap-2">
                 {availableColors.map((color, index) => (
-                  <div 
-                    key={index} 
+                  <div
+                    key={index}
                     className={`flex flex-col items-center cursor-pointer transition-all duration-200
-                      ${selectedColor === color ? 'transform scale-110' : ''}`}
+                      ${selectedColor === color ? "transform scale-110" : ""}`}
                     onClick={() => setSelectedColor(color)}
                   >
                     <div
                       className={`h-8 w-8 rounded-full border ${
-                        selectedColor === color 
-                          ? 'border-black ring-2 ring-gray-400' 
-                          : 'border-gray-300'
+                        selectedColor === color
+                          ? "border-black ring-2 ring-gray-400"
+                          : "border-gray-300"
                       }`}
                       style={{ backgroundColor: color.toLowerCase() }}
                     ></div>
-                    <span className={`text-xs mt-1 ${selectedColor === color ? 'font-bold' : ''}`}>
+                    <span
+                      className={`text-xs mt-1 ${
+                        selectedColor === color ? "font-bold" : ""
+                      }`}
+                    >
                       {color}
                     </span>
                   </div>
@@ -371,12 +381,14 @@ const Product = () => {
                   className="w-8 h-8 bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
                   onClick={() =>
                     setQuantity((prev) =>
-                      selectedVariant 
+                      selectedVariant
                         ? Math.min(selectedVariant.quantity, prev + 1)
                         : prev
                     )
                   }
-                  disabled={!selectedVariant || quantity >= selectedVariant.quantity}
+                  disabled={
+                    !selectedVariant || quantity >= selectedVariant.quantity
+                  }
                 >
                   <span className="text-lg font-medium">+</span>
                 </button>
@@ -523,11 +535,7 @@ const Product = () => {
               }`}
               onClick={() => setActiveTab("reviews")}
             >
-              REVIEWS (
-              {productData.averageRating > 0
-                ? totalReviews
-                : "0"}
-              )
+              REVIEWS ({productData.averageRating > 0 ? totalReviews : "0"})
             </button>
             <button
               className={`px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors duration-200 ${
@@ -549,9 +557,7 @@ const Product = () => {
             {activeTab === "additional" && (
               <AdditionalInfo productData={productData} />
             )}
-            {activeTab === "reviews" && (
-              <ReviewSection productId={productId} />
-            )}
+            {activeTab === "reviews" && <ReviewSection productId={productId} />}
             {activeTab === "shipping" && <ShippingInfo />}
           </div>
         </div>
@@ -568,15 +574,15 @@ const Product = () => {
           />
         </div>
       )}
-      
-      {/* QuickOrder Popup */}
-      <QuickOrder 
+
+      {/* QuickOrder Popup - Updated props */}
+      <QuickOrder
         isOpen={isQuickOrderOpen}
         onClose={() => setIsQuickOrderOpen(false)}
         productData={productData}
         selectedVariant={selectedVariant}
         selectedSize={selectedSize}
-        selectedColor={selectedColor}
+        selectedColor={selectedColor} // Changed from selectedcolor to selectedColor for consistency
         quantity={quantity}
       />
     </div>

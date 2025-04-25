@@ -219,7 +219,7 @@ exports.placeOrderFromCart = async (req, res) => {
       location,
       paymentMethod,
       status: "Pending",
-      paymentStatus: paymentMethod === "PayPal" ? "Pending" : "Paid",
+      paymentStatus: paymentMethod === "PayPal" ? "Paid" : "Pending",
       currency: "NPR"
     });
 

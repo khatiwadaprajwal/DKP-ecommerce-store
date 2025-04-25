@@ -8,7 +8,7 @@ import {
   ReceiptRefundIcon,
 } from "@heroicons/react/24/outline";
 import axios from "axios";
-import PrintInvoice from "../component/PrintInvoice"; // Import the PrintInvoice component
+import PrintInvoice from "../component/PrintInvoice";
 
 const Order = () => {
   const { currency = "Rs", navigate, token } = useContext(ShopContext);
@@ -22,22 +22,16 @@ const Order = () => {
     const fetchOrders = async () => {
       try {
         setLoading(true);
-        // Use your API endpoint
         const response = await axios.get(
           "http://localhost:3001/v1/myorders",
-          // {
-          //   withCredentials: true, // This is important for sending cookies with the request
-          // },
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
         if (response.data && response.data.success) {
           setOrders(response.data.orders);
         } else {
-          // If API returns success: false but with a message
           setOrders([]);
         }
-
         setLoading(false);
       } catch (err) {
         console.error("Error fetching orders:", err);
@@ -50,9 +44,7 @@ const Order = () => {
     };
 
     fetchOrders();
-  }, []);
-
-  // console.log(orders);
+  }, [token]);
 
   const handleViewDetails = (order) => {
     setSelectedOrder(order);
@@ -72,7 +64,7 @@ const Order = () => {
       const response = await axios.delete(
         `http://localhost:3001/v1/cancel/${orderId}`,
         {
-          withCredentials: true,
+          headers: { Authorization: `Bearer ${token}` }
         }
       );
 
@@ -178,8 +170,19 @@ const Order = () => {
     );
   }
 
+  // Format date function
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   return (
-    <div className="py-8 min-h-screen bg-gray-50">
+    <div className="py-8 min-h-screen bg-gray-50 text-lg">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -227,13 +230,7 @@ const Order = () => {
                   </span>
                 </div>
                 <div className="text-sm text-gray-600">
-                  {order.orderDate
-                    ? `Ordered on ${new Date(
-                        order.orderDate
-                      ).toLocaleDateString()}`
-                    : `Ordered on ${new Date(
-                        order.createdAt
-                      ).toLocaleDateString()}`}
+                  {formatDate(order.orderDate || order.createdAt)}
                 </div>
               </div>
 
@@ -243,28 +240,42 @@ const Order = () => {
                     order.orderItems.map((item) => (
                       <div
                         key={item._id}
-                        className="flex items-center space-x-4  pb-2 last:border-b-0"
+                        className="flex items-center space-x-4 pb-2 last:border-b-0"
                       >
                         <div className="flex-shrink-0">
-                          <div className="w-16 h-16  rounded flex items-center justify-center">
-                            {/* Placeholder if no image */}
-                            <img
-                              src={`http://localhost:3001/public/${item.productId?.images[0]}`}
-                              alt={item.productId?.productName || "Product"}
-                              className="w-16 h-16 object-cover "
-                            />
-                            {/* <ShoppingBagIcon className="h-8 w-8 text-gray-400" /> */}
+                          <div className="w-16 h-16 rounded flex items-center justify-center">
+                            {item.productId?.images && item.productId.images.length > 0 ? (
+                              <img
+                                src={`http://localhost:3001/public/${item.productId.images[0]}`}
+                                alt={item.productId?.productName || "Product"}
+                                className="w-16 h-16 object-cover"
+                              />
+                            ) : (
+                              <ShoppingBagIcon className="h-8 w-8 text-gray-400" />
+                            )}
                           </div>
                         </div>
                         <div>
                           <h3 className="text-sm font-medium text-gray-900">
                             {item.productId?.productName || "Product"}
                           </h3>
+                          <div className="flex space-x-4">
+                            <p className="text-xs text-gray-500">
+                              Qty: {item.quantity || 1}
+                            </p>
+                            {item.color && (
+                              <p className="text-xs text-gray-500">
+                                Color: {item.color}
+                              </p>
+                            )}
+                            {item.size && (
+                              <p className="text-xs text-gray-500">
+                                Size: {item.size}
+                              </p>
+                            )}
+                          </div>
                           <p className="text-xs text-gray-500">
-                            Quantity: {item.quantity || 1}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Price: {currency} {item.price?.toFixed(2) || "0.00"}
+                            Price: {`NPR`} {item.price?.toFixed(2) || "0.00"}
                           </p>
                         </div>
                       </div>
@@ -272,9 +283,28 @@ const Order = () => {
                 </div>
 
                 <div className="mt-4 flex justify-between items-center">
-                  <div className="text-lg font-semibold text-gray-900">
-                    Total: {`${currency} `}
-                    {order.totalAmount?.toFixed(2)}
+                  <div>
+                    <div className="text-lg font-semibold text-gray-900">
+                      Total: {`NPR`} {order.totalAmount?.toFixed(2)}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {order.paymentMethod && (
+                        <span className="mr-2">
+                          Payment: {order.paymentMethod}
+                        </span>
+                      )}
+                      {order.paymentStatus && (
+                        <span className={`px-2 py-0.5 rounded-full ${
+                          order.paymentStatus === "Paid"
+                            ? "bg-green-100 text-green-800"
+                            : order.paymentStatus === "Failed"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-yellow-100 text-yellow-800"
+                        }`}>
+                          {order.paymentStatus}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex space-x-2">
                     <button
@@ -283,7 +313,7 @@ const Order = () => {
                     >
                       View Details
                     </button>
-                    {order.status === "Pending" && (
+                    {(order.status === "Pending" || order.status === "Processing") && (
                       <button
                         onClick={() => handleCancelOrder(order._id)}
                         className="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700"
@@ -343,12 +373,8 @@ const Order = () => {
                         <p>
                           <span className="font-medium">Date:</span>{" "}
                           {selectedOrder?.orderDate
-                            ? new Date(
-                                selectedOrder.orderDate
-                              ).toLocaleDateString()
-                            : new Date(
-                                selectedOrder?.createdAt
-                              ).toLocaleDateString()}
+                            ? formatDate(selectedOrder.orderDate)
+                            : formatDate(selectedOrder?.createdAt)}
                         </p>
                         <p>
                           <span className="font-medium">Status:</span>
@@ -374,7 +400,27 @@ const Order = () => {
                         </p>
                         <p>
                           <span className="font-medium">Payment Status:</span>{" "}
-                          {selectedOrder?.paymentStatus || "N/A"}
+                          <span
+                            className={`ml-1 px-2 py-0.5 text-xs rounded-full ${
+                              selectedOrder?.paymentStatus === "Paid"
+                                ? "bg-green-100 text-green-800"
+                                : selectedOrder?.paymentStatus === "Failed"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-yellow-100 text-yellow-800"
+                            }`}
+                          >
+                            {selectedOrder?.paymentStatus || "N/A"}
+                          </span>
+                        </p>
+                        {selectedOrder?.paymentId && (
+                          <p>
+                            <span className="font-medium">Payment ID:</span>{" "}
+                            {selectedOrder.paymentId}
+                          </p>
+                        )}
+                        <p>
+                          <span className="font-medium">Currency:</span>{" "}
+                          {`NPR`}
                         </p>
                       </div>
 
@@ -408,6 +454,8 @@ const Order = () => {
                           <tr className="bg-gray-100">
                             <th className="p-2 text-left">Product</th>
                             <th className="p-2 text-center">Quantity</th>
+                            <th className="p-2 text-center">Size</th>
+                            <th className="p-2 text-center">Color</th>
                             <th className="p-2 text-right">Price</th>
                             <th className="p-2 text-right">Total</th>
                           </tr>
@@ -422,34 +470,47 @@ const Order = () => {
                                 <td className="p-2 text-center">
                                   {item.quantity || 1}
                                 </td>
+                                <td className="p-2 text-center">
+                                  {item.size || "N/A"}
+                                </td>
+                                <td className="p-2 text-center">
+                                  {item.color || "N/A"}
+                                </td>
                                 <td className="p-2 text-right">
-                                  { currency}{" "}
+                                  {`NPR`}{" "}
                                   {(item.price || 0).toFixed(2)}
                                 </td>
                                 <td className="p-2 text-right">
-                                  { currency}{" "}
-                                  {(
-                                    item.totalPrice ||
-                                    item.price * item.quantity ||
-                                    0
-                                  ).toFixed(2)}
+                                  {`NPR`}{" "}
+                                  {(item.totalPrice || 0).toFixed(2)}
                                 </td>
                               </tr>
                             ))}
                         </tbody>
                         <tfoot>
                           <tr className="font-semibold">
-                            <td colSpan="3" className="p-2 text-right">
+                            <td colSpan="5" className="p-2 text-right">
                               Total:
                             </td>
                             <td className="p-2 text-right">
-                              { currency}{" "}
+                              {`NPR`}{" "}
                               {selectedOrder?.totalAmount?.toFixed(2) || "0.00"}
                             </td>
                           </tr>
                         </tfoot>
                       </table>
                     </div>
+
+                    {selectedOrder?.transactionDetails && (
+                      <div className="mt-4">
+                        <h4 className="font-semibold text-gray-700 mb-2">
+                          Transaction Details
+                        </h4>
+                        <div className="bg-gray-50 p-3 rounded-md text-xs overflow-auto max-h-32">
+                          <pre>{JSON.stringify(selectedOrder.transactionDetails, null, 2)}</pre>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="mt-4 flex justify-between">
                       <button
@@ -460,10 +521,9 @@ const Order = () => {
                         Close
                       </button>
                       <div className="flex space-x-2">
-                        {/* Replace the default print button with our PrintInvoice component */}
                         {selectedOrder && <PrintInvoice order={selectedOrder} />}
                         
-                        {selectedOrder?.status === "Pending" && (
+                        {(selectedOrder?.status === "Pending" || selectedOrder?.status === "Processing") && (
                           <button
                             onClick={() => {
                               handleCancelOrder(selectedOrder._id);
@@ -471,6 +531,7 @@ const Order = () => {
                             }}
                             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700"
                           >
+                            <ReceiptRefundIcon className="h-4 w-4 mr-1" />
                             Cancel Order
                           </button>
                         )}

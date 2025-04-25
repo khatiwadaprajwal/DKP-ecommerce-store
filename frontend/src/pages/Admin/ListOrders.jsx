@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { EyeIcon, MapPinIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, MapPinIcon } from 'lucide-react';
 import axios from "axios";
 
 const ListOrders = () => {
@@ -30,7 +30,6 @@ const ListOrders = () => {
         // Check if response contains orders
         if (response.data && response.data.orders) {
           setOrders(response.data.orders);
-          // console.log(response.data.orders)
         } else {
           setOrders([]);
           setError("No orders found or invalid response format");
@@ -58,7 +57,6 @@ const ListOrders = () => {
         }
       );
       
-      // console.log(response.data.order);
       if (response.data && response.data.order) {
         // Update local state with the updated order
         setOrders(
@@ -77,7 +75,6 @@ const ListOrders = () => {
   const updatePaymentStatus = async (orderId, newPaymentStatus) => {
     try {
       // Note: Backend doesn't have a specific endpoint for payment status updates
-      // You might need to create one, but for now we'll just update the UI
       setOrders(
         orders.map(order => 
           order._id === orderId ? { ...order, paymentStatus: newPaymentStatus } : order
@@ -239,7 +236,7 @@ const ListOrders = () => {
                         <div className="text-xs text-gray-500">{order.userId?.email || 'N/A'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {formatDate(order.orderDate || order.createdAt)}
+                        {formatDate(order.orderDate)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeClass(order.status)}`}>
@@ -253,7 +250,7 @@ const ListOrders = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap font-medium">
-                        Rs.{order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}
+                        {order.currency || 'NPR'} {order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
@@ -303,7 +300,10 @@ const ListOrders = () => {
                                 {order.paymentId && (
                                   <p className="text-sm">Transaction ID: {order.paymentId}</p>
                                 )}
-                                <p className="text-sm">Currency: {'NRP'}</p>
+                                <p className="text-sm">Currency: {order.currency || 'NPR'}</p>
+                                {order.transactionDetails && (
+                                  <p className="text-sm text-gray-500">Transaction details available</p>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -313,26 +313,30 @@ const ListOrders = () => {
                             <table className="min-w-full divide-y divide-gray-200">
                               <thead>
                                 <tr className="bg-gray-100">
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Product ID</th>
+                                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Product ID</th>
                                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Product</th>
                                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Quantity</th>
                                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Price</th>
+                                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Color</th>
+                                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Size</th>
                                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Total</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-gray-200">
                                 {order.orderItems && order.orderItems.map(item => (
                                   <tr key={item._id}>
-                                    <td className="px-4 py-2 text-sm">{item.productId?._id|| 'N/A'}</td>
+                                    <td className="px-4 py-2 text-sm">{item.productId?._id || 'N/A'}</td>
                                     <td className="px-4 py-2 text-sm">{item.productId?.productName || 'N/A'}</td>
                                     <td className="px-4 py-2 text-sm">{item.quantity || 0}</td>
-                                    <td className="px-4 py-2 text-sm">Rs.{item.price ? item.price.toFixed(2) : '0.00'}</td>
-                                    <td className="px-4 py-2 text-sm">Rs.{item.totalPrice ? item.totalPrice.toFixed(2) : '0.00'}</td>
+                                    <td className="px-4 py-2 text-sm">{order.currency || 'NPR'} {item.price ? item.price.toFixed(2) : '0.00'}</td>
+                                    <td className="px-4 py-2 text-sm">{item.color || 'N/A'}</td>
+                                    <td className="px-4 py-2 text-sm">{item.size || 'N/A'}</td>
+                                    <td className="px-4 py-2 text-sm">{order.currency || 'NPR'} {item.totalPrice ? item.totalPrice.toFixed(2) : '0.00'}</td>
                                   </tr>
                                 ))}
                                 <tr className="bg-gray-50">
-                                  <td colSpan="4" className="px-4 py-2 text-sm font-medium text-right">Order Total:</td>
-                                  <td className="px-4 py-2 text-sm font-medium">Rs.{order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}</td>
+                                  <td colSpan="6" className="px-4 py-2 text-sm font-medium text-right">Order Total:</td>
+                                  <td className="px-4 py-2 text-sm font-medium">{order.currency || 'NPR'} {order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}</td>
                                 </tr>
                               </tbody>
                             </table>
@@ -357,6 +361,24 @@ const ListOrders = () => {
                             </div>
                           </div>
                           
+                          <div className="mb-4">
+                            <h4 className="font-medium text-sm mb-2">Update Payment Status</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {paymentStatuses.map(status => (
+                                <button
+                                  key={status}
+                                  onClick={() => updatePaymentStatus(order._id, status)}
+                                  className={`px-3 py-1 text-xs rounded ${
+                                    order.paymentStatus === status
+                                      ? getStatusBadgeClass(status)
+                                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                  }`}
+                                >
+                                  {status}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
                           
                           <div className="mt-4 text-xs text-gray-500">
                             <p>Created: {order.createdAt ? new Date(order.createdAt).toLocaleString() : 'N/A'}</p>

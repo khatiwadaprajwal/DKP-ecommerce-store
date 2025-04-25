@@ -40,7 +40,7 @@ const LocationPicker = ({ onLocationSelected }) => {
   );
 };
 
-const QuickOrder = ({ isOpen, onClose, productData, selectedSize, selectedcolor ,quantity }) => {
+const QuickOrder = ({ isOpen, onClose, productData, selectedSize, selectedColor, quantity }) => {
   const { token, delivery_fee, fetchCartData, openPayPalPopup } = useContext(ShopContext);
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
@@ -145,24 +145,18 @@ const QuickOrder = ({ isOpen, onClose, productData, selectedSize, selectedcolor 
       // Format address
       const formattedAddress = `${shippingInfo.fullName}, ${shippingInfo.address}, ${shippingInfo.city}, ${shippingInfo.state} ${shippingInfo.zipCode}, ${shippingInfo.phone}`;
       
-      // Format selected product for API
-      const productsForAPI = [{
-        productId: productData._id,
-        quantity: quantity
-      }];
-      
-      // Create order data
+      // Create order data matching the controller's expected format
       const orderData = {
         productId: productData._id,
         quantity: quantity,
         address: formattedAddress,
-        location,
-        paymentMethod, 
-        selectedcolor,
-        selectedSize
+        location: location,
+        paymentMethod: paymentMethod,
+        color: selectedColor, // Fixed to match case with Product component
+        size: selectedSize
       };
       
-      // Place order
+      // Place order - Update endpoint to match your controller
       const response = await axios.post(
         "http://localhost:3001/v1/place",
         orderData,
@@ -199,6 +193,7 @@ const QuickOrder = ({ isOpen, onClose, productData, selectedSize, selectedcolor 
           </button>
         </div>
         
+        {/* Rest of the component remains unchanged */}
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Shipping Information */}

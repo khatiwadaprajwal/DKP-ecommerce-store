@@ -1,5 +1,6 @@
 const User = require('../model/usermodel');
 const Message = require('../model/sendmsg.model');
+const { replyToUserMessage } = require('../utils/mailer');
 
 const sendMessage = async (req, res) => {
   const { name, email, msg } = req.body;
@@ -45,8 +46,28 @@ const getMessagesByEmail = async (req, res) => {
   }
 };
 
+
+const replyToMessage = async (req, res) => {
+  const { email, subject, reply } = req.body;
+
+  if (!email || !reply) {
+    return res.status(400).json({ error: "Email and reply message are required" });
+  }
+
+  try {
+    await replyToUserMessage(email, subject, reply);
+    res.status(200).json({ message: "Reply sent successfully" });
+  } catch (err) {
+    res.status(500).json({ error: "Server error", detail: err.message });
+  }
+};
+
+
+
+
 module.exports = {
   sendMessage,
   getAllMessages,
-  getMessagesByEmail
+  getMessagesByEmail,
+  replyToMessage
 };

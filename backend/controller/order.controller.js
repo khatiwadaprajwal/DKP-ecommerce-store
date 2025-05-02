@@ -6,6 +6,7 @@ const CartItem = require("../model/cartitem.model");
 const axios = require("axios");
 const mongoose = require("mongoose");
 const { generateAccessToken, PAYPAL_API } = require("../utils/paypal");
+const { sendOrderEmail,sendOrderStatusUpdateEmail } = require("../utils/mailer");
 
 const EXCHANGE_RATE_NPR_TO_USD = 135; 
 
@@ -33,10 +34,10 @@ exports.createOrder = async (req, res) => {
 
     const totalAmount = quantity * product.price;
 
-    // ✅ Create Order first
+    // ✅ Create Order
     const order = new Order({
       userId,
-      orderItems: [], // empty for now
+      orderItems: [],
       totalAmount,
       address,
       location,
@@ -48,7 +49,7 @@ exports.createOrder = async (req, res) => {
 
     await order.save();
 
-    // ✅ Now create OrderItem with valid orderId
+    // ✅ Create OrderItem
     const orderItem = new OrderItem({
       orderId: order._id,
       productId,
@@ -61,7 +62,7 @@ exports.createOrder = async (req, res) => {
 
     await orderItem.save();
 
-    // ✅ Push orderItem to order and save
+    // ✅ Push OrderItem ID to Order
     order.orderItems.push(orderItem._id);
     await order.save();
 
@@ -110,6 +111,25 @@ exports.createOrder = async (req, res) => {
     product.totalQuantity -= quantity;
     product.totalSold += quantity;
     await product.save();
+
+    // ✅ Send order confirmation email with productDetails array
+    await sendOrderEmail(req.user.email, {
+      _id: order._id,
+      productDetails: [
+        {
+          productName: product.productName,
+          color,
+          size,
+          quantity,
+          price: product.price,
+          totalPrice: totalAmount
+        }
+      ],
+      totalAmount,
+      address,
+      paymentMethod,
+      status: order.status
+    });
 
     return res.status(201).json({ message: "✅ Order placed successfully", order });
 
@@ -331,12 +351,13 @@ exports.getAllOrders = async (req, res) => {
   }
 };
 
+
+
 exports.changeOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { status } = req.body;
 
-    // Allowed status updates
     const validStatuses = [
       "Pending",
       "Processing",
@@ -349,29 +370,32 @@ exports.changeOrderStatus = async (req, res) => {
       return res.status(400).json({ error: "Invalid status update" });
     }
 
-    // Fetch the order
     const order = await Order.findById(orderId)
       .populate({
         path: "userId",
-        select: "name email", // Fetch user details
+        select: "name email",
       })
       .populate({
         path: "orderItems",
         populate: {
           path: "productId",
-          select: "_id productName price images ", // Fetch product details
+          select: "_id productName price images",
         },
       });
+
     if (!order) return res.status(404).json({ error: "Order not found" });
 
-    // Prevent changing status of cancelled orders
     if (order.status === "Cancelled") {
-      return res.status(400).json({ error: "Cannot update a cancelled order" });
+      return res
+        .status(400)
+        .json({ error: "Cannot update a cancelled order" });
     }
 
-    // Update the order status
     order.status = status;
     await order.save();
+
+    // Send Email to user about status change
+    await sendOrderStatusUpdateEmail(order.userId.email, order);
 
     return res
       .status(200)

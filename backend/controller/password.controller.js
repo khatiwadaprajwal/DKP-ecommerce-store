@@ -1,4 +1,4 @@
-const sendOTPByEmail = require("../utils/mailer");
+const { sendOTPByEmail } = require("../utils/mailer");
 const User = require("../model/usermodel");
 const bcrypt = require("bcryptjs");
 const Otp = require("../model/otp.model");
@@ -31,6 +31,7 @@ const sendotp = async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 };
+
 
 // ✅ Reset Password After Verifying OTP
 const resetpassword = async (req, res) => {

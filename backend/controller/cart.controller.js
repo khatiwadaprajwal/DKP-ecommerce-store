@@ -5,7 +5,9 @@ const Product = require("../model/productmodel");
 const Order = require("../model/order.model");
 const OrderItem = require("../model/orderitem.model");
 const mongoose = require("mongoose");
+
 const axios = require("axios");
+const { sendOrderEmail } = require("../utils/mailer");
 const { generateAccessToken, PAYPAL_API } = require("../utils/paypal");
 
 const EXCHANGE_RATE_NPR_TO_USD = 135; 
@@ -341,12 +343,10 @@ exports.placeOrderFromCart = async (req, res) => {
     const userId = req.user._id;
     const { selectedProducts, address, location, paymentMethod } = req.body;
 
-    // Check if there are selected products
     if (!Array.isArray(selectedProducts) || selectedProducts.length === 0) {
       return res.status(400).json({ error: "No products selected for order" });
     }
 
-    // Fetch the cart for the user
     const cart = await Cart.findOne({ userId }).populate("cartItems");
     if (!cart || cart.cartItems.length === 0) {
       return res.status(400).json({ error: "Cart is empty" });
@@ -356,19 +356,17 @@ exports.placeOrderFromCart = async (req, res) => {
 
     let orderItems = [];
     let totalAmount = 0;
+    let productDetails = [];
 
-    // Loop through each selected product to process the order
     for (let item of selectedProducts) {
       const { productId, quantity, color, size } = item;
       console.log(`🔎 Processing Product ID: ${productId} (Quantity: ${quantity}, Color: ${color}, Size: ${size})`);
 
-      // Fetch the product details from the database
       const product = await Product.findById(productId);
       if (!product) {
         return res.status(400).json({ error: `Product with ID ${productId} not found` });
       }
 
-      // Find the variant based on color and size
       const variantIndex = product.variants.findIndex(
         (v) => v.color === color && v.size === size
       );
@@ -378,28 +376,20 @@ exports.placeOrderFromCart = async (req, res) => {
       }
 
       const variant = product.variants[variantIndex];
-
-      // Log the available stock for this variant
       console.log(`Available stock for ${product.productName} (${color} - ${size}): ${variant.quantity}`);
 
-      // Check if the quantity requested is available in stock
       if (variant.quantity < quantity) {
         return res.status(400).json({
           error: `Insufficient stock for ${product.productName} (${color} - ${size}). Available stock: ${variant.quantity}`,
         });
       }
 
-      // Decrease the stock quantity of the variant
       product.variants[variantIndex].quantity -= quantity;
-
-      // Update the totalQuantity and totalSold for the product
       product.totalQuantity = product.variants.reduce((sum, v) => sum + v.quantity, 0);
       product.totalSold += quantity;
 
-      // Save the updated product details
       await product.save();
 
-      // Create an order item for this product (with orderId placeholder for now)
       const orderItem = new OrderItem({
         productId: productId,
         quantity: quantity,
@@ -407,16 +397,23 @@ exports.placeOrderFromCart = async (req, res) => {
         totalPrice: quantity * product.price,
         color,
         size,
-        orderId: null // Set to null temporarily
+        orderId: null
       });
 
-      // Save the order item (but it doesn't have a valid orderId yet)
       await orderItem.save();
       orderItems.push(orderItem._id);
       totalAmount += orderItem.totalPrice;
+
+      productDetails.push({
+        productName: product.productName,
+        color,
+        size,
+        quantity,
+        price: product.price,
+        totalPrice: quantity * product.price
+      });
     }
 
-    // Create the new order after processing all items
     const order = new Order({
       userId,
       orderItems,
@@ -429,16 +426,13 @@ exports.placeOrderFromCart = async (req, res) => {
       currency: "NPR"
     });
 
-    // Save the new order
     await order.save();
 
-    // Now that the order is saved, update the orderId for each order item
     await OrderItem.updateMany(
       { _id: { $in: orderItems } },
       { $set: { orderId: order._id } }
     );
 
-    // Handle PayPal payment (if chosen)
     if (paymentMethod === "PayPal") {
       try {
         const accessToken = await generateAccessToken();
@@ -478,11 +472,18 @@ exports.placeOrderFromCart = async (req, res) => {
       }
     }
 
-    // Remove the ordered items from the cart
     const orderedProductIds = selectedProducts.map(p => p.productId);
     await CartItem.deleteMany({ cartId: cart._id, productId: { $in: orderedProductIds } });
 
-    // Return success response
+    await sendOrderEmail(req.user.email, {
+      _id: order._id,
+      productDetails,
+      totalAmount,
+      address,
+      paymentMethod,
+      status: order.status
+    });
+
     return res.json({ message: "Order placed successfully", order });
 
   } catch (error) {
@@ -490,3 +491,4 @@ exports.placeOrderFromCart = async (req, res) => {
     return res.status(500).json({ error: "Order placement failed, please try again" });
   }
 };
+

@@ -8,5 +8,6 @@ const TempUserSchema = new mongoose.Schema({
     otp: { type: String, required: true },
     otpExpires: { type: Date, required: true }
 });
+TempUserSchema.index({ otpExpires: 1 }, { expireAfterSeconds: 0 });
 
 module.exports = mongoose.model("TempUser", TempUserSchema);

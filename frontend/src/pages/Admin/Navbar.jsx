@@ -1,6 +1,6 @@
 import React, { useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bars3Icon, XMarkIcon, HomeIcon, PlusCircleIcon, ShoppingBagIcon, ShoppingCartIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import { Bars3Icon, XMarkIcon, HomeIcon, PlusCircleIcon, ShoppingBagIcon, ShoppingCartIcon, UserGroupIcon, EyeIcon } from '@heroicons/react/24/outline';
 import { Link, useLocation } from 'react-router-dom';
 import { ShopContext } from "../../context/ShopContext";
 
@@ -16,6 +16,10 @@ const Navbar = ({ toggleSidebar, isSidebarOpen }) => {
     // localStorage.removeItem('token');
     // localStorage.removeItem('user');
     navigate('/login');
+  };
+
+  const goToUserView = () => {
+    navigate("/");
   };
 
   const menuItems = [
@@ -60,12 +64,21 @@ const Navbar = ({ toggleSidebar, isSidebarOpen }) => {
           </button>
           <h1 className="text-xl md:text-2xl font-bold text-gray-800 ml-2 md:ml-4">Admin Panel</h1>
         </div>
-        <button
-          onClick={handleLogout}
-          className="px-3 py-1.5 md:px-4 md:py-2 bg-red-600 text-white text-sm md:text-base rounded hover:bg-red-700 transition duration-200"
-        >
-          Logout
-        </button>
+        <div className="flex items-center space-x-2 md:space-x-4">
+          <button
+            onClick={goToUserView}
+            className="flex items-center px-3 py-1.5 md:px-4 md:py-2 bg-blue-600 text-white text-sm md:text-base rounded hover:bg-blue-700 transition duration-200"
+          >
+            <EyeIcon className="h-4 w-4 mr-1" />
+            User View
+          </button>
+          <button
+            onClick={handleLogout}
+            className="px-3 py-1.5 md:px-4 md:py-2 bg-red-600 text-white text-sm md:text-base rounded hover:bg-red-700 transition duration-200"
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
       {/* Mobile slide-in menu */}
@@ -110,6 +123,14 @@ const Navbar = ({ toggleSidebar, isSidebarOpen }) => {
                 </Link>
               );
             })}
+            <Link
+              to="/"
+              onClick={() => setVisible(false)}
+              className="flex items-center space-x-2 py-3 px-4 rounded mb-1 transition duration-200 text-gray-300 hover:bg-gray-700 hover:text-white"
+            >
+              <EyeIcon className="h-5 w-5" />
+              <span>User View</span>
+            </Link>
           </nav>
         </div>
       </div>

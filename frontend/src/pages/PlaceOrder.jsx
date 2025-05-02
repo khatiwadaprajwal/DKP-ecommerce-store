@@ -41,7 +41,7 @@ const LocationPicker = ({ onLocationSelected }) => {
 };
 
 const PlaceOrder = () => {
-  const { cartData, token, delivery_fee, fetchCartData, openPayPalPopup} = useContext(ShopContext);
+  const { cartData, token, delivery_fee, fetchCartData, openPayPalPopup } = useContext(ShopContext);
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
@@ -56,9 +56,9 @@ const PlaceOrder = () => {
     phone: ""
   });
 
-  // Location state with default coordinates (can be set to your city's center)
+  // Location state with default coordinates
   const [location, setLocation] = useState({
-    lat: 27.7172, // Default to Kathmandu, Nepal (or any default location you prefer)
+    lat: 27.7172, // Default to Kathmandu, Nepal
     lng: 85.3240
   });
   
@@ -66,36 +66,6 @@ const PlaceOrder = () => {
   const [locationSelected, setLocationSelected] = useState(false);
 
   useEffect(() => {
-    // Retrieve selected items from localStorage
-    const storedItems = localStorage.getItem("selectedCartItems");
-    if (!storedItems) {
-      toast.error("No items selected for checkout");
-      navigate("/cart");
-      return;
-    }
-
-    try {
-      const parsedItems = JSON.parse(storedItems);
-      setSelectedItems(parsedItems);
-      
-      // Filter cart data to get only selected items
-      const productsToOrder = cartData.filter(item => 
-        parsedItems.includes(item.itemId)
-      );
-      
-      if (productsToOrder.length === 0) {
-        toast.error("Selected products not found in cart");
-        navigate("/cart");
-        return;
-      }
-      
-      setSelectedProducts(productsToOrder);
-    } catch (error) {
-      console.error("Error parsing selected items:", error);
-      toast.error("Something went wrong. Please try again.");
-      navigate("/cart");
-    }
-    
     // Try to get user's current location
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -111,7 +81,66 @@ const PlaceOrder = () => {
         }
       );
     }
-  }, [cartData, navigate]);
+    
+    // Load selected items on component mount
+    loadSelectedItems();
+  }, []);
+  
+  // Separate function to load selected items
+  const loadSelectedItems = () => {
+    // Retrieve selected items from localStorage
+    const storedItems = localStorage.getItem("selectedCartItems");
+    
+    if (!storedItems) {
+      toast.error("No items selected for checkout");
+      navigate("/cart");
+      return;
+    }
+
+    try {
+      // Parse the stored items
+      const parsedItems = JSON.parse(storedItems);
+      
+      if (!parsedItems || !Array.isArray(parsedItems) || parsedItems.length === 0) {
+        toast.error("Invalid selected items data");
+        navigate("/cart");
+        return;
+      }
+      
+      // Store parsed items
+      setSelectedItems(parsedItems);
+      
+      // Filter cart data to match the selected products
+      const productsToOrder = cartData.filter(cartItem => 
+        parsedItems.some(selectedItem => selectedItem.productId === cartItem.itemId)
+      );
+      
+      if (productsToOrder.length === 0 && cartData.length > 0) {
+        toast.error("Selected products not found in cart");
+        navigate("/cart");
+        return;
+      }
+      
+      setSelectedProducts(productsToOrder);
+    } catch (error) {
+      console.error("Error parsing selected items:", error);
+      toast.error("Something went wrong. Please try again.");
+      navigate("/cart");
+    }
+  };
+
+  // Effect to update selected products when cart data changes
+  useEffect(() => {
+    if (cartData.length > 0 && selectedItems.length > 0) {
+      const productsToOrder = cartData.filter(cartItem => 
+        selectedItems.some(selectedItem => selectedItem.productId === cartItem.itemId)
+      );
+      
+      if (productsToOrder.length > 0) {
+        setSelectedProducts(productsToOrder);
+      }
+    }
+  }, [cartData, selectedItems]);
 
   // Calculate order summary
   const subtotal = selectedProducts.reduce((total, item) => 
@@ -158,10 +187,12 @@ const PlaceOrder = () => {
       // Format address
       const formattedAddress = `${shippingInfo.fullName}, ${shippingInfo.address}, ${shippingInfo.city}, ${shippingInfo.state} ${shippingInfo.zipCode}, ${shippingInfo.phone}`;
       
-      // Format selected products for API
+      // Format selected products for API, including color and size
       const productsForAPI = selectedProducts.map(item => ({
         productId: item.itemId,
-        quantity: item.quantity
+        quantity: item.quantity,
+        color: item.color || "default", // Include color if available
+        size: item.size || "default" // Include size if available
       }));
       
       // Create order data
@@ -171,6 +202,8 @@ const PlaceOrder = () => {
         location,
         paymentMethod
       };
+      
+      console.log("Sending order data:", orderData);
       
       // Place order
       const response = await axios.post(
@@ -193,7 +226,8 @@ const PlaceOrder = () => {
       }
     } catch (error) {
       console.error("Error placing order:", error);
-      toast.error(error.response?.data?.error || "Failed to place order");
+      const errorMessage = error.response?.data?.error || "Failed to place order";
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -405,7 +439,11 @@ const PlaceOrder = () => {
                     <div className="flex-1">
                       <p className="text-sm font-medium truncate">{item.name}</p>
                       <div className="flex justify-between text-sm text-gray-600">
-                        <span>Qty: {item.quantity}</span>
+                        <span>
+                          Qty: {item.quantity}
+                          {item.color && <span className="ml-1">({item.color})</span>}
+                          {item.size && <span className="ml-1">({item.size})</span>}
+                        </span>
                         <span>Rs. {item.price * item.quantity}</span>
                       </div>
                     </div>

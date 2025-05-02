@@ -11,6 +11,7 @@ import {
   LogIn,
   Package,
   ChevronDown,
+  Settings,
 } from "lucide-react";
 import { ShopContext } from "../context/ShopContext";
 
@@ -21,15 +22,22 @@ const Navbar = () => {
   const [selectedCategory, setSelectedCategory] = useState("SELECT CATEGORY");
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const { 
-    getCartCount, 
-    token, 
-    logout, 
-    user, 
-    search, 
-    setSearch, 
-    showSearch, 
-    handleSearchFunction 
+  const [userInitials, setUserInitials] = useState(""); // State to store user initials
+  const [isAdmin, setIsAdmin] = useState(false); // New state to check if user is admin
+  const {
+    getCartCount,
+    token,
+    logout,
+    user,
+    search,
+    setSearch,
+    showSearch,
+    handleSearchFunction,
+    navigate,
+    gender,
+    setGender,
+    applyFilter,
+    resetAllFilters
   } = useContext(ShopContext);
   const location = useLocation();
   const profileDropdownRef = useRef(null);
@@ -39,20 +47,64 @@ const Navbar = () => {
   // Available categories for the dropdown
   const categories = [
     "SELECT CATEGORY",
-    "Men's Clothing",
-    "Women's Clothing",
-    "Accessories",
-    "Footwear",
-    "Sale Items"
+    "Men",
+    "Women",
+    "Kids",
   ];
 
-  // Handle clicks outside of the profile dropdown
+  // Get user initials and check admin status from localStorage
+  useEffect(() => {
+    if (token) {
+      let userData;
+
+      // Try to get user from context first
+      if (user && user.name) {
+        const initials = `${user.name[0]}`.toUpperCase();
+        setUserInitials(initials);
+        // Check if user is admin from context
+        setIsAdmin(user.role === "Admin" || user.role == "SuperAdmin");
+      } else {
+        // Fallback to localStorage if user isn't in context
+        try {
+          userData = JSON.parse(localStorage.getItem("user"));
+          if (userData) {
+            if (userData.firstName && userData.lastName) {
+              const initials =
+                `${userData.firstName[0]}${userData.lastName[0]}`.toUpperCase();
+              setUserInitials(initials);
+            } else if (userData.name) {
+              const initials = `${userData.name[0]}`.toUpperCase();
+              setUserInitials(initials);
+            }
+
+            // Check if user is admin from localStorage
+            setIsAdmin(userData.role === "Admin" || user.role === "SuperAdmin");
+          }
+        } catch (error) {
+          console.error("Error parsing user data from localStorage:", error);
+          setUserInitials("");
+          setIsAdmin(false);
+        }
+      }
+    } else {
+      setUserInitials("");
+      setIsAdmin(false);
+    }
+  }, [token, user]);
+
+  // Handle clicks outside of the profile dropdown and category dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
+      if (
+        profileDropdownRef.current &&
+        !profileDropdownRef.current.contains(event.target)
+      ) {
         setIsProfileOpen(false);
       }
-      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target)) {
+      if (
+        categoryDropdownRef.current &&
+        !categoryDropdownRef.current.contains(event.target)
+      ) {
         setIsCategoryDropdownOpen(false);
       }
     };
@@ -72,7 +124,7 @@ const Navbar = () => {
 
   // Configure smooth scrolling
   useEffect(() => {
-    document.documentElement.style.scrollBehavior = "smooth"; 
+    document.documentElement.style.scrollBehavior = "smooth";
     return () => {
       document.documentElement.style.scrollBehavior = "";
     };
@@ -88,13 +140,16 @@ const Navbar = () => {
     logout(); // Call logout function from context
     setIsMenuOpen(false);
     setIsProfileOpen(false);
+    setUserInitials(""); // Clear user initials on logout
+    setIsAdmin(false); // Reset admin status on logout
+    navigate("/login");
   };
 
   // Scroll to top when route changes
   useEffect(() => {
     window.scrollTo({
       top: 0,
-      behavior: "smooth"
+      behavior: "smooth",
     });
   }, [location.pathname]);
 
@@ -114,16 +169,16 @@ const Navbar = () => {
 
   // Handle smooth scrolling for in-page links
   const handleNavClick = (e, path) => {
-    if (path.includes('#') && location.pathname === path.split('#')[0]) {
+    if (path.includes("#") && location.pathname === path.split("#")[0]) {
       e.preventDefault();
-      const targetId = path.split('#')[1];
+      const targetId = path.split("#")[1];
       const targetElement = document.getElementById(targetId);
-      
+
       if (targetElement) {
-        targetElement.scrollIntoView({ behavior: 'smooth' });
+        targetElement.scrollIntoView({ behavior: "smooth" });
       }
     }
-    
+
     setIsMenuOpen(false);
   };
 
@@ -131,32 +186,92 @@ const Navbar = () => {
     setIsProfileOpen(!isProfileOpen);
   };
 
+  // Toggle category dropdown
   const toggleCategoryDropdown = () => {
     setIsCategoryDropdownOpen(!isCategoryDropdownOpen);
   };
 
-  const selectCategory = (category) => {
+  // Handle category selection
+  const handleCategorySelect = (category) => {
     setSelectedCategory(category);
     setIsCategoryDropdownOpen(false);
+    
+    // Apply gender filter after selection
+    handleGenderSelect(category);
+  };
+
+  // Generate a background color based on the user's initials for consistency
+  const getUserInitialsColor = () => {
+    if (!userInitials) return "#4F46E5"; // Default color
+
+    // Simple hash function to generate a color based on the initials
+    let hash = 0;
+    for (let i = 0; i < userInitials.length; i++) {
+      hash = userInitials.charCodeAt(i) + ((hash << 5) - hash);
+    }
+
+    // Convert to a hue value (0-360)
+    const hue = hash % 360;
+
+    // Use a nice saturation and lightness for pastel colors
+    return `hsl(${hue}, 70%, 45%)`;
+  };
+
+  // Get user name for display
+  const getUserDisplayName = () => {
+    try {
+      const userData = user || JSON.parse(localStorage.getItem("user"));
+      if (userData) {
+        if (userData.firstName && userData.lastName) {
+          return `${userData.firstName} ${userData.lastName}`;
+        } else if (userData.name) {
+          return userData.name;
+        }
+      }
+      return "User";
+    } catch (error) {
+      return "User";
+    }
+  };
+
+  const handleGenderSelect = (category) => {
+
+    if(category && category == "SELECT CATEGORY"){
+      setGender([])
+      return;
+    }
+
+    resetAllFilters();
+    
+    if (category && category !== "SELECT CATEGORY") {
+      setGender([category]);
+    }
+    
+    applyFilter();
+    navigate("/collection");
   };
 
   return (
     <nav className="sticky top-0 z-50 bg-gray-50 shadow-md">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         {/* Logo */}
-        <Link 
-          to="/" 
+        <Link
+          to="/"
           className="flex flex-col items-center"
           onClick={() => {
             window.scrollTo({
               top: 0,
-              behavior: "smooth"
+              behavior: "smooth",
             });
             setIsMenuOpen(false);
           }}
         >
-          <h1 className="text-3xl font-bold tracking-wider text-gray-800">DKP</h1>
-          <p className="text-xs text-gray-600 font-bold tracking-widest">CLOTHING</p>
+          <h1 className="text-3xl font-bold tracking-wider text-gray-800">
+            DKP
+          </h1>
+          <p className="text-xs text-gray-600 font-bold tracking-widest">
+            CLOTHING
+          </p>
         </Link>
 
         {/* Desktop Navigation */}
@@ -183,7 +298,7 @@ const Navbar = () => {
         </ul>
 
         {/* Search Bar with Category Dropdown - Visible on desktop */}
-        <div className="hidden md:flex items-center flex-1 mx-4 max-w-xl">
+        <div className="hidden md:flex items-center flex-1 mx-4 max-w-2xl">
           <form onSubmit={handleSearch} className="w-full flex">
             {/* Left input field */}
             <input
@@ -191,18 +306,45 @@ const Navbar = () => {
               placeholder="Search for products"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-grow py-3 px-4 rounded-l-md border border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-400 text-sm text-gray-800 font-medium bg-white"
+              className="flex-grow py-1 px-4 rounded-l-md border border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-400 text-lg text-gray-800 font-medium bg-white"
             />
-            
-            {/* Right search button */}
-            <button 
-              type="submit" 
-              className="bg-green-500 hover:bg-green-600 text-white px-5 py-3 rounded-r-md transition-colors"
-              aria-label="Search"
+
+            {/* Custom Category Dropdown */}
+            <div className="relative" ref={categoryDropdownRef}>
+              <button
+                type="button"
+                onClick={toggleCategoryDropdown}
+                className="py-1 px-4 bg-white border border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-400 text-sm text-gray-600 font-bold h-full flex items-center justify-between min-w-40"
+              >
+                <span>{selectedCategory}</span>
+                <ChevronDown className="w-4 h-4 ml-2" />
+              </button>
+
+              {/* Dropdown Menu */}
+              {isCategoryDropdownOpen && (
+                <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 shadow-lg rounded-md z-50 max-h-60 overflow-auto">
+                  {categories.map((category) => (
+                    <button
+                      key={category}
+                      type="button"
+                      onClick={() => handleCategorySelect(category)}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-r-md transition-colors"
             >
-              <Search className="w-5 h-5" />
+              <Search className="w-4 h-4" />
             </button>
           </form>
+          <div className="flex"></div>
         </div>
 
         {/* Icons */}
@@ -215,91 +357,11 @@ const Navbar = () => {
           >
             <Search className="w-5 h-5 text-gray-700" />
           </button>
-          
-          {/* Profile Dropdown */}
-          <div className="relative" ref={profileDropdownRef}>
-            <button 
-              onClick={toggleProfileDropdown}
-              className="hover:bg-gray-100 p-2.5 rounded-full transition-colors relative"
-              aria-expanded={isProfileOpen}
-              aria-haspopup="true"
-            >
-              <User className="w-6 h-6 text-gray-800" />
-            </button>
-            
-            {/* Improved Dropdown with Animation */}
-            {isProfileOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-100 z-50 transition-all duration-200 ease-in-out transform origin-top-right">
-                <div className="py-2 rounded-md ring-1 ring-black ring-opacity-5">
-                  {token ? (
-                    <>
-                      <Link
-                        to="/profile"
-                        className="flex items-center px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors"
-                        onClick={() => setIsProfileOpen(false)}
-                      >
-                        <User className="w-5 h-5 mr-3 text-gray-600" />
-                        <div>
-                          <p className="font-medium">My Profile</p>
-                          <p className="text-xs text-gray-500">View your account details</p>
-                        </div>
-                      </Link>
-                      <Link
-                        to="/order"
-                        className="flex items-center px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors"
-                        onClick={() => setIsProfileOpen(false)}
-                      >
-                        <Package className="w-5 h-5 mr-3 text-gray-600" />
-                        <div>
-                          <p className="font-medium">My Orders</p>
-                          <p className="text-xs text-gray-500">Track your order history</p>
-                        </div>
-                      </Link>
-                      <Link
-                        to="/wishlist"
-                        className="flex items-center px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors"
-                        onClick={() => setIsProfileOpen(false)}
-                      >
-                        <Heart className="w-5 h-5 mr-3 text-gray-600" />
-                        <div>
-                          <p className="font-medium">Wishlist</p>
-                          <p className="text-xs text-gray-500">Your saved items</p>
-                        </div>
-                      </Link>
-                      <div className="border-t border-gray-100 my-1"></div>
-                      <button 
-                        onClick={handleLogout}
-                        className="flex items-center w-full px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors text-left"
-                      >
-                        <LogOut className="w-5 h-5 mr-3 text-gray-600" />
-                        <div>
-                          <p className="font-medium">Logout</p>
-                          <p className="text-xs text-gray-500">Sign out of your account</p>
-                        </div>
-                      </button>
-                    </>
-                  ) : (
-                    <Link
-                      to="/login"
-                      className="flex items-center px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors"
-                      onClick={() => setIsProfileOpen(false)}
-                    >
-                      <LogIn className="w-5 h-5 mr-3 text-gray-600" />
-                      <div>
-                        <p className="font-medium">Login / Register</p>
-                        <p className="text-xs text-gray-500">Access your account</p>
-                      </div>
-                    </Link>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
 
           {/* Cart */}
           <Link
             to="/cart"
-            className="relative hover:bg-gray-100 p-2.5 rounded-full transition-colors"
+            className="relative hover:bg-gray-200 p-2.5 rounded-full transition-colors"
           >
             <ShoppingCart className="w-6 h-6 text-gray-800" />
             {getCartCount() > 0 && (
@@ -309,9 +371,103 @@ const Navbar = () => {
             )}
           </Link>
 
+          {/* Profile Dropdown */}
+          <div className="relative" ref={profileDropdownRef}>
+            <button
+              onClick={toggleProfileDropdown}
+              className="hover:bg-gray-100  rounded-full transition-colors relative"
+              aria-expanded={isProfileOpen}
+              aria-haspopup="true"
+            >
+              {token && userInitials ? (
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium text-xl"
+                  style={{ backgroundColor: getUserInitialsColor() }}
+                >
+                  {userInitials}
+                </div>
+              ) : (
+                <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gray-200">
+                    <User className="w-6 h-6 text-gray-800" />
+                </div>
+                
+              )}
+            </button>
+
+            {/* Improved Dropdown with Animation */}
+            {isProfileOpen && (
+              <div className="absolute right-0 mt-2 w-46 bg-white rounded-md shadow-lg border border-gray-100 z-50 transition-all duration-200 ease-in-out transform origin-top-right">
+                <div className="py-2 rounded-md ring-1 ring-black ring-opacity-5">
+                  {token ? (
+                    <>
+                      <Link
+                        to="/profile"
+                        className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
+                        onClick={() => setIsProfileOpen(false)}
+                      >
+                        <User className="w-5 h-5 mr-3 text-gray-600" />
+                        <div>
+                          <p className="text-lg">My Profile</p>
+                        </div>
+                      </Link>
+                      <Link
+                        to="/order"
+                        className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
+                        onClick={() => setIsProfileOpen(false)}
+                      >
+                        <Package className="w-5 h-5 mr-3 text-gray-600" />
+                        <div>
+                          <p className="text-lg">My Orders</p>
+                        </div>
+                      </Link>
+
+                      {/* Admin Panel link - only visible for admin users */}
+                      {isAdmin && (
+                        <Link
+                          to="/admin"
+                          className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
+                          onClick={() => setIsProfileOpen(false)}
+                        >
+                          <Settings className="w-5 h-5 mr-3 text-gray-600" />
+                          <div>
+                            <p className="text-lg">Admin Panel</p>
+                          </div>
+                        </Link>
+                      )}
+
+                      <div className="border-t border-gray-100 my-1"></div>
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center w-full px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors text-left"
+                      >
+                        <LogOut className="w-5 h-5 mr-3 text-gray-600" />
+                        <div>
+                          <p className="text-lg font-bold">Logout</p>
+                        </div>
+                      </button>
+                    </>
+                  ) : (
+                    <Link
+                      to="/login"
+                      className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
+                      onClick={() => setIsProfileOpen(false)}
+                    >
+                      <LogIn className="w-7 h-7 mr-3 text-gray-900" />
+                      <div>
+                        <p className="text-lg font-semibold">Login/Register</p>
+                      </div>
+                    </Link>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Mobile Menu Toggle */}
           <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            onClick={() => {
+              setIsMenuOpen(!isMenuOpen);
+            }}
             className="md:hidden hover:bg-gray-100 p-2 rounded-full transition-colors"
             aria-label="Toggle menu"
           >
@@ -336,21 +492,37 @@ const Navbar = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full py-2 px-4 rounded-md bg-white border border-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 text-sm text-gray-800 font-medium"
             />
-            
+
             <div className="flex">
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="flex-grow py-2 px-4 rounded-l-md bg-white border border-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 text-sm text-gray-800 font-medium"
-              >
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-              
-              <button 
+              {/* Mobile Custom Category Dropdown */}
+              <div className="relative flex-grow" ref={categoryDropdownRef}>
+                <button
+                  type="button"
+                  onClick={toggleCategoryDropdown}
+                  className="w-full flex justify-between items-center py-2 px-4 rounded-l-md bg-white border border-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400 text-sm text-gray-800 font-medium"
+                >
+                  <span>{selectedCategory}</span>
+                  <ChevronDown className="w-4 h-4 ml-2" />
+                </button>
+
+                {/* Mobile Dropdown Menu */}
+                {isCategoryDropdownOpen && (
+                  <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 shadow-lg rounded-md z-50 max-h-60 overflow-auto">
+                    {categories.map((category) => (
+                      <button
+                        key={category}
+                        type="button"
+                        onClick={() => handleCategorySelect(category)}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                      >
+                        {category}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <button
                 type="submit"
                 className="bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-r-md transition-colors"
               >
@@ -391,7 +563,11 @@ const Navbar = () => {
                       text-base font-medium
                       py-3 px-4 rounded-md 
                       transition-colors duration-200
-                      ${isActive ? "text-gray-900 bg-gray-100" : "text-gray-700 hover:bg-gray-50"}
+                      ${
+                        isActive
+                          ? "text-gray-900 bg-gray-100"
+                          : "text-gray-700 hover:bg-gray-50"
+                      }
                     `}
                   >
                     {link.label}
@@ -399,8 +575,32 @@ const Navbar = () => {
                 ))}
               </div>
 
+              {/* User Information Display in Mobile Menu */}
+              {token && userInitials && (
+                <div className="mt-6 border-t border-gray-100 pt-4 flex items-center">
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium text-base"
+                    style={{ backgroundColor: getUserInitialsColor() }}
+                  >
+                    {userInitials}
+                  </div>
+                  <div className="ml-3">
+                    <p className="font-medium text-gray-800">
+                      {getUserDisplayName()}
+                    </p>
+                    <p className="text-xs text-gray-500">Welcome back!</p>
+                  </div>
+                </div>
+              )}
+
               {/* User Related Options in Mobile Menu */}
-              <div className="mt-6 border-t border-gray-100 pt-4">
+              <div
+                className={`${
+                  token && userInitials
+                    ? "mt-4"
+                    : "mt-6 border-t border-gray-100 pt-4"
+                }`}
+              >
                 <div className="space-y-1">
                   {token ? (
                     <>
@@ -420,14 +620,19 @@ const Navbar = () => {
                         <Package className="w-5 h-5 mr-3 text-gray-600" />
                         My Orders
                       </Link>
-                      <Link
-                        to="/wishlist"
-                        onClick={() => setIsMenuOpen(false)}
-                        className="flex items-center text-base font-medium text-gray-700 py-3 px-4 hover:bg-gray-50 rounded-md"
-                      >
-                        <Heart className="w-5 h-5 mr-3 text-gray-600" />
-                        Wishlist
-                      </Link>
+
+                      {/* Admin Panel link - only visible for admin users in mobile menu */}
+                      {isAdmin && (
+                        <Link
+                          to="/admin"
+                          onClick={() => setIsMenuOpen(false)}
+                          className="flex items-center text-base font-medium text-gray-700 py-3 px-4 hover:bg-gray-50 rounded-md"
+                        >
+                          <Settings className="w-5 h-5 mr-3 text-gray-600" />
+                          Admin Panel
+                        </Link>
+                      )}
+
                       <button
                         onClick={handleLogout}
                         className="w-full flex items-center text-base font-medium text-gray-700 py-3 px-4 hover:bg-gray-50 rounded-md text-left"
@@ -452,23 +657,31 @@ const Navbar = () => {
           </div>
         </div>
       )}
-      
+
       {/* Add these custom animations to your global CSS or style tag */}
       <style jsx>{`
         @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
         }
-        
+
         @keyframes slideIn {
-          from { transform: translateX(100%); }
-          to { transform: translateX(0); }
+          from {
+            transform: translateX(100%);
+          }
+          to {
+            transform: translateX(0);
+          }
         }
-        
+
         .animate-fadeIn {
           animation: fadeIn 0.2s ease-in-out;
         }
-        
+
         .animate-slideIn {
           animation: slideIn 0.3s ease-in-out;
         }

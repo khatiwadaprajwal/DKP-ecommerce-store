@@ -21,57 +21,194 @@ const extractUserId = (req) => {
 exports.addToCart = async (req, res) => {
   try {
     const userId = extractUserId(req);
-    const { productId } = req.body;
-
+    const { productId, quantity = 1, color, size } = req.body;
+    
+    // Validate required fields
+    if (!productId || !color || !size) {
+      return res.status(400).json({
+        msg: "Product ID, color, and size are required"
+      });
+    }
+    
+    // Check if product exists
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ msg: "Product not found" });
+    }
+    
+    // Find or create user's cart
     let cart = await Cart.findOne({ userId });
     if (!cart) {
       cart = new Cart({ userId, cartItems: [] });
       await cart.save();
     }
-
-    const existingCartItem = await CartItem.findOne({ cartId: cart._id, productId });
-    if (!existingCartItem) {
-      const cartItem = new CartItem({ cartId: cart._id, productId, quantity: 1 });
+    
+    // Check if this product variant is already in cart
+    const existingCartItem = await CartItem.findOne({
+      cartId: cart._id,
+      productId,
+      color,
+      size
+    });
+    
+    if (existingCartItem) {
+      // Update quantity if item already exists
+      existingCartItem.quantity += quantity;
+      await existingCartItem.save();
+    } else {
+      // Create new cart item
+      const cartItem = new CartItem({
+        cartId: cart._id,
+        productId,
+        quantity,
+        color,
+        size
+      });
+      
       await cartItem.save();
       cart.cartItems.push(cartItem._id);
       await cart.save();
     }
-
-    res.status(201).json({ msg: "Product added to cart", cart });
+    
+    // Return populated cart data with all fields including color, size and quantity
+    const populatedCart = await Cart.findById(cart._id)
+      .populate({
+        path: 'cartItems',
+        // Keep all the CartItem fields when populating
+        select: 'productId quantity color size',
+        populate: {
+          path: 'productId',
+          model: 'Product'
+        }
+      });
+    
+    // Format the response data to include all necessary information
+    const formattedCart = {
+      _id: populatedCart._id,
+      userId: populatedCart.userId,
+      cartItems: populatedCart.cartItems.map(item => ({
+        _id: item._id,
+        product: item.productId,
+        quantity: item.quantity,
+        color: item.color,
+        size: item.size
+      }))
+    };
+    
+    res.status(201).json({
+      success: true,
+      msg: "Product added to cart",
+      cart: formattedCart
+    });
   } catch (error) {
-    console.error(error);
+    console.error("Add to cart error:", error);
     res.status(500).json({ msg: "Internal server error" });
   }
 };
-
 // ✅ Update Cart Item Quantity
 exports.updateCartQuantity = async (req, res) => {
   try {
     const userId = extractUserId(req);
-    const { productId, quantity } = req.body;
+    const { cartItemId, quantity } = req.body;
 
-    const cart = await Cart.findOne({ userId });
-    if (!cart) {
-      return res.status(404).json({ msg: "Cart not found" });
+    // Validate input
+    if (!cartItemId || !quantity || quantity < 1) {
+      return res.status(400).json({ 
+        success: false,
+        msg: "Cart item ID and valid quantity are required" 
+      });
     }
 
+    // Find user's cart
+    const cart = await Cart.findOne({ userId });
+    if (!cart) {
+      return res.status(404).json({ 
+        success: false,
+        msg: "Cart not found" 
+      });
+    }
+
+    // Find the cart item by ID and ensure it belongs to the user's cart
     const cartItem = await CartItem.findOne({ 
-      cartId: cart._id, 
-      productId 
+      _id: cartItemId,
+      cartId: cart._id
     });
 
     if (!cartItem) {
-      return res.status(404).json({ msg: "Cart item not found" });
+      return res.status(404).json({ 
+        success: false,
+        msg: "Cart item not found" 
+      });
+    }
+
+    // Check product stock availability
+    const product = await Product.findById(cartItem.productId);
+    if (!product) {
+      return res.status(404).json({ 
+        success: false,
+        msg: "Product not found" 
+      });
+    }
+
+    // Find the specific variant to check available quantity
+    const variant = product.variants.find(
+      v => v.color === cartItem.color && v.size === cartItem.size
+    );
+
+    if (!variant) {
+      return res.status(404).json({ 
+        success: false,
+        msg: "Product variant not found" 
+      });
+    }
+
+    // Check if requested quantity is available
+    if (variant.quantity < quantity) {
+      return res.status(400).json({ 
+        success: false,
+        msg: `Only ${variant.quantity} items available for this product variant` 
+      });
     }
 
     // Update quantity
     cartItem.quantity = quantity;
     await cartItem.save();
 
-    res.status(200).json({ msg: "Cart updated successfully", cartItem });
+    // Return the updated cart with populated items
+    const updatedCart = await Cart.findOne({ userId })
+      .populate({
+        path: "cartItems",
+        select: "productId quantity color size",
+        populate: { 
+          path: "productId", 
+          select: "productName price images totalQuantity" 
+        }
+      });
+
+    // Format the response to include all necessary information
+    const formattedCart = {
+      _id: updatedCart._id,
+      userId: updatedCart.userId,
+      cartItems: updatedCart.cartItems.map(item => ({
+        _id: item._id,
+        product: item.productId,
+        quantity: item.quantity,
+        color: item.color,
+        size: item.size
+      }))
+    };
+
+    res.status(200).json({ 
+      success: true,
+      msg: "Cart updated successfully", 
+      cart: formattedCart
+    });
   } catch (error) {
     console.error("Error updating cart:", error);
-    res.status(500).json({ msg: "Internal server error" });
+    res.status(500).json({ 
+      success: false,
+      msg: "Internal server error" 
+    });
   }
 };
 
@@ -79,31 +216,76 @@ exports.updateCartQuantity = async (req, res) => {
 exports.removeFromCart = async (req, res) => {
   try {
     const userId = extractUserId(req);
-    const { productId } = req.params;
+    const { cartItemId } = req.params;
+
+    // Validate input
+    if (!cartItemId) {
+      return res.status(400).json({ 
+        success: false,
+        msg: "Cart item ID is required" 
+      });
+    }
 
     const cart = await Cart.findOne({ userId });
     if (!cart) {
-      return res.status(404).json({ msg: "Cart not found" });
+      return res.status(404).json({ 
+        success: false,
+        msg: "Cart not found" 
+      });
     }
 
-    // Find and delete the cart item
+    // Find and delete the cart item, ensuring it belongs to this user's cart
     const cartItem = await CartItem.findOneAndDelete({ 
-      cartId: cart._id, 
-      productId 
+      _id: cartItemId,
+      cartId: cart._id 
     });
 
     if (!cartItem) {
-      return res.status(404).json({ msg: "Item not found in cart" });
+      return res.status(404).json({ 
+        success: false,
+        msg: "Item not found in cart" 
+      });
     }
 
     // Remove the reference from the cart
     cart.cartItems.pull(cartItem._id);
     await cart.save();
 
-    res.status(200).json({ msg: "Item removed from cart" });
+    // Return the updated cart with populated items
+    const updatedCart = await Cart.findOne({ userId })
+      .populate({
+        path: "cartItems",
+        select: "productId quantity color size",
+        populate: { 
+          path: "productId", 
+          select: "productName price images totalQuantity" 
+        }
+      });
+
+    // Format the response to include all necessary information
+    const formattedCart = {
+      _id: updatedCart._id,
+      userId: updatedCart.userId,
+      cartItems: updatedCart.cartItems.map(item => ({
+        _id: item._id,
+        product: item.productId,
+        quantity: item.quantity,
+        color: item.color,
+        size: item.size
+      }))
+    };
+
+    res.status(200).json({ 
+      success: true,
+      msg: "Item removed from cart",
+      cart: formattedCart
+    });
   } catch (error) {
     console.error("Error removing item:", error);
-    res.status(500).json({ msg: "Internal server error" });
+    res.status(500).json({ 
+      success: false,
+      msg: "Internal server error" 
+    });
   }
 };
 
@@ -111,16 +293,40 @@ exports.removeFromCart = async (req, res) => {
 exports.getCart = async (req, res) => {
   try {
     const userId = extractUserId(req);
+    
+    // Find the cart and populate cart items with product details
     const cart = await Cart.findOne({ userId }).populate({
       path: "cartItems",
-      populate: { path: "productId", select: "productName price images totalQuantity" },
+      // Explicitly select all fields from CartItem including color, size, quantity
+      select: "productId quantity color size",
+      populate: { 
+        path: "productId", 
+        select: "productName price images totalQuantity" 
+      },
     });
-
+    
+    // Return empty cart if no cart found or cart is empty
     if (!cart || cart.cartItems.length === 0) {
       return res.status(200).json({ cart: { cartItems: [] } });
     }
-
-    res.status(200).json({ cart });
+    
+    // Format the response to include all necessary information
+    const formattedCart = {
+      _id: cart._id,
+      userId: cart.userId,
+      cartItems: cart.cartItems.map(item => ({
+        _id: item._id,
+        product: item.productId,
+        quantity: item.quantity,
+        color: item.color,
+        size: item.size
+      }))
+    };
+    
+    res.status(200).json({ 
+      success: true,
+      cart: formattedCart 
+    });
   } catch (error) {
     console.error("Error fetching cart:", error);
     res.status(500).json({ msg: "Internal server error" });
@@ -242,7 +448,7 @@ exports.placeOrderFromCart = async (req, res) => {
           intent: "sale",
           payer: { payment_method: "paypal" },
           redirect_urls: {
-            return_url: `http://localhost:3001/v1/paypal/success?orderId=${order._id}&userId=${userId}&productIds=${selectedProducts.map(p => p.productId).join(',')}`,
+            return_url: `http://localhost:5173/paypal/success?orderId=${order._id}&userId=${userId}&productIds=${selectedProducts.map(p => p.productId).join(',')}`,
             cancel_url: "http://localhost:3001/v1/paypal/cancel"
           },
           transactions: [

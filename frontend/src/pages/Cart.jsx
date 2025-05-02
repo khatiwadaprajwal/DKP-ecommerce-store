@@ -8,7 +8,9 @@ import {
   Plus, 
   Minus,
   Tag, 
-  CreditCard
+  CreditCard,
+  Palette,
+  Ruler
 } from "lucide-react";
 import axios from "axios";
 
@@ -30,39 +32,65 @@ const Cart = () => {
   }, [cartData]);
 
   // Toggle item selection
-  const toggleSelectItem = (itemId) => {
+  const toggleSelectItem = (cartItemId, productId, quantity, color, size) => {
     setSelectedItems(prev => {
-      if (prev.includes(itemId)) {
-        return prev.filter(id => id !== itemId);
+      // Check if item is already selected
+      const existingIndex = prev.findIndex(item => item.cartItemId === cartItemId);
+      
+      if (existingIndex >= 0) {
+        // Remove item if already selected
+        return prev.filter(item => item.cartItemId !== cartItemId);
       } else {
-        return [...prev, itemId];
+        // Add item with all required fields
+        return [...prev, { 
+          cartItemId, 
+          productId, 
+          quantity, 
+          color, 
+          size 
+        }];
       }
     });
   };
 
+  // Check if an item is selected
+  const isItemSelected = (cartItemId) => {
+    return selectedItems.some(item => item.cartItemId === cartItemId);
+  };
+
   // Calculate total price of selected items
-  const totalPrice = cartData
-    .filter(item => selectedItems.includes(item.itemId))
-    .reduce((total, item) => total + (item.price * item.quantity), 0);
+  const totalPrice = selectedItems.reduce((total, item) => {
+    const cartItem = cartData.find(c => c.cartItemId === item.cartItemId);
+    return total + (cartItem ? cartItem.price * cartItem.quantity : 0);
+  }, 0);
 
   // Calculate final total with delivery fee
   const finalTotal = totalPrice + (totalPrice > 0 ? delivery_fee : 0);
 
   // Handle quantity update
-  const updateQuantity = async (itemId, newQuantity) => {
+  const updateQuantity = async (cartItemId, productId, newQuantity) => {
     if (newQuantity < 1) return;
     
     setIsLoading(true);
     try {
       await axios.put(
         "http://localhost:3001/v1/updatecart",
-        { productId: itemId, quantity: newQuantity },
+        { cartItemId, quantity: newQuantity },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
       // Refresh cart data
       await fetchCartData();
       toast.success("Cart updated");
+      
+      // Update selected items if this item is selected
+      setSelectedItems(prev => prev.map(item => {
+        if (item.cartItemId === cartItemId) {
+          return { ...item, quantity: newQuantity };
+        }
+        return item;
+      }));
+      
     } catch (error) {
       console.error("Error updating quantity:", error);
       toast.error("Failed to update cart");
@@ -71,20 +99,17 @@ const Cart = () => {
     }
   };
 
-  
   // Handle item removal
-  const removeItem = async (itemId) => {
+  const removeItem = async (cartItemId, productId) => {
     setIsLoading(true);
     try {
       await axios.delete(
-        `http://localhost:3001/v1/remove/${itemId}`,
+        `http://localhost:3001/v1/remove/${cartItemId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
       // Remove from selected items if selected
-      if (selectedItems.includes(itemId)) {
-        setSelectedItems(prev => prev.filter(id => id !== itemId));
-      }
+      setSelectedItems(prev => prev.filter(item => item.cartItemId !== cartItemId));
       
       // Refresh cart data
       await fetchCartData();
@@ -101,11 +126,25 @@ const Cart = () => {
   const handleCheckout = () => {
     if (selectedItems.length === 0) {
       toast.error("Select at least one item to proceed to checkout!");
-    } else {
-      // Store selected items in localStorage or context before navigating
-      localStorage.setItem("selectedCartItems", JSON.stringify(selectedItems));
-      navigate("/placeOrder");
+      return;
     }
+    
+    // FIX: Create the correct format for the PlaceOrder component
+    const selectedProducts = selectedItems.map(item => {
+      // Find the corresponding cart item to get all needed details
+      const cartItem = cartData.find(c => c.cartItemId === item.cartItemId);
+      
+      return {
+        productId: cartItem.itemId,
+        quantity: cartItem.quantity,
+        color: cartItem.color || "",
+        size: cartItem.size || ""
+      };
+    });
+    
+    // Store selected items in localStorage with the correct format
+    localStorage.setItem("selectedCartItems", JSON.stringify(selectedProducts));
+    navigate("/placeOrder");
   };
 
   return (
@@ -143,15 +182,21 @@ const Cart = () => {
             
             {cartData.map((item) => (
               <div
-                key={item.itemId}
+                key={item.cartItemId}
                 className="bg-white shadow-md rounded-xl p-4 sm:p-5 flex items-center 
                   transform transition hover:scale-[1.01] hover:shadow-lg"
               >
                 {/* Checkbox */}
                 <input
                   type="checkbox"
-                  checked={selectedItems.includes(item.itemId)}
-                  onChange={() => toggleSelectItem(item.itemId)}
+                  checked={isItemSelected(item.cartItemId)}
+                  onChange={() => toggleSelectItem(
+                    item.cartItemId, 
+                    item.itemId, 
+                    item.quantity, 
+                    item.color, 
+                    item.size
+                  )}
                   className="mr-2 sm:mr-4 w-4 h-4 sm:w-5 sm:h-5 text-blue-600 focus:ring-blue-500"
                 />
                 
@@ -168,6 +213,23 @@ const Cart = () => {
                     {item.name}
                   </h2>
                   
+                  {/* Variant Info - Color & Size */}
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {item.color && (
+                      <div className="flex items-center text-xs sm:text-sm text-gray-600">
+                        <Palette size={14} className="mr-1 text-blue-500" />
+                        <span>Color: <span className="font-medium">{item.color}</span></span>
+                      </div>
+                    )}
+                    
+                    {item.size && (
+                      <div className="flex items-center text-xs sm:text-sm text-gray-600">
+                        <Ruler size={14} className="mr-1 text-blue-500" />
+                        <span>Size: <span className="font-medium">{item.size}</span></span>
+                      </div>
+                    )}
+                  </div>
+                  
                   {/* Pricing */}
                   <div className="flex items-center mt-1 sm:mt-2">
                     <span className="text-xs sm:text-sm text-red-500 font-bold">
@@ -179,7 +241,7 @@ const Cart = () => {
                   <div className="flex items-center mt-2 sm:mt-4">
                     <button
                       className="p-1 sm:p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition"
-                      onClick={() => updateQuantity(item.itemId, item.quantity - 1)}
+                      onClick={() => updateQuantity(item.cartItemId, item.itemId, item.quantity - 1)}
                       disabled={isLoading || item.quantity <= 1}
                     >
                       <Minus size={16} />
@@ -189,7 +251,7 @@ const Cart = () => {
                     </span>
                     <button
                       className="p-1 sm:p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition"
-                      onClick={() => updateQuantity(item.itemId, item.quantity + 1)}
+                      onClick={() => updateQuantity(item.cartItemId, item.itemId, item.quantity + 1)}
                       disabled={isLoading}
                     >
                       <Plus size={16} />
@@ -197,11 +259,21 @@ const Cart = () => {
                   </div>
                 </div>
                 
+                {/* Item Subtotal */}
+                <div className="flex flex-col items-end mr-2 sm:mr-4">
+                  <span className="text-xs sm:text-sm text-gray-700 font-semibold">
+                    Subtotal:
+                  </span>
+                  <span className="text-sm sm:text-base text-blue-600 font-bold">
+                    Rs. {(item.price * item.quantity).toFixed(2)}
+                  </span>
+                </div>
+                
                 {/* Action Buttons */}
-                <div className="flex flex-col space-y-1 sm:space-y-2 ml-2 sm:ml-4">
+                <div className="flex flex-col space-y-1 sm:space-y-2">
                   <button
                     className="text-red-400 hover:text-red-600 transition"
-                    onClick={() => removeItem(item.itemId)}
+                    onClick={() => removeItem(item.cartItemId, item.itemId)}
                     disabled={isLoading}
                     title="Remove from Cart"
                   >
@@ -231,7 +303,7 @@ const Cart = () => {
                 </div>
                 <div className="flex justify-between text-xs sm:text-sm">
                   <span className="text-gray-600">Subtotal</span>
-                  <span className="font-semibold">Rs. {totalPrice}</span>
+                  <span className="font-semibold">Rs. {totalPrice.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-xs sm:text-sm">
                   <span className="text-gray-600">Shipping Fee</span>

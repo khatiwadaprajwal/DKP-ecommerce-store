@@ -28,6 +28,7 @@ import {
 } from "./component/ProtectedRoutes";
 import NotFound from "./pages/NotFound";
 import AdminMessagesPage from "./pages/Admin/AdminMessagePage";
+import PaypalSuccess from "./pages/PaypalSuccess";
 
 const App = () => {
   return (
@@ -63,6 +64,7 @@ const App = () => {
             <Route path="/cart" element={<Cart />} />
             <Route path="/order" element={<Order />} />
             <Route path="/placeOrder" element={<PlaceOrder />} />
+            
 
             {/* Protected Customer Routes */}
             <Route element={<CustomerRoute />}>
@@ -70,7 +72,7 @@ const App = () => {
               {/* <Route path="/change-password" element={<ChangePassword />} /> */}
             </Route>
           </Route>
-
+          <Route path="/paypal/success" element={<PaypalSuccess/>} />
           {/* 404 Page */}
           <Route path="*" element={<NotFound />} />
         </Routes>

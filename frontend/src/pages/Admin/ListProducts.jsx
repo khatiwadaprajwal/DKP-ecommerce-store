@@ -14,6 +14,8 @@ const ListProducts = () => {
   const [editingVariant, setEditingVariant] = useState(null);
   const token = localStorage.getItem("token");
 
+
+  
   // Updated category options based on your product model
   const categoryOptions = [
     "All",
@@ -136,16 +138,10 @@ const ListProducts = () => {
     return matchesSearch && matchesCategory;
   });
 
-  // Function to calculate available stock
-  const getAvailableStock = (product) => {
-    return product.totalQuantity - product.totalSold;
-  };
-
   // Function to determine status based on available stock
   const getProductStatus = (product) => {
-    const availableStock = getAvailableStock(product);
-    if (availableStock <= 0) return "Out of Stock";
-    if (availableStock < 10) return "Low Stock";
+    if (product.totalQuantity <= 0) return "Out of Stock";
+    if (product.totalQuantity < 10) return "Low Stock";
     return "In Stock";
   };
 
@@ -198,10 +194,13 @@ const ListProducts = () => {
       const newVariants = [...editingProduct.variants];
       newVariants.splice(index, 1);
       
+      // Recalculate total quantity based on variants
+      const totalQuantity = newVariants.reduce((sum, variant) => sum + variant.quantity, 0);
+      
       setEditingProduct({
         ...editingProduct,
         variants: newVariants,
-        totalQuantity: newVariants.reduce((sum, variant) => sum + variant.quantity, 0)
+        totalQuantity: totalQuantity
       });
     }
   };
@@ -215,7 +214,7 @@ const ListProducts = () => {
         [field]: field === 'quantity' ? parseInt(value) : value
       };
       
-      // Recalculate total quantity
+      // Recalculate total quantity based on variants
       const totalQuantity = newVariants.reduce((sum, variant) => sum + variant.quantity, 0);
       
       setEditingProduct({
@@ -312,7 +311,6 @@ const ListProducts = () => {
                 </tr>
               ) : (
                 filteredProducts.map((product) => {
-                  const availableStock = getAvailableStock(product);
                   const status = getProductStatus(product);
 
                   return (
@@ -362,7 +360,7 @@ const ListProducts = () => {
                           Rs.{product.price.toFixed(0)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {availableStock} / {product.totalQuantity} units
+                          {product.totalQuantity} units available
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
@@ -455,7 +453,7 @@ const ListProducts = () => {
                                 </p>
                                 <p className="text-sm">
                                   <span className="font-medium">
-                                    Total Quantity:
+                                    Available Stock:
                                   </span>{" "}
                                   {product.totalQuantity}
                                 </p>
@@ -464,12 +462,6 @@ const ListProducts = () => {
                                     Total Sold:
                                   </span>{" "}
                                   {product.totalSold}
-                                </p>
-                                <p className="text-sm">
-                                  <span className="font-medium">
-                                    Available Stock:
-                                  </span>{" "}
-                                  {availableStock}
                                 </p>
                                 <p className="text-sm">
                                   <span className="font-medium">Status:</span>{" "}
@@ -526,7 +518,7 @@ const ListProducts = () => {
                                           Size
                                         </th>
                                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                          Quantity
+                                          Available Quantity
                                         </th>
                                       </tr>
                                     </thead>

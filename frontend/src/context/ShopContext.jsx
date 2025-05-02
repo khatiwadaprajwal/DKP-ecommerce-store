@@ -69,23 +69,26 @@ const ShopcontextProvider = ({ children }) => {
       setCartData([]);
       return;
     }
-
+  
     try {
       const response = await axios.get("http://localhost:3001/v1/getcart", {
         headers: { Authorization: `Bearer ${token}` },
       });
-
+  
       if (response.status === 200) {
         // Check if cart exists and has items
         if (response.data.cart && response.data.cart.cartItems) {
           const formattedCart = response.data.cart.cartItems.map((item) => ({
-            itemId: item.productId._id,
-            name: item.productId.productName,
-            price: item.productId.price,
-            image: item.productId.images,
+            cartItemId: item._id,
+            itemId: item.product._id,
+            name: item.product.productName,
+            price: item.product.price,
+            image: item.product.images,
             quantity: item.quantity,
+            color: item.color,
+            size: item.size
           }));
-
+  
           setCartData(formattedCart);
         } else {
           setCartData([]);
@@ -102,28 +105,39 @@ const ShopcontextProvider = ({ children }) => {
   }, [token]);
 
   // Add to Cart
-  const addToCart = async (itemId, size, quantity = 1) => {
-    if (!token) {
-      toast.error("Login to add items to cart");
-      return;
+const addToCart = async (productId, color, size, quantity = 1) => {
+  if (!token) {
+    toast.error("Login to add items to cart");
+    return;
+  }
+
+  try {
+    const response = await axios.post(
+      "http://localhost:3001/v1/add",
+      { 
+        productId, 
+        color, 
+        size, 
+        quantity 
+      },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    if (response.status === 201) {
+      toast.success("Product added to cart");
+      fetchCartData(); // Fetch the updated cart after adding the item
     }
-
-    try {
-      const response = await axios.post(
-        "http://localhost:3001/v1/add",
-        { productId: itemId, quantity, size },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (response.status === 201) {
-        toast.success("Product added to cart");
-        fetchCartData(); // Fetch the updated cart after adding the item
-      }
-    } catch (error) {
-      console.error("Error adding to cart:", error);
+  } catch (error) {
+    console.error("Error adding to cart:", error);
+    if (error.response?.status === 400) {
+      toast.error(error.response.data.msg || "Missing required product information");
+    } else if (error.response?.status === 404) {
+      toast.error("Product not found");
+    } else {
       toast.error("Failed to add product to cart");
     }
-  };
+  }
+};
 
   // Get Cart Count
   const getCartCount = () => {
@@ -317,6 +331,8 @@ const ShopcontextProvider = ({ children }) => {
     getProductsData();
   }, []);
 
+  // console.log("cartdata",cartData);
+
   const value = {
     products,
     currency,
@@ -365,7 +381,6 @@ const ShopcontextProvider = ({ children }) => {
     totalReviews,
     setTotalReviews,
     openPayPalPopup,
-    // Add the new search functionality
     searchQuery,
     setSearchQuery,
     handleSearchFunction,

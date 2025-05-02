@@ -74,8 +74,8 @@ exports.createOrder = async (req, res) => {
           intent: "sale",
           payer: { payment_method: "paypal" },
           redirect_urls: {
-            return_url: `http://localhost:3001/v1/paypal/success?orderId=${order._id}&userId=${userId}&productIds=${productId}`,
-            cancel_url: "http://localhost:3001/v1/paypal/cancel"
+            return_url: `http://localhost:5173/paypal/success?orderId=${order._id}&userId=${userId}&productIds=${productId}`,
+            cancel_url: "http://localhost:5173/paypal/cancel"
           },
           transactions: [
             {

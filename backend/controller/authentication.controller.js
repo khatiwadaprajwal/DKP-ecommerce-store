@@ -66,7 +66,7 @@ const verifyOTP = async (req, res) => {
         // Delete temp user
         await TempUser.deleteOne({ email });
         // Generate JWT Token
-        const token = jwt.sign({ userId: newUser._id, email: newUser.email, role: newUser.role  }, process.env.JWT_SECRET, { expiresIn: "1h" });
+        const token = jwt.sign({ userId: newUser._id, name: newUser.name , email: newUser.email, role: newUser.role  }, process.env.JWT_SECRET, { expiresIn: "1h" });
         res.status(200).json({ message: "User verified and registered successfully", token });
     } catch (error) {
         console.error("❌ Error in verifyOTP:", error.message);
@@ -85,7 +85,7 @@ const login = async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(401).json({ message: "Invalid email or password" });
 
-        const token = jwt.sign({ userId: user._id, email: user.email, role:user.role }, process.env.JWT_SECRET, { expiresIn: "1h" });
+        const token = jwt.sign({ userId: user._id,name: user.name, email: user.email, role:user.role }, process.env.JWT_SECRET, { expiresIn: "1h" });
 
         res.status(200).json({ message: "User logged in successfully", token });
     } catch (error) {

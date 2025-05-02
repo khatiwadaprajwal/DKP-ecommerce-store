@@ -8,10 +8,11 @@ import AdditionalInfo from "../component/AdditionalInfo";
 import ShippingInfo from "../component/ShippingInfo";
 import QuickOrder from "../component/QuickOrder";
 import axios from "axios";
+import { toast } from "react-toastify";
 
 const Product = () => {
   const { productId } = useParams();
-  const { addToCart, products, totalReviews } = useContext(ShopContext);
+  const { addToCart, products, totalReviews, token } = useContext(ShopContext);
   const [productData, setProductData] = useState(null);
   const [image, setImage] = useState("");
   const [selectedVariant, setSelectedVariant] = useState(null);
@@ -152,12 +153,10 @@ const Product = () => {
     if (selectedVariant) {
       addToCart(
         productData._id,
+        selectedColor,
         selectedSize,
         quantity,
-        productData.productName,
-        productData.price,
-        productData.images[0],
-        selectedColor
+        
       );
       // Reset quantity after adding to cart
       setQuantity(1);
@@ -166,6 +165,10 @@ const Product = () => {
 
   // Handle Buy Now click to open QuickOrder popup
   const handleBuyNow = () => {
+    if(!token){
+      toast.error("Login to order")
+      navigate("/login");
+    }
     if (selectedVariant) {
       setIsQuickOrderOpen(true);
     }

@@ -1,7 +1,7 @@
 import React, { useContext, useState } from "react";
 import { Link } from "react-router-dom";
 import { assets } from "../assets/assets";
-import { ShopContext } from "../context/Shopcontext";
+import { ShopContext } from "../context/ShopContext";
 
 const ForgotPassword = () => {
 
@@ -14,7 +14,6 @@ const ForgotPassword = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState(""); // "success" or "error"
-
 
   
   // Step 1: Request OTP

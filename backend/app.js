@@ -6,6 +6,7 @@ const cors = require("cors");
 
 
 const path = require('path');
+require("./utils/cleanupjob");
 
 // Express setup
 app.use(express.json());

@@ -35,31 +35,51 @@ const sendotp = async (req, res) => {
 
 // ✅ Reset Password After Verifying OTP
 const resetpassword = async (req, res) => {
-    try {
-        const { email, password, otp } = req.body;
+  try {
+      const { email, password, otp } = req.body;
 
-        // Find OTP entry
-        const otpEntry = await Otp.findOne({ email, otp });
+      // Find OTP entry
+      const otpEntry = await Otp.findOne({ email });
 
-        if (!otpEntry) return res.status(400).json({ message: "Invalid or expired OTP" });
+      if (!otpEntry) {
+          return res.status(400).json({ message: "No OTP request found for this email" });
+      }
 
-        // Hash new password
-        const hashedPassword = await bcrypt.hash(password, 10);
+      // Check if blacklisted
+      if (otpEntry.isBlacklisted && otpEntry.blacklistedUntil > new Date()) {
+          return res.status(403).json({ message: "Too many failed attempts. Try again later." });
+      }
 
-        // Update user password
-        await User.updateOne({ email }, { password: hashedPassword });
+      // Check if OTP matches and is valid
+      if (otpEntry.otp !== otp) {
+          otpEntry.otpAttempts += 1;
 
-        // Delete OTP after successful password reset
-        await Otp.deleteOne({ email });
+          // Blacklist after 10 failed attempts
+          if (otpEntry.otpAttempts >= 10) {
+              otpEntry.isBlacklisted = true;
+              otpEntry.blacklistedUntil = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+          }
 
-        console.log("✅ Password Reset Successful for:", email);
-        res.status(200).json({ message: "Password reset successfully" });
+          await otpEntry.save();
+          return res.status(400).json({ message: "Invalid OTP" });
+      }
 
-    } catch (error) {
-        console.error("❌ Error in resetpassword:", error.message);
-        res.status(500).json({ error: "Internal Server Error" });
-    }
+      // OTP matched — reset password
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await User.updateOne({ email }, { password: hashedPassword });
+
+      // Cleanup OTP entry
+      await Otp.deleteOne({ email });
+
+      console.log("✅ Password Reset Successful for:", email);
+      res.status(200).json({ message: "Password reset successfully" });
+
+  } catch (error) {
+      console.error("❌ Error in resetpassword:", error.message);
+      res.status(500).json({ error: "Internal Server Error" });
+  }
 };
+
 
 
 // ✅ Change Password (Authenticated User)
@@ -67,38 +87,52 @@ const resetpassword = async (req, res) => {
 
 const changePassword = async (req, res) => {
   try {
-    console.log("🔹 Received req.user in changePassword:", req.user);
-    console.log("🔹 Request Body:", req.body); // Check what Postman is sending
+    
+    //console.log("🔹 Request Body:", req.body); 
 
     const { oldPassword, newPassword } = req.body;
     if (!oldPassword || !newPassword) {
       return res.status(400).json({ msg: "Please provide old and new passwords" });
     }
 
-    // Find user (should already exist in req.user)
-    const user = req.user;
-    console.log("🔹 Found User:", user);
+    // Find full user from DB for latest password + attempts info
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ msg: "User not found" });
+
+    // 🔒 Check if currently locked
+    if (user.lockUntil && user.lockUntil > new Date()) {
+      const minutesLeft = Math.ceil((user.lockUntil - Date.now()) / 60000);
+      return res.status(403).json({ msg: `Too many incorrect attempts. Try again in ${minutesLeft} minute(s).` });
+    }
 
     // Compare old password
     const isMatch = await bcrypt.compare(oldPassword, user.password);
     console.log("🔹 Password Match:", isMatch);
 
     if (!isMatch) {
+      // Increment failed attempts
+      user.loginAttempts += 1;
+
+      if (user.loginAttempts >= 10) {
+        user.lockUntil = new Date(Date.now() + 60 * 60 * 1000); // lock for 1 hour
+        await user.save();
+        return res.status(403).json({ msg: "Too many incorrect attempts. You are temporarily locked out for 1 hour." });
+      }
+
+      await user.save();
       return res.status(401).json({ msg: "Old password is incorrect" });
     }
 
-    // Hash new password
+    // ✅ Success — reset lock state
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     console.log("🔹 Hashed New Password:", hashedPassword);
 
-    // Update password in DB
-    const updatedUser = await User.findByIdAndUpdate(
-      user._id,
-      { password: hashedPassword },
-      { new: true }
-    );
+    user.password = hashedPassword;
+    user.loginAttempts = 0;
+    user.lockUntil = null;
+    await user.save();
 
-    console.log("🔹 Updated User:", updatedUser);
+    console.log("🔹 Updated User:", user);
 
     res.json({ msg: "Password changed successfully" });
   } catch (error) {
@@ -106,6 +140,7 @@ const changePassword = async (req, res) => {
     res.status(500).json({ msg: "Server error", error: error.message });
   }
 };
+
 
 module.exports = { sendotp, resetpassword,changePassword };
 

@@ -14,3 +14,4 @@ db.on("error", (error) => {
 db.once("open", () => {
     console.log("Database Connected Successfully!");
 });
+module.exports = db;

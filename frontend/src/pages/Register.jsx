@@ -2,7 +2,8 @@ import React, { useState, useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { assets } from "../assets/assets";
 import axios from "axios";
-import { toast } from "react-toastify";
+// import { toast } from "react-toastify";
+import {toast } from "react-hot-toast";
 import { ShopContext } from "../context/ShopContext";
 
 const Register = () => {
@@ -244,6 +245,10 @@ const Register = () => {
           </div>
         </div>
       </div>
+      <Toaster
+  position="top-right"
+  reverseOrder={false}
+/>
     </div>
   );
 };

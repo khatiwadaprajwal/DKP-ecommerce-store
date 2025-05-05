@@ -1,11 +1,11 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { assets } from "../assets/assets";
 import { ShopContext } from "../context/ShopContext";
 
 const ForgotPassword = () => {
-
-  const {backend_url} = useContext(ShopContext);
+  const { backend_url } = useContext(ShopContext);
+  
   // Define states for multi-step process
   const [step, setStep] = useState(1); // 1: Email entry, 2: OTP verification, 3: New password
   const [email, setEmail] = useState("");
@@ -14,7 +14,13 @@ const ForgotPassword = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState(""); // "success" or "error"
+  const [isLoading, setIsLoading] = useState(false);
 
+  // Create refs for input elements to maintain focus
+  const emailInputRef = useRef(null);
+  const otpInputRef = useRef(null);
+  const passwordInputRef = useRef(null);
+  const confirmPasswordInputRef = useRef(null);
   
   // Step 1: Request OTP
   const handleRequestOTP = async (e) => {
@@ -22,16 +28,16 @@ const ForgotPassword = () => {
     
     // Reset any previous messages
     setMessage("");
+    setIsLoading(true);
     
     // Basic validation
     if (!email) {
       setMessage("Please enter your email address");
       setMessageType("error");
+      setIsLoading(false);
       return;
     }
     
-
-
     try {
       // Call the sendotp API endpoint
       const response = await fetch("http://localhost:3001/v1/sendotp", {
@@ -44,10 +50,17 @@ const ForgotPassword = () => {
       
       const data = await response.json();
       
-      if (response.status == 201 ) {
+      if (response.status === 201) {
         setMessage("OTP sent to your email. Please check your inbox.");
         setMessageType("success");
         setStep(2); // Move to OTP verification step
+        
+        // Focus on OTP input after state update
+        setTimeout(() => {
+          if (otpInputRef.current) {
+            otpInputRef.current.focus();
+          }
+        }, 0);
       } else {
         setMessage(data.error || "Failed to send OTP. Please try again.");
         setMessageType("error");
@@ -55,6 +68,8 @@ const ForgotPassword = () => {
     } catch (error) {
       setMessage("Network error. Please try again.");
       setMessageType("error");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -64,23 +79,27 @@ const ForgotPassword = () => {
     
     // Reset any previous messages
     setMessage("");
+    setIsLoading(true);
     
     // Basic validation
     if (!otp) {
       setMessage("Please enter the OTP sent to your email");
       setMessageType("error");
+      setIsLoading(false);
       return;
     }
     
     if (!password) {
       setMessage("Please enter a new password");
       setMessageType("error");
+      setIsLoading(false);
       return;
     }
     
     if (password !== confirmPassword) {
       setMessage("Passwords do not match");
       setMessageType("error");
+      setIsLoading(false);
       return;
     }
     
@@ -96,7 +115,7 @@ const ForgotPassword = () => {
       
       const data = await response.json();
       
-      if (response.status == 200 ) {
+      if (response.status === 200) {
         setMessage("Password reset successfully. You can now login with your new password.");
         setMessageType("success");
         setStep(3); // Move to completion step
@@ -107,7 +126,26 @@ const ForgotPassword = () => {
     } catch (error) {
       setMessage("Network error. Please try again.");
       setMessageType("error");
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  // Handle input changes without losing focus
+  const handleEmailChange = (e) => {
+    setEmail(e.target.value);
+  };
+
+  const handleOtpChange = (e) => {
+    setOtp(e.target.value);
+  };
+
+  const handlePasswordChange = (e) => {
+    setPassword(e.target.value);
+  };
+
+  const handleConfirmPasswordChange = (e) => {
+    setConfirmPassword(e.target.value);
   };
 
   // The Banner Component for Left Side
@@ -142,9 +180,11 @@ const ForgotPassword = () => {
           name="email"
           id="email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={handleEmailChange}
           placeholder="Enter your email"
           required
+          ref={emailInputRef}
+          autoFocus
           className="w-full px-4 py-3 border-b border-gray-300 focus:border-gray-900 focus:outline-none bg-transparent"
         />
       </div>
@@ -152,9 +192,12 @@ const ForgotPassword = () => {
       <div className="flex flex-col space-y-4">
         <button
           type="submit"
-          className="px-8 py-3 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
+          disabled={isLoading}
+          className={`px-8 py-3 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors ${
+            isLoading ? "opacity-70 cursor-not-allowed" : ""
+          }`}
         >
-          Send OTP
+          {isLoading ? "Sending..." : "Send OTP"}
         </button>
         
         <Link
@@ -176,9 +219,11 @@ const ForgotPassword = () => {
           name="otp"
           id="otp"
           value={otp}
-          onChange={(e) => setOtp(e.target.value)}
+          onChange={handleOtpChange}
           placeholder="Enter OTP from email"
           required
+          ref={otpInputRef}
+          autoFocus
           className="w-full px-4 py-3 border-b border-gray-300 focus:border-gray-900 focus:outline-none bg-transparent"
         />
       </div>
@@ -189,9 +234,10 @@ const ForgotPassword = () => {
           name="password"
           id="password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={handlePasswordChange}
           placeholder="Enter new password"
           required
+          ref={passwordInputRef}
           className="w-full px-4 py-3 border-b border-gray-300 focus:border-gray-900 focus:outline-none bg-transparent"
         />
       </div>
@@ -202,9 +248,10 @@ const ForgotPassword = () => {
           name="confirmPassword"
           id="confirmPassword"
           value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
+          onChange={handleConfirmPasswordChange}
           placeholder="Confirm new password"
           required
+          ref={confirmPasswordInputRef}
           className="w-full px-4 py-3 border-b border-gray-300 focus:border-gray-900 focus:outline-none bg-transparent"
         />
       </div>
@@ -212,14 +259,25 @@ const ForgotPassword = () => {
       <div className="flex flex-col space-y-4">
         <button
           type="submit"
-          className="px-8 py-3 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
+          disabled={isLoading}
+          className={`px-8 py-3 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors ${
+            isLoading ? "opacity-70 cursor-not-allowed" : ""
+          }`}
         >
-          Reset Password
+          {isLoading ? "Resetting..." : "Reset Password"}
         </button>
         
         <button
           type="button"
-          onClick={() => setStep(1)}
+          onClick={() => {
+            setStep(1);
+            // Focus on email input after state update
+            setTimeout(() => {
+              if (emailInputRef.current) {
+                emailInputRef.current.focus();
+              }
+            }, 0);
+          }}
           className="text-center text-blue-600 hover:underline"
         >
           Back to Email Entry

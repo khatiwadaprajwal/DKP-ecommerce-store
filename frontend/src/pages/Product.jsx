@@ -8,7 +8,7 @@ import AdditionalInfo from "../component/AdditionalInfo";
 import ShippingInfo from "../component/ShippingInfo";
 import QuickOrder from "../component/QuickOrder";
 import axios from "axios";
-import { toast } from "react-toastify";
+import { toast } from "react-hot-toast";
 
 const Product = () => {
   const { productId } = useParams();

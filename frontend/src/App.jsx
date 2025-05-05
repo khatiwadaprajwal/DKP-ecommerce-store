@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Product from "./pages/Product";
 import { ToastContainer } from "react-toastify";
+// import { Toaster } from "react-hot-toast";
 import PlaceOrder from "./pages/PlaceOrder";
 import Adminpage from "./pages/Admin/Adminpage";
 import AddProduct from "./pages/Admin/AddProduct";
@@ -29,12 +30,14 @@ import {
 import NotFound from "./pages/NotFound";
 import AdminMessagesPage from "./pages/Admin/AdminMessagePage";
 import PaypalSuccess from "./pages/PaypalSuccess";
+import { Toaster } from "react-hot-toast";
 
 const App = () => {
   return (
     <AuthProvider>
       <div>
         <ToastContainer />
+        <Toaster position="top-right" reverseOrder={false} />
         <Routes>
           {/* Auth Routes - No Layout */}
 
@@ -43,15 +46,15 @@ const App = () => {
             <Route path="/admin" element={<Adminpage />}>
               <Route index element={<Dashboard />} />
               <Route path="addProduct" element={<AddProduct />} />
-              <Route path="listProducts" element={<ListProducts/>} />
+              <Route path="listProducts" element={<ListProducts />} />
               <Route path="ordersList" element={<ListOrders />} />
               <Route path="listUsers" element={<ListUsers />} />
-              <Route path="message" element={<AdminMessagesPage/>} />
+              <Route path="message" element={<AdminMessagesPage />} />
             </Route>
           </Route>
 
           {/* Customer Routes - Some Protected */}
-          <Route  element={<UserLayout />}>
+          <Route element={<UserLayout />}>
             {/* Public Routes */}
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
@@ -64,15 +67,13 @@ const App = () => {
             <Route path="/cart" element={<Cart />} />
             <Route path="/order" element={<Order />} />
             <Route path="/placeOrder" element={<PlaceOrder />} />
-            
 
             {/* Protected Customer Routes */}
             <Route element={<CustomerRoute />}>
-              
               {/* <Route path="/change-password" element={<ChangePassword />} /> */}
             </Route>
           </Route>
-          <Route path="/paypal/success" element={<PaypalSuccess/>} />
+          <Route path="/paypal/success" element={<PaypalSuccess />} />
           {/* 404 Page */}
           <Route path="*" element={<NotFound />} />
         </Routes>

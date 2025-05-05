@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { EyeIcon, TrashIcon, InboxIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, TrashIcon, InboxIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
 
 const AdminMessagesPage = () => {
@@ -12,6 +12,13 @@ const AdminMessagesPage = () => {
   const [showMessageDetails, setShowMessageDetails] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
+  const [replyData, setReplyData] = useState({
+    email: '',
+    name: '',
+    subject: '',
+    message: ''
+  });
   const token = localStorage.getItem("token");
   
   // API base URL
@@ -76,25 +83,6 @@ const AdminMessagesPage = () => {
     }
   };
   
-  const deleteMessage = async (messageId) => {
-    if (window.confirm('Are you sure you want to delete this message?')) {
-      try {
-        // Assuming you have an endpoint to delete messages
-        // If not, you'll need to implement a different approach
-        await api.delete(`/message/${messageId}`);
-        
-        // Update local state
-        setMessages(messages.filter(msg => msg._id !== messageId));
-        setSuccessMessage('Message successfully deleted');
-        setTimeout(() => setSuccessMessage(''), 3000);
-      } catch (error) {
-        console.error('Error deleting message:', error);
-        setErrorMessage('Failed to delete message. Please try again.');
-        setTimeout(() => setErrorMessage(''), 3000);
-      }
-    }
-  };
-  
   const handleFilterSubmit = (e) => {
     e.preventDefault();
     fetchMessagesByEmail(emailFilter);
@@ -103,6 +91,46 @@ const AdminMessagesPage = () => {
   const resetFilter = () => {
     setEmailFilter('');
     fetchAllMessages();
+  };
+
+  const openReplyModal = (message) => {
+    setReplyData({
+      email: message.email,
+      name: message.name,
+      subject: `Re: Your Message`,
+      message: `Dear ${message.name},\n\nThank you for your message. `
+    });
+    setIsReplyModalOpen(true);
+  };
+
+  const closeReplyModal = () => {
+    setIsReplyModalOpen(false);
+    setReplyData({ email: '', name: '', subject: '', message: '' });
+  };
+
+  const handleReplyChange = (e) => {
+    const { name, value } = e.target;
+    setReplyData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const sendReply = async (e) => {
+    e.preventDefault();
+    
+    try {
+      await api.post('/reply', {
+        email: replyData.email,
+        subject: replyData.subject,
+        reply: replyData.message
+      });
+      
+      setSuccessMessage('Reply sent successfully');
+      setTimeout(() => setSuccessMessage(''), 3000);
+      closeReplyModal();
+    } catch (error) {
+      console.error('Error sending reply:', error);
+      setErrorMessage('Failed to send reply. Please try again.');
+      setTimeout(() => setErrorMessage(''), 3000);
+    }
   };
   
   const filteredMessages = messages.filter(message => {
@@ -336,13 +364,20 @@ const AdminMessagesPage = () => {
                           
                           <div className="mt-4 flex gap-2">
                             <button
+                              onClick={() => openReplyModal(message)}
+                              className="px-3 py-1 bg-blue-100 text-blue-800 text-xs rounded hover:bg-blue-200 flex items-center"
+                            >
+                              <InboxIcon className="h-4 w-4 mr-1" />
+                              Reply via System
+                            </button>
+                            {/* <button
                               onClick={() => {
                                 window.location.href = `mailto:${message.email}?subject=Re: Your Message&body=Dear ${message.name},%0D%0A%0D%0AThank you for your message.`;
                               }}
                               className="px-3 py-1 bg-green-100 text-green-800 text-xs rounded hover:bg-green-200 flex items-center"
                             >
                               <InboxIcon className="h-4 w-4 mr-1" />
-                              Reply via Email
+                              Open in Email Client
                             </button>
                             <button
                               onClick={() => deleteMessage(message._id)}
@@ -350,7 +385,7 @@ const AdminMessagesPage = () => {
                             >
                               <TrashIcon className="h-4 w-4 mr-1" />
                               Delete Message
-                            </button>
+                            </button> */}
                           </div>
                         </td>
                       </tr>
@@ -360,6 +395,81 @@ const AdminMessagesPage = () => {
               )}
             </tbody>
           </table>
+        </div>
+      )}
+      
+      {/* Reply Modal */}
+      {isReplyModalOpen && (
+        <div className="fixed inset-0 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-200 rounded-lg p-6 w-full max-w-lg max-h-screen overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium">Reply to {replyData.name}</h3>
+              <button 
+                onClick={closeReplyModal}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={sendReply}>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  To
+                </label>
+                <input
+                  type="email"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+                  value={replyData.email}
+                  readOnly
+                />
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Subject
+                </label>
+                <input
+                  type="text"
+                  name="subject"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  value={replyData.subject}
+                  onChange={handleReplyChange}
+                  required
+                />
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Message
+                </label>
+                <textarea
+                  name="message"
+                  rows="6"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  value={replyData.message}
+                  onChange={handleReplyChange}
+                  required
+                ></textarea>
+              </div>
+              
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200"
+                  onClick={closeReplyModal}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Send Reply
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

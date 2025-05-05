@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from "react";
 import { ShopContext } from "../context/ShopContext";
 import { Link } from "react-router-dom";
-import { ToastContainer, toast } from "react-toastify";
+import {Toaster, toast } from "react-hot-toast";
 import { 
   ShoppingCart, 
   Trash2, 
@@ -73,7 +73,7 @@ const Cart = () => {
     
     setIsLoading(true);
     try {
-      await axios.put(
+      const response = await axios.put(
         "http://localhost:3001/v1/updatecart",
         { cartItemId, quantity: newQuantity },
         { headers: { Authorization: `Bearer ${token}` } }
@@ -81,8 +81,15 @@ const Cart = () => {
       
       // Refresh cart data
       await fetchCartData();
-      toast.success("Cart updated");
+      if(response.status == 200){
+        toast.success("Cart updated");
+      }
       
+
+      if(response.status== 400){
+        toast.error("Insufficient Quantity");
+      }
+
       // Update selected items if this item is selected
       setSelectedItems(prev => prev.map(item => {
         if (item.cartItemId === cartItemId) {
@@ -337,17 +344,10 @@ const Cart = () => {
       )}
       
       {/* Toast Container */}
-      <ToastContainer 
-        position="bottom-right" 
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
+      <Toaster
+  position="bottom-right"
+  reverseOrder={false}
+/>
     </div>
   );
 };

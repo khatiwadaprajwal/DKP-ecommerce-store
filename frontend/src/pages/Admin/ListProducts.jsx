@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { Link } from "react-router-dom";
 import { PencilIcon, TrashIcon, EyeIcon, PlusIcon } from "@heroicons/react/24/outline";
 import axios from "axios";
+import { ShopContext } from "../../context/ShopContext";
 
 const ListProducts = () => {
   const [products, setProducts] = useState([]);
@@ -13,7 +14,7 @@ const ListProducts = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [editingVariant, setEditingVariant] = useState(null);
   const token = localStorage.getItem("token");
-
+  const {backend_url}= useContext(ShopContext);
 
   
   // Updated category options based on your product model
@@ -33,7 +34,7 @@ const ListProducts = () => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const response = await axios.get("http://localhost:3001/v1/products");
+        const response = await axios.get(`${backend_url}/v1/products`);
 
         setProducts(response.data.products);
         setError(null);
@@ -52,7 +53,7 @@ const ListProducts = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this product?")) {
       try {
-        await axios.delete(`http://localhost:3001/v1/product/${id}`, {
+        await axios.delete(`${backend_url}/v1/product/${id}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -70,7 +71,7 @@ const ListProducts = () => {
     if (editingProduct) {
       try {
         await axios.put(
-          `http://localhost:3001/v1/product/${editingProduct._id}`,
+          `${backend_url}/v1/product/${editingProduct._id}`,
           editingProduct,
           {
             headers: {
@@ -104,7 +105,7 @@ const ListProducts = () => {
 
     try {
       const response = await axios.put(
-        `http://localhost:3001/v1/product/${productId}`,
+        `${backend_url}/v1/product/${productId}`,
         updatedProduct,
         {
           headers: {
@@ -321,7 +322,7 @@ const ListProducts = () => {
                             <div className="h-10 w-10 bg-gray-200 rounded-md mr-3">
                               {product.images && product.images.length > 0 && (
                                 <img
-                                  src={`http://localhost:3001/public/${product.images[0]}`}
+                                  src={`${backend_url}/public/${product.images[0]}`}
                                   alt={product.productName}
                                   className="h-10 w-10 object-cover rounded-md"
                                   onError={(e) => {
@@ -481,7 +482,7 @@ const ListProducts = () => {
                                         className="h-16 w-16 bg-gray-200 rounded-md overflow-hidden"
                                       >
                                         <img
-                                          src={`http://localhost:3001/public/${img}`}
+                                          src={`${backend_url}/public/${img}`}
                                           alt={`${product.productName} ${index}`}
                                           className="h-16 w-16 object-cover"
                                           onError={(e) => {
@@ -713,7 +714,7 @@ const ListProducts = () => {
                       className="relative h-16 w-16 bg-gray-200 rounded-md overflow-hidden group"
                     >
                       <img
-                        src={`http://localhost:3001/public/${img}`}
+                        src={`${backend_url}/public/${img}`}
                         alt={`${editingProduct.productName} ${index}`}
                         className="h-16 w-16 object-cover"
                         onError={(e) => {
@@ -757,7 +758,7 @@ const ListProducts = () => {
                       // Upload the image using axios
                       axios
                         .post(
-                          "http://localhost:3001/v1/upload-product-image",
+                          `${backend_url}/v1/upload-product-image`,
                           formData,
                           {
                             headers: {

@@ -20,7 +20,8 @@ const Cart = () => {
     fetchCartData,
     delivery_fee,
     navigate,
-    token
+    token, 
+    backend_url
   } = useContext(ShopContext);
 
   const [selectedItems, setSelectedItems] = useState([]);
@@ -74,7 +75,7 @@ const Cart = () => {
     setIsLoading(true);
     try {
       const response = await axios.put(
-        "http://localhost:3001/v1/updatecart",
+        `${backend_url}/v1/updatecart`,
         { cartItemId, quantity: newQuantity },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -111,7 +112,7 @@ const Cart = () => {
     setIsLoading(true);
     try {
       await axios.delete(
-        `http://localhost:3001/v1/remove/${cartItemId}`,
+        `${backend_url}/v1/remove/${cartItemId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
@@ -158,10 +159,10 @@ const Cart = () => {
     <div className="container mx-auto px-4 py-4 sm:py-6 md:py-8 min-h-screen">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6 md:mb-8 mt-8">
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 flex items-center mb-2 sm:mb-0">
+        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 flex items-center mb-2 sm:mb-0">
           <ShoppingCart className="mr-2 sm:mr-4 text-blue-600" size={24} />
           Shopping Cart
-        </h1>
+        </h2>
         <p className="text-sm sm:text-base text-gray-600">{cartData.length} Items</p>
       </div>
 
@@ -209,16 +210,16 @@ const Cart = () => {
                 
                 {/* Product Image */}
                 <img
-                  src={`http://localhost:3001/public/${item.image[0]}`}
+                  src={`${backend_url}/public/${item.image[0]}`}
                   alt={item.name}
                   className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 object-cover rounded-lg mr-3 sm:mr-6"
                 />
                 
                 {/* Product Details */}
                 <div className="flex-1">
-                  <h2 className="text-sm sm:text-base md:text-xl font-semibold text-gray-900 truncate">
+                  <h3 className="text-sm sm:text-base md:text-xl font-semibold text-gray-900 truncate">
                     {item.name}
-                  </h2>
+                  </h3>
                   
                   {/* Variant Info - Color & Size */}
                   <div className="flex flex-wrap gap-2 mt-1">
@@ -344,10 +345,10 @@ const Cart = () => {
       )}
       
       {/* Toast Container */}
-      <Toaster
+      {/* <Toaster
   position="bottom-right"
   reverseOrder={false}
-/>
+/> */}
     </div>
   );
 };

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { EyeIcon, ArrowRightIcon, ClockIcon } from 'lucide-react';
+import { ShopContext } from '../../context/ShopContext';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -16,7 +17,7 @@ const Dashboard = () => {
   const [newProducts, setNewProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
+  const { backend_url} = useContext(ShopContext);
   const token = localStorage.getItem("token");
 
   useEffect(() => {
@@ -25,11 +26,11 @@ const Dashboard = () => {
         setLoading(true);
         
         // Fetch all products
-        const productsResponse = await axios.get('http://localhost:3001/v1/products');
+        const productsResponse = await axios.get(`${backend_url}/v1/products`);
         const products = productsResponse.data.products || [];
         
         // Fetch all orders
-        const ordersResponse = await axios.get("http://localhost:3001/v1/getallorder", {
+        const ordersResponse = await axios.get(`${backend_url}/v1/getallorder`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -305,7 +306,7 @@ const Dashboard = () => {
                   <div className="w-16 h-16 bg-gray-200 rounded-md mr-4 flex items-center justify-center text-xs text-gray-500">
                     {product.images && (
                       <img
-                        src={`http://localhost:3001/public/${product.images[0]}`}
+                        src={`${backend_url}/public/${product.images[0]}`}
                         alt={product.name}
                         className="h-14 w-14 object-cover rounded-md"
                         onError={(e) => {
@@ -362,7 +363,7 @@ const Dashboard = () => {
                           <div className="h-10 w-10 bg-gray-200 rounded-md mr-3">
                             {product.images && product.images.length > 0 && (
                               <img
-                                src={`http://localhost:3001/public/${product.images[0]}`}
+                                src={`${backend_url}/public/${product.images[0]}`}
                                 alt={product.name}
                                 className="h-10 w-10 object-cover rounded-md"
                                 onError={(e) => {
@@ -434,7 +435,7 @@ const Dashboard = () => {
                   <div className="w-16 h-16 bg-gray-200 rounded-md mr-4 flex items-center justify-center text-xs text-gray-500">
                     {product.images && product.images.length > 0 && (
                       <img
-                        src={`http://localhost:3001/public/${product.images[0]}`}
+                        src={`${backend_url}/public/${product.images[0]}`}
                         alt={product.name}
                         className="h-14 w-14 object-cover rounded-md"
                         onError={(e) => {

@@ -14,7 +14,8 @@ const Collection = () => {
     setFilterProducts, 
     category,
     gender,
-    resetAllFilters
+    resetAllFilters,
+    backend_url
   } = useContext(ShopContext);
 
   const [showFilter, setShowFilter] = useState(false);
@@ -134,9 +135,9 @@ const Collection = () => {
       <Breadcrumbs  className='text-lg' items={getBreadcrumbItems()} />
 
       <div className="container mx-auto px-4 py-4">
-        <h1 className="text-3xl font-bold mb-2 text-gray-800">
+        <h2 className="text-3xl font-bold mb-2 text-gray-800">
           {collectionTitle}
-        </h1>
+        </h2>
 
         {/* Filter and Sort Controls */}
         <div className="filter-sort flex justify-between items-center mb-0">

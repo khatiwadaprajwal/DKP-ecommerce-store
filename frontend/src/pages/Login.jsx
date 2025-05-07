@@ -17,7 +17,7 @@ const Login = () => {
   const [accountLocked, setAccountLocked] = useState(false);
   
   const navigate = useNavigate();
-  const { setToken } = useContext(ShopContext);
+  const { setToken, backend_url } = useContext(ShopContext);
   const { setUser } = useAuth();
 
   // Handle countdown timer for locked accounts
@@ -57,7 +57,7 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      const response = await axios.post("http://localhost:3001/v1/auth/login", {
+      const response = await axios.post(`${backend_url}/v1/auth/login`, {
         email,
         password,
       });
@@ -137,7 +137,7 @@ const Login = () => {
 
         <div className="w-full md:w-1/2 flex items-center justify-center px-6 py-12">
           <div className="w-full max-w-md">
-            <h1 className="text-3xl font-bold mb-2">Log in to Dkp</h1>
+            <h2 className="text-3xl font-bold mb-2">Log in to Dkp</h2>
             <p className="text-gray-600 mb-8">Enter your details below</p>
 
             {error && (

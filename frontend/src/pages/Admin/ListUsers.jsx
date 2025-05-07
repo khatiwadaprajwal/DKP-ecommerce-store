@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { PencilIcon, TrashIcon, EyeIcon } from "@heroicons/react/24/outline";
 import axios from "axios";
+import { ShopContext } from "../../context/ShopContext";
 
 const ListUsers = () => {
   const [users, setUsers] = useState([]);
@@ -14,12 +15,13 @@ const ListUsers = () => {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const token = localStorage.getItem("token");
+  const {backend_url}= useContext(ShopContext);
 
   // Updated to match the mongoose model roles
   const roleOptions = ["All", "SuperAdmin", "Admin", "Customer"];
 
   // API base URL
-  const API_BASE_URL = "http://localhost:3001/v1";
+  const API_BASE_URL = `${backend_url}/v1`;
 
   // Setup axios instance with default headers
   const api = axios.create({

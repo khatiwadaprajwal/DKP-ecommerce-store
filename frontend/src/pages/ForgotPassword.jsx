@@ -40,7 +40,7 @@ const ForgotPassword = () => {
     
     try {
       // Call the sendotp API endpoint
-      const response = await fetch("http://localhost:3001/v1/sendotp", {
+      const response = await fetch(`${backend_url}/v1/sendotp`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -105,7 +105,7 @@ const ForgotPassword = () => {
     
     try {
       // Call the resetpassword API endpoint
-      const response = await fetch("http://localhost:3001/v1/resetpassword", {
+      const response = await fetch(`${backend_url}/v1/resetpassword`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -326,11 +326,11 @@ const ForgotPassword = () => {
         {/* Right Side - Forms */}
         <div className="w-full md:w-1/2 flex items-center justify-center px-6 py-12">
           <div className="w-full max-w-md">
-            <h1 className="text-3xl font-bold mb-2">
+            <h2 className="text-3xl font-bold mb-2">
               {step === 1 && "Forgot Password"}
               {step === 2 && "Verify & Reset"}
               {step === 3 && "Password Reset Complete"}
-            </h1>
+            </h2>
             
             <p className="text-gray-600 mb-8">
               {step === 1 && "Enter the email address associated with your account"}

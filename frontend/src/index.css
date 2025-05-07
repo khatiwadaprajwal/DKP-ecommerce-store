@@ -46,3 +46,62 @@ button:hover {
   .font-body {
     font-family: var(--font-body);
   }
+
+
+  /* Base font-size responsive system */
+  :root {
+    --base-font-size: 12px;
+    font-size: var(--base-font-size);
+  }
+  
+  /* Use relative units for text elements */
+  h1 { font-size: 3rem; }
+  h2 { font-size: 2rem; }
+  h3 { font-size: 1.25rem; }
+  p, span, a, button, input, select { font-size: 1rem; }
+  small { font-size: 0.875rem; }
+  
+  /* Font-size adjustment for browser settings */
+  @media screen and (max-width: 768px) {
+    :root {
+      --base-font-size: 10px;
+    }
+  }
+  
+  /* Container constraints to prevent extreme spreading */
+  .container {
+    max-width: 100%;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  
+  /* Prevent text from getting too large */
+  @media screen and (min-width: 1024px) {
+    .container {
+      max-width: 1280px;
+    }
+  }
+  
+  /* Ensure minimum heights don't break with larger fonts */
+  .min-h-100px {
+    min-height: 6.25rem; /* 100px in rem */
+  }
+  
+  /* Font size adjust class for components that need special handling */
+  .font-size-adjust {
+    text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%;
+  }
+  
+  /* Button and control scaling */
+  button, input, select {
+    line-height: 1.5;
+  }
+  
+  /* Ensure SVG icons scale with text */
+  svg {
+    width: 1em;
+    height: 1em;
+    vertical-align: middle;
+  }

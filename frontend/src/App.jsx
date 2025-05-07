@@ -31,6 +31,7 @@ import NotFound from "./pages/NotFound";
 import AdminMessagesPage from "./pages/Admin/AdminMessagePage";
 import PaypalSuccess from "./pages/PaypalSuccess";
 import { Toaster } from "react-hot-toast";
+import Profile from "./pages/profile";
 
 const App = () => {
   return (
@@ -64,13 +65,15 @@ const App = () => {
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/product/:productId" element={<Product />} />
-            <Route path="/cart" element={<Cart />} />
-            <Route path="/order" element={<Order />} />
+            <Route path="/profile" element={<Profile/>} />
             <Route path="/placeOrder" element={<PlaceOrder />} />
+              <Route path="/order" element={<Order />} />
+              <Route path="/cart" element={<Cart />} />
 
             {/* Protected Customer Routes */}
             <Route element={<CustomerRoute />}>
               {/* <Route path="/change-password" element={<ChangePassword />} /> */}
+              
             </Route>
           </Route>
           <Route path="/paypal/success" element={<PaypalSuccess />} />

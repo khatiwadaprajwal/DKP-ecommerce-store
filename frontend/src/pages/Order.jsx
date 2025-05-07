@@ -11,7 +11,7 @@ import axios from "axios";
 import PrintInvoice from "../component/PrintInvoice";
 
 const Order = () => {
-  const { currency = "Rs", navigate, token } = useContext(ShopContext);
+  const { currency = "Rs", navigate, token, backend_url } = useContext(ShopContext);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,7 +23,7 @@ const Order = () => {
       try {
         setLoading(true);
         const response = await axios.get(
-          "http://localhost:3001/v1/myorders",
+          `${backend_url}/v1/myorders`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
@@ -62,7 +62,7 @@ const Order = () => {
       if (!confirmed) return;
 
       const response = await axios.delete(
-        `http://localhost:3001/v1/cancel/${orderId}`,
+        `${backend_url}/v1/cancel/${orderId}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -246,7 +246,7 @@ const Order = () => {
                           <div className="w-16 h-16 rounded flex items-center justify-center">
                             {item.productId?.images && item.productId.images.length > 0 ? (
                               <img
-                                src={`http://localhost:3001/public/${item.productId.images[0]}`}
+                                src={`${backend_url}/public/${item.productId.images[0]}`}
                                 alt={item.productId?.productName || "Product"}
                                 className="w-16 h-16 object-cover"
                               />

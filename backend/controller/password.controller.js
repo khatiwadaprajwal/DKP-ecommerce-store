@@ -134,7 +134,7 @@ const changePassword = async (req, res) => {
 
     console.log("🔹 Updated User:", user);
 
-    res.json({ msg: "Password changed successfully" });
+    res.status(200).json({ msg: "Password changed successfully" });
   } catch (error) {
     console.error("❌ Error in changePassword:", error);
     res.status(500).json({ msg: "Server error", error: error.message });

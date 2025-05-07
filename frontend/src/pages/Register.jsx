@@ -2,14 +2,17 @@ import React, { useState, useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { assets } from "../assets/assets";
 import axios from "axios";
-// import { toast } from "react-toastify";
-import {toast } from "react-hot-toast";
+import { toast, Toaster } from "react-hot-toast";
 import { ShopContext } from "../context/ShopContext";
+import { Eye, EyeOff } from "lucide-react";
 
 const Register = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showOTP, setShowOTP] = useState(false);
   const [otp, setOtp] = useState("");
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutes in seconds
@@ -18,14 +21,48 @@ const Register = () => {
   const { setToken, token, backend_url } = useContext(ShopContext);
   const navigate = useNavigate();
 
+  // Password validation function
+  const validatePassword = (password) => {
+    const errors = [];
+    
+    if (password.length < 6) {
+      errors.push("Password must be at least 6 characters long");
+    }
+    
+    if (!/[A-Z]/.test(password)) {
+      errors.push("Password must contain at least one capital letter");
+    }
+    
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+      errors.push("Password must contain at least one special character");
+    }
+    
+    return errors;
+  };
+
   // Handle registration submission
   const handleRegister = async (e) => {
     e.preventDefault();
+    
+    // Validate password
+    const passwordErrors = validatePassword(password);
+    
+    if (passwordErrors.length > 0) {
+      passwordErrors.forEach(error => toast.error(error));
+      return;
+    }
+    
+    // Check if passwords match
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+    
     setLoading(true);
 
     try {
       const response = await axios.post(
-        "http://localhost:3001/v1/auth/signup",
+        `${backend_url}/v1/auth/signup`,
         {
           name,
           email,
@@ -59,7 +96,7 @@ const Register = () => {
 
     try {
       const response = await axios.post(
-        "http://localhost:3001/v1/auth/verify-otp",
+        `${backend_url}/v1/auth/verify-otp`,
         {
           email,
           otp,
@@ -94,14 +131,18 @@ const Register = () => {
       .padStart(2, "0")}`;
   };
 
+  // Toggle password visibility
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
+  // Toggle confirm password visibility
+  const toggleConfirmPasswordVisibility = () => {
+    setShowConfirmPassword(!showConfirmPassword);
+  };
+
   return (
     <div className="min-h-screen flex flex-col text-lg">
-      {/* Top Banner (commented out for consistency with login page) */}
-      {/* <div className="bg-black text-white py-2 px-4 text-center text-sm">
-        Summer Sale For All Swim Suits And Free Express Delivery - OFF 50%!{" "}
-        <span className="font-semibold">ShopNow</span>
-      </div> */}
-
       {/* Registration Section */}
       <div className="flex flex-1 flex-col md:flex-row">
         {/* Left Side - Image */}
@@ -118,7 +159,7 @@ const Register = () => {
           <div className="w-full max-w-md">
             {!showOTP ? (
               <>
-                <h1 className="text-3xl font-bold mb-2">Create Account</h1>
+                <h2 className="text-3xl font-bold mb-2">Create Account</h2>
                 <p className="text-gray-600 mb-8">Enter your details below</p>
 
                 <form onSubmit={handleRegister} className="space-y-6">
@@ -148,9 +189,9 @@ const Register = () => {
                     />
                   </div>
 
-                  <div>
+                  <div className="relative">
                     <input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       name="password"
                       id="password"
                       value={password}
@@ -159,6 +200,45 @@ const Register = () => {
                       required
                       className="w-full px-4 py-3 border-b border-gray-300 focus:border-gray-900 focus:outline-none bg-transparent"
                     />
+                    <button
+                      type="button"
+                      onClick={togglePasswordVisibility}
+                      className="absolute right-2 top-3 text-gray-500"
+                    >
+                      {showPassword ? (
+                        <EyeOff size={20} />
+                      ) : (
+                        <Eye size={20} />
+                      )}
+                    </button>
+                  </div>
+                  
+                  <div className="text-xs text-gray-500">
+                    Password must be at least 6 characters with one capital letter and one special character
+                  </div>
+
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      name="confirmPassword"
+                      id="confirmPassword"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm Password"
+                      required
+                      className="w-full px-4 py-3 border-b border-gray-300 focus:border-gray-900 focus:outline-none bg-transparent"
+                    />
+                    <button
+                      type="button"
+                      onClick={toggleConfirmPasswordVisibility}
+                      className="absolute right-2 top-3 text-gray-500"
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff size={20} />
+                      ) : (
+                        <Eye size={20} />
+                      )}
+                    </button>
                   </div>
 
                   <div>
@@ -245,10 +325,7 @@ const Register = () => {
           </div>
         </div>
       </div>
-      <Toaster
-  position="top-right"
-  reverseOrder={false}
-/>
+      <Toaster position="top-right" reverseOrder={false} />
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useState, createContext, useEffect } from "react";
-import { ToastContainer, toast } from "react-toastify";
+import {  toast } from "react-hot-toast";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
@@ -9,7 +9,7 @@ export const ShopContext = createContext();
 const ShopcontextProvider = ({ children }) => {
   const currency = "Rs";
   const delivery_fee = 0;
-  const backend_url = import.meta.env.VITE_BACKEND_URL;
+  const backend_url = "http://localhost:3001";
   const [token, setToken] = useState(localStorage.getItem("token"));
   const [user, setUser] = useState(null);
   const [search, setSearch] = useState("");
@@ -71,7 +71,7 @@ const ShopcontextProvider = ({ children }) => {
     }
   
     try {
-      const response = await axios.get("http://localhost:3001/v1/getcart", {
+      const response = await axios.get(`${backend_url}/v1/getcart`, {
         headers: { Authorization: `Bearer ${token}` },
       });
   
@@ -113,7 +113,7 @@ const addToCart = async (productId, color, size, quantity = 1) => {
 
   try {
     const response = await axios.post(
-      "http://localhost:3001/v1/add",
+      `${backend_url}/v1/add`,
       { 
         productId, 
         color, 
@@ -259,7 +259,7 @@ const addToCart = async (productId, color, size, quantity = 1) => {
 
   const getProductsData = async () => {
     try {
-      const response = await axios.get("http://localhost:3001/v1/products");
+      const response = await axios.get(`${backend_url}/v1/products`);
 
       if (response.status === 200) {
         setProducts(response.data.products);

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import axios from 'axios'; 
 import { toast } from "react-hot-toast";
+import { ShopContext } from '../../context/ShopContext';
 
 const AddProduct = () => {
   const [product, setProduct] = useState({
@@ -25,6 +26,9 @@ const AddProduct = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const token = localStorage.getItem('token');
+  const {backend_url} = useContext(ShopContext)
+
+  console.log(backend_url)
   
   const sizeOptions = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
   const colorOptions = ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Gray', 'Brown'];
@@ -211,7 +215,7 @@ const AddProduct = () => {
 
       console.log('Submitting product:', product);
   
-      const response = await axios.post("http://localhost:3001/v1/product", formData, {
+      const response = await axios.post(`${backend_url}/v1/product`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'

@@ -41,7 +41,7 @@ const LocationPicker = ({ onLocationSelected }) => {
 };
 
 const QuickOrder = ({ isOpen, onClose, productData, selectedSize, selectedColor, quantity }) => {
-  const { token, delivery_fee, fetchCartData, openPayPalPopup } = useContext(ShopContext);
+  const { token, delivery_fee, fetchCartData, openPayPalPopup, backend_url } = useContext(ShopContext);
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("Cash");
@@ -158,7 +158,7 @@ const QuickOrder = ({ isOpen, onClose, productData, selectedSize, selectedColor,
       
       // Place order - Update endpoint to match your controller
       const response = await axios.post(
-        "http://localhost:3001/v1/place",
+        `${backend_url}/v1/place`,
         orderData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -381,7 +381,7 @@ const QuickOrder = ({ isOpen, onClose, productData, selectedSize, selectedColor,
                   {productData && (
                     <div className="flex items-center">
                       <img
-                        src={`http://localhost:3001/public/${productData.images[0]}`}
+                        src={`${backend_url}/public/${productData.images[0]}`}
                         alt={productData.productName}
                         className="w-16 h-16 object-cover rounded-md mr-3"
                       />

@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { EyeIcon, TrashIcon, InboxIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
+import { ShopContext } from '../../context/ShopContext';
 
 const AdminMessagesPage = () => {
   const [messages, setMessages] = useState([]);
@@ -20,9 +21,9 @@ const AdminMessagesPage = () => {
     message: ''
   });
   const token = localStorage.getItem("token");
-  
+  const { backend_url} = useContext(ShopContext);  
   // API base URL
-  const API_BASE_URL = 'http://localhost:3001/v1';
+  const API_BASE_URL = backend_url;
   
   // Setup axios instance with default headers
   const api = axios.create({
@@ -36,7 +37,7 @@ const AdminMessagesPage = () => {
   const fetchAllMessages = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/all");
+      const response = await api.get("v1/all");
       setMessages(response.data);
       setErrorMessage('');
     } catch (error) {
@@ -55,7 +56,7 @@ const AdminMessagesPage = () => {
     
     try {
       setLoading(true);
-      const response = await api.get(`/msg/${email}`);
+      const response = await api.get(`v1/msg/${email}`);
       setMessages(response.data);
       setErrorMessage('');
     } catch (error) {
@@ -117,7 +118,7 @@ const AdminMessagesPage = () => {
     e.preventDefault();
     
     try {
-      await api.post('/reply', {
+      await api.post('v1/reply', {
         email: replyData.email,
         subject: replyData.subject,
         reply: replyData.message

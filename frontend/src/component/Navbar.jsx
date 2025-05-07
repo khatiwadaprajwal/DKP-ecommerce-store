@@ -266,9 +266,9 @@ const Navbar = () => {
             setIsMenuOpen(false);
           }}
         >
-          <h1 className="text-3xl font-bold tracking-wider text-gray-800">
+          <h2 className="text-3xl font-bold tracking-wider text-gray-800">
             DKP
-          </h1>
+          </h2>
           <p className="text-xs text-gray-600 font-bold tracking-widest">
             CLOTHING
           </p>
@@ -341,7 +341,7 @@ const Navbar = () => {
               type="submit"
               className="bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-r-md transition-colors"
             >
-              <Search className="w-4 h-4" />
+              <Search className="w-4 h-4 text-2xl" />
             </button>
           </form>
           <div className="flex"></div>
@@ -355,7 +355,7 @@ const Navbar = () => {
             className="md:hidden hover:bg-gray-100 p-2 rounded-full transition-colors"
             aria-label="Toggle search"
           >
-            <Search className="w-5 h-5 text-gray-700" />
+            <Search className="w-5 h-5 text-gray-700 text-2xl" />
           </button>
 
           {/* Cart */}
@@ -363,7 +363,7 @@ const Navbar = () => {
             to="/cart"
             className="relative hover:bg-gray-200 p-2.5 rounded-full transition-colors"
           >
-            <ShoppingCart className="w-6 h-6 text-gray-800" />
+            <ShoppingCart className="w-6 h-6 text-gray-800 text-2xl" />
             {getCartCount() > 0 && (
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                 {getCartCount()}
@@ -381,14 +381,14 @@ const Navbar = () => {
             >
               {token && userInitials ? (
                 <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium text-xl"
+                  className="w-11 h-11 rounded-full flex items-center justify-center text-white font-medium text-2xl"
                   style={{ backgroundColor: getUserInitialsColor() }}
                 >
                   {userInitials}
                 </div>
               ) : (
                 <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gray-200">
-                    <User className="w-6 h-6 text-gray-800" />
+                    <User className="w-6 h-6 text-gray-800 text-2xl" />
                 </div>
                 
               )}
@@ -472,9 +472,9 @@ const Navbar = () => {
             aria-label="Toggle menu"
           >
             {isMenuOpen ? (
-              <X className="w-6 h-6 text-gray-700" />
+              <X className="w-6 h-6 text-gray-700 text-3xl" />
             ) : (
-              <Menu className="w-6 h-6 text-gray-700" />
+              <Menu className="w-6 h-6 text-gray-700 text-2xl" />
             )}
           </button>
         </div>
@@ -526,7 +526,7 @@ const Navbar = () => {
                 type="submit"
                 className="bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-r-md transition-colors"
               >
-                <Search className="w-4 h-4" />
+                <Search className="w-4 h-4 text-2xl" />
               </button>
             </div>
           </form>
@@ -536,11 +536,11 @@ const Navbar = () => {
       {/* Mobile Menu */}
       {isMenuOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-40 z-40 md:hidden transition-all duration-300 ease-in-out"
+          className="fixed inset-0 bg-opacity-40 z-40 md:hidden transition-all duration-300 ease-in-out"
           onClick={() => setIsMenuOpen(false)}
         >
           <div
-            className="absolute right-0 top-0 bottom-0 w-3/4 bg-white shadow-lg transform translate-x-0 transition-transform duration-300 ease-in-out animate-slideIn"
+            className="absolute right-0 top-0 bottom-0 w-2/3 bg-gray-100 shadow-lg transform translate-x-0 transition-transform duration-300 ease-in-out animate-slideIn"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-4 border-b border-gray-100">

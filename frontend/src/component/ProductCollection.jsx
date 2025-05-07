@@ -59,7 +59,7 @@ const ProductCollection = ({ title, collectionType }) => {
   
   return (
     <div className=''>
-      <h3 className="text-3xl font-bold mb-8">{title}</h3>
+      <h2 className="text-3xl font-bold mb-8">{title}</h2>
       <Swiper
         modules={[Navigation]}
         spaceBetween={20}
@@ -88,8 +88,8 @@ const ProductCollection = ({ title, collectionType }) => {
           <SwiperSlide key={product._id} className=''>
             <ProductItem
               id={product._id}
-              image={product.images[0]} // Updated from image[0] to images[0]
-              name={product.productName} // Updated from name to productName
+              image={product.images[0]} 
+              name={product.productName}
               price={product.price}
               rating={product.averageRating} // Added rating
             />

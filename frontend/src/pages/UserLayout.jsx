@@ -5,13 +5,13 @@ import { Outlet } from "react-router-dom";
 
 const UserLayout = () => {
   return (
-    <>
+    <div className="flex flex-col min-h-screen font-size-adjust">
       <Navbar />
-      <div className="min-h-100px">
+      <main className="flex-grow">
         <Outlet />
-      </div>
+      </main>
       <Footer />
-    </>
+    </div>
   );
 };
 

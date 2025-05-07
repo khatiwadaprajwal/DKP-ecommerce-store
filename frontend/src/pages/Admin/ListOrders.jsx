@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { EyeIcon, MapPinIcon } from 'lucide-react';
 import axios from "axios";
+import { ShopContext } from "../../context/ShopContext";
 
 const ListOrders = () => {
   const [orders, setOrders] = useState([]);
@@ -11,6 +12,7 @@ const ListOrders = () => {
   const [error, setError] = useState(null);
 
   const token = localStorage.getItem("token");
+  const {backend_url}= useContext(ShopContext);
   
   const statusOptions = ['All', 'Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
   const paymentMethods = ['Cash', 'PayPal'];
@@ -21,7 +23,7 @@ const ListOrders = () => {
     const fetchOrders = async () => {
       setLoading(true);
       try {
-        const response = await axios.get("http://localhost:3001/v1/getallorder", {
+        const response = await axios.get(`${backend_url}/v1/getallorder`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -47,7 +49,7 @@ const ListOrders = () => {
   
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
-      const response = await axios.put(`http://localhost:3001/v1/change-status/${orderId}`, 
+      const response = await axios.put(`${backend_url}/v1/change-status/${orderId}`, 
         { status: newStatus },
         {
           headers: {

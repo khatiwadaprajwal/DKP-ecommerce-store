@@ -13,7 +13,7 @@ const ReviewSection = ({ productId }) => {
   const [userReview, setUserReview] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const { averageRating, setAverageRating, totalReviews, setTotalReviews } = useContext(ShopContext);
+  const { averageRating, setAverageRating, totalReviews, setTotalReviews, backend_url } = useContext(ShopContext);
   const [currentUserId, setCurrentUserId] = useState(null);
 
   // Check if user is logged in and get user ID
@@ -41,7 +41,7 @@ const ReviewSection = ({ productId }) => {
     
     setIsLoading(true);
     try {
-      const response = await axios.get(`http://localhost:3001/v1/review/${productId}`);
+      const response = await axios.get(`${backend_url}/v1/review/${productId}`);
 
       if (response.status === 200) {
         const reviewsArray = response.data.reviews || response.data;
@@ -117,7 +117,7 @@ const ReviewSection = ({ productId }) => {
         // Check if user already has a review
         if (userReview) {
           // Update existing review
-          await axios.put(`http://localhost:3001/v1/updatereview/${userReview._id}`, {
+          await axios.put(`${backend_url}/v1/updatereview/${userReview._id}`, {
             rating,
             reviewText: newReview
           }, {
@@ -132,7 +132,7 @@ const ReviewSection = ({ productId }) => {
         } else {
           // Add new review
           try {
-            await axios.post("http://localhost:3001/v1/addreview", {
+            await axios.post(`${backend_url}/v1/addreview`, {
               productId,
               rating,
               reviewText: newReview
@@ -156,7 +156,7 @@ const ReviewSection = ({ productId }) => {
               
               // If user review was found, update it
               if (userReview) {
-                await axios.put(`http://localhost:3001/v1/updatereview/${userReview._id}`, {
+                await axios.put(`${backend_url}/v1/updatereview/${userReview._id}`, {
                   rating,
                   reviewText: newReview
                 }, {
@@ -199,7 +199,7 @@ const ReviewSection = ({ productId }) => {
     if (window.confirm("Are you sure you want to delete your review?")) {
       try {
         setIsSubmitting(true);
-        await axios.delete(`http://localhost:3001/v1/delete/${reviewId}`, {
+        await axios.delete(`${backend_url}/v1/delete/${reviewId}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`
           }

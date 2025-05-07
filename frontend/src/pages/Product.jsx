@@ -12,7 +12,7 @@ import { toast } from "react-hot-toast";
 
 const Product = () => {
   const { productId } = useParams();
-  const { addToCart, products, totalReviews, token } = useContext(ShopContext);
+  const { addToCart, products, totalReviews, token, backend_url } = useContext(ShopContext);
   const [productData, setProductData] = useState(null);
   const [image, setImage] = useState("");
   const [selectedVariant, setSelectedVariant] = useState(null);
@@ -37,7 +37,7 @@ const Product = () => {
     try {
       setLoading(true);
       const response = await axios.get(
-        `http://localhost:3001/v1/product/${productId}`
+        `${backend_url}/v1/product/${productId}`
       );
 
       if (response.status === 200) {
@@ -215,8 +215,8 @@ const Product = () => {
             {/* Main image container with improved height */}
             <div className="w-full overflow-hidden relative rounded-lg shadow-md">
               <img
-                className="w-full h-auto md:h-[500px] object-contain bg-white"
-                src={`http://localhost:3001/public/${image}`}
+                className="w-full h-auto md:h-[450px] object-contain bg-white"
+                src={`${backend_url}/public/${image}`}
                 alt={productData.productName}
               />
             </div>
@@ -237,7 +237,7 @@ const Product = () => {
                   onClick={() => setImage(item)}
                 >
                   <img
-                    src={`http://localhost:3001/public/${item}`}
+                    src={`${backend_url}/public/${item}`}
                     className="w-full h-20 object-cover"
                     alt={`${productData.productName} - view ${index + 1}`}
                   />
@@ -249,9 +249,9 @@ const Product = () => {
           {/* Product Info - adjusted width to accommodate larger image */}
           <div className="md:w-2/5 space-y-4">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold">
+              <h2 className="text-2xl md:text-3xl font-bold">
                 {productData.productName}
-              </h1>
+              </h2>
               <p className="text-xl md:text-2xl font-bold text-red-600 mt-1">
                 Rs. {productData.price.toLocaleString()}
               </p>

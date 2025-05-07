@@ -255,7 +255,7 @@ const Filter = ({ showFilter, setShowFilter }) => {
       {/* Gender Section */}
       <div className="bg-white p-5 rounded-xl shadow-sm">
         <div className="flex justify-between items-center border-b pb-2 mb-4">
-          <h2 className="font-bold text-lg text-gray-800">Gender</h2>
+          <h3 className="font-bold text-lg text-gray-800">Gender</h3>
           <button
             onClick={resetGenderFilter}
             className="text-sm text-blue-600 hover:text-blue-800"
@@ -287,7 +287,7 @@ const Filter = ({ showFilter, setShowFilter }) => {
       {/* Categories Section */}
       <div className="bg-white p-5 rounded-xl shadow-sm">
         <div className="flex justify-between items-center border-b pb-2 mb-4">
-          <h2 className="font-bold text-lg text-gray-800">Categories</h2>
+          <h3 className="font-bold text-lg text-gray-800">Categories</h3>
           <button
             onClick={resetCategoryFilter}
             className="text-sm text-blue-600 hover:text-blue-800"
@@ -319,7 +319,7 @@ const Filter = ({ showFilter, setShowFilter }) => {
       {/* Sizes Section */}
       <div className="bg-white p-5 rounded-xl shadow-sm">
         <div className="flex justify-between items-center border-b pb-2 mb-4">
-          <h2 className="font-bold text-lg text-gray-800">Sizes</h2>
+          <h3 className="font-bold text-lg text-gray-800">Sizes</h3>
           <button
             onClick={resetSizeFilter}
             className="text-sm text-blue-600 hover:text-blue-800"
@@ -353,7 +353,7 @@ const Filter = ({ showFilter, setShowFilter }) => {
       {/* Colors Section */}
       <div className="bg-white p-5 rounded-xl shadow-sm">
         <div className="flex justify-between items-center border-b pb-2 mb-4">
-          <h2 className="font-bold text-lg text-gray-800">Colors</h2>
+          <h3 className="font-bold text-lg text-gray-800">Colors</h3>
           <button
             onClick={resetColorFilter}
             className="text-sm text-blue-600 hover:text-blue-800"
@@ -388,7 +388,7 @@ const Filter = ({ showFilter, setShowFilter }) => {
       {/* Price Range Section */}
       <div className="bg-white p-5 rounded-xl shadow-sm">
         <div className="flex justify-between items-center border-b pb-2 mb-4">
-          <h2 className="font-bold text-lg text-gray-800">Price Range</h2>
+          <h3 className="font-bold text-lg text-gray-800">Price Range</h3>
           <button
             onClick={resetPriceFilter}
             className="text-sm text-blue-600 hover:text-blue-800"

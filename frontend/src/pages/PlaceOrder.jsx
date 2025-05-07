@@ -42,7 +42,7 @@ const LocationPicker = ({ onLocationSelected }) => {
 };
 
 const PlaceOrder = () => {
-  const { cartData, token, delivery_fee, fetchCartData, openPayPalPopup } =
+  const { cartData, token, delivery_fee, fetchCartData, openPayPalPopup, backend_url } =
     useContext(ShopContext);
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
@@ -233,7 +233,7 @@ const PlaceOrder = () => {
 
       // Place order
       const response = await axios.post(
-        "http://localhost:3001/v1/placeorder",
+        `${backend_url}/v1/placeorder`,
         orderData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -270,16 +270,16 @@ const PlaceOrder = () => {
         Back to Cart
       </button>
 
-      <h1 className="text-2xl md:text-3xl font-bold mb-6">Checkout</h1>
+      <h2 className="text-2xl md:text-3xl font-bold mb-6">Checkout</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Shipping Information */}
         <div className="md:col-span-2">
           <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4 flex items-center">
+            <h3 className="text-xl font-semibold mb-4 flex items-center">
               <MapPin className="mr-2 text-blue-600" />
               Shipping Information
-            </h2>
+            </h3>
 
             <form onSubmit={handleSubmit}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -370,10 +370,10 @@ const PlaceOrder = () => {
 
               {/* Location Map */}
               <div className="mt-6 mb-6">
-                <h2 className="text-xl font-semibold mb-4 flex items-center">
+                <h3 className="text-xl font-semibold mb-4 flex items-center">
                   <MapIcon className="mr-2 text-blue-600" />
                   Select Your Location
-                </h2>
+                </h3>
 
                 <div
                   className="border rounded-lg overflow-hidden"
@@ -484,7 +484,7 @@ const PlaceOrder = () => {
                     className="flex items-center"
                   >
                     <img
-                      src={`http://localhost:3001/public/${item.image[0]}`}
+                      src={`${backend_url}/public/${item.image[0]}`}
                       alt={item.name}
                       className="w-12 h-12 object-cover rounded-md mr-3"
                     />
@@ -531,7 +531,7 @@ const PlaceOrder = () => {
         </div>
       </div>
 
-      <Toaster position="bottom-right" reverseOrder={false} />
+      {/* <Toaster position="bottom-right" reverseOrder={false} /> */}
     </div>
   );
 };

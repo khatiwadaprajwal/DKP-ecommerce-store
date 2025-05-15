@@ -72,21 +72,21 @@ const Contact = () => {
     <div className="contact-page scroll-smooth">
       {/* Hero Section */}
       <motion.section 
-        className="bg-red-100 py-16 md:py-24" 
+        className="bg-red-50 py-16 md:py-24 mx-40 mt-8 rounded-2xl" 
         initial={{ opacity: 0 }} 
         animate={{ opacity: 1 }} 
         transition={{ duration: 1 }}
       >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Contact DKP Clothing</h1>
-          <p className="text-gray-600 text-lg leading-relaxed">
+          <h3 className="text-gray-600 font-light leading-relaxed">
             We're here to help! Whether you have questions about our products, your order, or just want to say hello, feel free to reach out.
-          </p>
+          </h3>
         </div>
       </motion.section>
 
       {/* Contact Information & Form */}
-      <section className="py-16 md:py-24" data-aos="fade-up">
+      <section className="py-16 md:py-24 bg-red-50 mt-10 mx-80" data-aos="fade-up">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 gap-12">
           {/* Contact Information */}
           <div data-aos="fade-left">

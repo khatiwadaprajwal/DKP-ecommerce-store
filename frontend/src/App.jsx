@@ -38,7 +38,7 @@ const App = () => {
     <AuthProvider>
       <div>
         <ToastContainer />
-        <Toaster position="top-right" reverseOrder={false} />
+        <Toaster position="bottom-right" reverseOrder={false} />
         <Routes>
           {/* Auth Routes - No Layout */}
 

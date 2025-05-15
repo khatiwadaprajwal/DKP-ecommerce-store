@@ -1,14 +1,37 @@
 import React from "react";
 import { Truck, RefreshCw, Shield } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-// import {ShopContext} from "../context/ShopContext"
 
 const BenefitsSection = () => {
+  const handleNavigateAbout = () => {
+    // Placeholder for navigation logic
+    console.log('Navigate to About');
+  };
 
-    const navigate = useNavigate();
+  const handleNavigateCollection = () => {
+    // Placeholder for navigation logic
+    console.log('Navigate to Collection');
+  };
+
   return (
-    <section className="w-full py-16 bg-white border border-gray-100 rounded-lg text-lg">
-      <div className="flex flex-col md:flex-row gap-8">
+    <section className="w-full py-16 bg-green-50 from-neutral-50 to-neutral-100 border border-neutral-200 mt-10 rounded-lg text-lg relative overflow-hidden">
+      {/* Retro Background Pattern */}
+      <div className="absolute inset-0 opacity-5 pointer-events-none">
+        <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+          <defs>
+            <pattern id="retro-pattern" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+              <path 
+                d="M0 0 L50 50 L100 0 L50 50 Z" 
+                fill="none" 
+                stroke="#9CA3AF" 
+                strokeWidth="0.5"
+              />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#retro-pattern)" />
+        </svg>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-8 relative z-10">
         {/* Left side with content */}
         <div className="w-full md:w-1/2 px-6 md:px-10 flex flex-col justify-center">
           <p className="text-blue-600 font-medium text-sm mb-2">Quality</p>
@@ -19,8 +42,8 @@ const BenefitsSection = () => {
           </h2>
           
           <p className="text-gray-700 mb-6">
-            Experience unparalleled convenience with <strong>free shipping on all orders</strong>.
-            Enjoy peace of mind with our hassle-free returns and a quality guarantee
+            Experience unparalleled convenience with <strong>free shipping on all orders</strong>. 
+            Enjoy peace of mind with our hassle-free returns and a quality guarantee 
             on every purchase.
           </p>
           
@@ -42,23 +65,29 @@ const BenefitsSection = () => {
           </div>
           
           <div className="flex gap-4">
-            <button onClick={()=>navigate("/about")} className="px-6 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors">
+            <button 
+              onClick={handleNavigateAbout} 
+              className="px-6 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
+            >
               Learn more
             </button>
-            <button onClick={()=>navigate("/collection")} className="px-6 py-2 border border-gray-300 rounded text-sm flex items-center hover:bg-gray-50 transition-colors">
+            <button 
+              onClick={handleNavigateCollection} 
+              className="px-6 py-2 border border-gray-300 rounded text-sm flex items-center hover:bg-gray-50 transition-colors"
+            >
               Shop <span className="ml-2">→</span>
             </button>
           </div>
         </div>
         
         {/* Right side with image */}
-        <div className="w-full md:w-1/2 flex items-center justify-center">
-          <div className="w-full h-64 md:h-80 bg-gray-200 flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
-              <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-              <circle cx="9" cy="9" r="2" />
-              <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-            </svg>
+        <div className="w-full md:w-1/2 flex items-center justify-center p-4">
+          <div className="w-full h-64 md:h-80 bg-neutral-100 rounded-lg shadow-lg overflow-hidden flex items-center justify-center">
+            <img 
+              src="/api/placeholder/500/600" 
+              alt="Stylish Clothing Collection" 
+              className="w-full h-full object-cover object-center transform hover:scale-105 transition-transform duration-300"
+            />
           </div>
         </div>
       </div>

@@ -5,14 +5,14 @@ const About = () => {
   return (
     <div className="about-page">
       {/* Hero Section */}
-      <section className="bg-red-50 py-16 md:py-24">
+      <section className="bg-red-50 py-16 md:py-24 mx-40 mt-8 rounded-2xl">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">
             <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">About DKP Clothing</h1>
-            <p className="text-gray-600 text-lg leading-relaxed mb-8">
+            <h3 className="text-gray-600 text-lg leading-relaxed mb-8">
               Crafting premium clothing with attention to detail since 2018. Our mission is to provide 
               sustainable, ethically made fashion that helps you express your unique style.
-            </p>
+            </h3>
             <div className="w-16 h-1 bg-blue-600 mx-auto"></div>
           </div>
         </div>
@@ -31,12 +31,12 @@ const About = () => {
             </div>
             <div className="md:w-1/2">
               <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6">Our Story</h2>
-              <p className="text-gray-600 mb-4">
+              <p className=" mb-4 text-lg font-medium">
               Welcome to DKP Clothing, your go-to destination for stylish and authentic fashion in the heart of Sundarharaincha, Morang. Located in the beautiful eastern region of Nepal, we take pride in offering a diverse collection of clothing that celebrates both modern trends and our rich Nepali culture. From elegant suits and graceful sarees to traditional Nepali cultural dresses and trendy tops, DKP Clothing is committed to providing high-quality fashion for every occasion. Our goal is to bring you a unique shopping experience where tradition meets contemporary style, all while delivering exceptional 
               service and affordable prices. Whether you're dressing for a cultural event, a formal gathering, or everyday wear, DKP Clothing has something special just for you.
               </p>
-              <p className="text-gray-600 mb-4">
-                Over the years, we've grown into a team of 25 passionate craftspeople, designers, and fashion enthusiasts 
+              <p className=" mb-4 text-lg">
+                Over the years, we've grown into a team of 6 passionate craftspeople, designers, and fashion enthusiasts 
                 who share the same vision – to make clothing that makes you feel confident and comfortable.
               </p>
               <div className="mt-8">
@@ -45,7 +45,7 @@ const About = () => {
                   alt="Founder's signature" 
                   className="h-12 w-auto"
                 />
-                <p className="text-gray-900 font-medium mt-2">Deepak Kumar, Founder</p>
+                <p className="text-gray-900 font-medium mt-2">Sharada Bhattarai, Founder</p>
               </div>
             </div>
           </div>
@@ -53,7 +53,7 @@ const About = () => {
       </section>
 
       {/* Values Section */}
-      <section className="bg-gray-100 py-16 md:py-24">
+      <section className="bg-red-50 py-16 md:py-24">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">Our Values</h2>
@@ -117,23 +117,23 @@ const About = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {[
               {
-                name: "Deepak Kumar",
+                name: "Sharada Bhattarai",
                 position: "Founder & Creative Director",
                 image: "/api/placeholder/300/300"
               },
               {
-                name: "Priya Sharma",
-                position: "Head of Design",
+                name: "Ambika Sigdel",
+                position: "Head of Marketing",
                 image: "/api/placeholder/300/300"
               },
               {
-                name: "Raj Malhotra",
-                position: "Production Manager",
+                name: "Puja Magar",
+                position: "Sales Executive",
                 image: "/api/placeholder/300/300"
               },
               {
-                name: "Meera Patel",
-                position: "Customer Experience",
+                name: "Buddhi Prasad Bhattarai",
+                position: "Relation Manager",
                 image: "/api/placeholder/300/300"
               }
             ].map((member, index) => (
@@ -152,7 +152,7 @@ const About = () => {
       </section>
 
       {/* Stats Section */}
-      <section className="bg-red-100 py-16">
+      <section className="bg-red-50 py-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center text-black">
             {[
@@ -162,7 +162,7 @@ const About = () => {
               { number: "4", label: "Store Locations" }
             ].map((stat, index) => (
               <div key={index}>
-                <p className="text-3xl md:text-4xl font-bold mb-2">{stat.number}</p>
+                <h2 className="text-3xl md:text-4xl font-bold mb-2">{stat.number}</h2>
                 <p className="text-black">{stat.label}</p>
               </div>
             ))}
@@ -195,8 +195,8 @@ const About = () => {
                   className="h-12 w-12 rounded-full object-cover mr-4"
                 />
                 <div>
-                  <p className="font-medium text-gray-900">Arjun Mehta</p>
-                  <p className="text-gray-500 text-sm">Mumbai, India</p>
+                  <p className="font-medium text-gray-900">Sita Dhungana</p>
+                  <p className="text-gray-500 text-sm">Gachhiya , Morang</p>
                 </div>
               </div>
             </div>

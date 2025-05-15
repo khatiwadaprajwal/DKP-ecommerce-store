@@ -2,9 +2,9 @@ import React from 'react'
 
 const Newsletter = () => {
   return (
-    <div>
+    <div className='bg-green-50 border border-neutral-200 rounded-2xl mx-70'>
        {/* CTA Section */}
-       <section className="  py-16">
+       <section className=" py-16 ">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6">Join Our Journey</h2>
           <p className="text-gray-600 max-w-3xl mx-auto mb-8">

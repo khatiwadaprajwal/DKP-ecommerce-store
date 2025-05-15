@@ -1,7 +1,11 @@
-import React, { useContext, useState } from "react";
+import React, { useContext } from "react";
 import { ShopContext } from "../context/ShopContext";
 import { useNavigate } from "react-router-dom";
-import { ShoppingBag, Coffee, Shirt } from "lucide-react";
+import { 
+  Briefcase, 
+  Smile, 
+  Flag 
+} from "lucide-react";
 
 const CategoriesSection = () => {
   const {
@@ -12,40 +16,34 @@ const CategoriesSection = () => {
   
   const navigate = useNavigate();
   
-  // Track hover state for animation
-  const [hoveredIndex, setHoveredIndex] = useState(null);
-  
   const categories = [
     {
       name: "Formal Wear",
-      headline: "Discover Elegant Formal Wear That",
-      subheadline: "Defines Sophistication and Style",
-      icon: <ShoppingBag size={32} />,
-      description: "Elevate your wardrobe with our sophisticated formal attire.",
-      cta: "Shop",
-      image: "/api/placeholder/400/600",
+      description: "Sophisticated attire for the modern professional",
+      icon: Briefcase,
+      bgColor: "bg-blue-50",
+      textColor: "text-blue-800",
+      borderColor: "border-blue-200",
       categoryValue: "Formal",
     },
     {
       name: "Casual Wear",
-      headline: "Unwind in Our Trendy Casual Wear",
-      subheadline: "for Everyday Adventures",
-      icon: <Coffee size={32} />,
-      description: "Casual wear that combines style with unparalleled comfort.",
-      cta: "Browse",
-      image: "/api/placeholder/400/600",
+      description: "Relaxed styles for everyday elegance",
+      icon: Smile,
+      bgColor: "bg-green-50",
+      textColor: "text-green-800",
+      borderColor: "border-green-200",
       categoryValue: "Casual",
     },
     {
       name: "Ethnic Wear",
-      headline: "Embrace Tradition with Our",
-      subheadline: "Beautifully Crafted Ethnic Wear Collection",
-      icon: <Shirt size={32} />,
-      description: "Celebrate culture with our stunning ethnic outfits for all occasions.",
-      cta: "Explore",
-      image: "/api/placeholder/400/600",
+      description: "Traditional designs with modern sensibilities",
+      icon: Flag,
+      bgColor: "bg-purple-50",
+      textColor: "text-purple-800",
+      borderColor: "border-purple-200",
       categoryValue: "Ethnic",
-    },
+    }
   ];
   
   const handleCategoryClick = (category) => {
@@ -60,86 +58,93 @@ const CategoriesSection = () => {
   };
   
   return (
-    <section className="py-14 bg-white">
+    <section className="py-10 bg-white">
       <div className="container mx-auto px-4 max-w-6xl">
-        {/* Main Headline with animation */}
-        <div className="mb-12 opacity-0 animate-fade-in-down">
-          <h2 className="text-2xl md:text-3xl font-bold text-center mb-1">
-            Explore Our Exclusive Collection of
+        <div className="text-center mb-10">
+          <h2 className="text-2xl font-bold text-gray-800 mb-3">
+            Discover Your Perfect Style
           </h2>
-          <h3 className="text-xl md:text-2xl font-bold text-center">
-            Fashion Wear for Every Occasion
-          </h3>
+          <p className="text-sm text-gray-600 max-w-2xl mx-auto">
+            Explore our curated collections that cater to every mood, occasion, and personal expression
+          </p>
         </div>
         
         {/* Categories Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-6 mb-16">
-          {categories.map((category, index) => (
-            <div 
-              key={index} 
-              className={`flex flex-col p-6 rounded-lg transition-all duration-300 ease-in-out ${
-                hoveredIndex === index ? 'bg-gray-50 shadow-lg scale-105' : 'bg-white'
-              }`}
-              onMouseEnter={() => setHoveredIndex(index)}
-              onMouseLeave={() => setHoveredIndex(null)}
-            >
-              {/* Icon with animation */}
-              <div className={`mb-5 p-4 bg-blue-50 rounded-full inline-block transform transition-all duration-300 ${
-                hoveredIndex === index ? 'scale-110 text-blue-600 rotate-6' : ''
-              }`}>
-                {React.cloneElement(category.icon, { 
-                  color: hoveredIndex === index ? "#2563EB" : "#4B5563",
-                  strokeWidth: 1.5
-                })}
-              </div>
-              
-              {/* Category Title */}
-              <h4 className="text-base font-bold text-left mb-1">
-                {category.headline}
-              </h4>
-              <h5 className="text-base font-bold text-left mb-2">
-                {category.subheadline}
-              </h5>
-              
-              {/* Category Description */}
-              <p className="text-xs text-left text-gray-700 mb-3">
-                {category.description}
-              </p>
-              
-              {/* CTA Button with animation */}
-              <button 
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {categories.map((category, index) => {
+            const CategoryIcon = category.icon;
+            
+            return (
+              <div 
+                key={index}
                 onClick={() => handleCategoryClick(category)}
-                className={`flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium mt-auto transition-all duration-300 ${
-                  hoveredIndex === index ? 'translate-x-2' : ''
-                }`}
+                className={`
+                  ${category.bgColor} ${category.borderColor}
+                  border rounded-3xl p-6
+                  flex flex-col items-start
+                  transition-all duration-300
+                  hover:shadow-lg cursor-pointer
+                  group
+                  relative
+                  overflow-hidden
+                `}
               >
-                {category.cta}
-                <span className={`ml-1 transition-all duration-300 ${
-                  hoveredIndex === index ? 'translate-x-1' : ''
-                }`}>→</span>
-              </button>
-            </div>
-          ))}
+                {/* Background Overlay */}
+                <div className={`
+                  absolute inset-0 
+                  opacity-5 group-hover:opacity-10
+                  transition-opacity duration-300
+                  ${category.bgColor}
+                `}></div>
+                
+                {/* Icon */}
+                <div className={`
+                  mb-4 w-16 h-16 rounded-full 
+                  flex items-center justify-center
+                  bg-white border ${category.borderColor}
+                  z-10 relative
+                  group-hover:scale-105 transition-transform
+                `}>
+                  <CategoryIcon 
+                    size={32} 
+                    className={`${category.textColor}`} 
+                    strokeWidth={1.5} 
+                  />
+                </div>
+                
+                {/* Category Details */}
+                <div className="z-10 relative">
+                  <h3 className={`
+                    text-xl font-bold mb-2
+                    ${category.textColor}
+                  `}>
+                    {category.name}
+                  </h3>
+                  
+                  <p className={`
+                    text-sm mb-4
+                    ${category.textColor} text-opacity-80
+                  `}>
+                    {category.description}
+                  </p>
+                  
+                  {/* CTA */}
+                  <div className={`
+                    flex items-center ${category.textColor}
+                    text-base font-semibold
+                    group-hover:translate-x-2 transition-transform
+                  `}>
+                    Explore Collection
+                    <span className="ml-2 group-hover:translate-x-1 transition-transform">
+                      →
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
-      
-      {/* Add CSS for animations */}
-      <style jsx>{`
-        @keyframes fadeInDown {
-          from {
-            opacity: 0;
-            transform: translateY(-20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        .animate-fade-in-down {
-          animation: fadeInDown 0.6s ease-out forwards;
-        }
-      `}</style>
     </section>
   );
 };

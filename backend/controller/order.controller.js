@@ -22,19 +22,27 @@ exports.createOrder = async (req, res) => {
 
     const userId = req.user._id.toString();
 
+    // Validate product and check stock
     const product = await Product.findById(productId);
-    if (!product || product.totalQuantity < quantity) {
-      return res.status(400).json({ error: "Product not available or insufficient stock" });
+    if (!product) {
+      return res.status(400).json({ error: "Product not found" });
     }
 
-    const variant = product.variants.find(v => v.color === color && v.size === size);
-    if (!variant || variant.quantity < quantity) {
+    const variantIndex = product.variants.findIndex(v => v.color === color && v.size === size);
+    if (variantIndex === -1) {
       return res.status(400).json({ error: "Selected variant is out of stock or insufficient" });
+    }
+
+    const variant = product.variants[variantIndex];
+    if (variant.quantity < quantity) {
+      return res.status(400).json({ 
+        error: `Insufficient stock for ${product.productName} (${color} - ${size}). Available stock: ${variant.quantity}`
+      });
     }
 
     const totalAmount = quantity * product.price;
 
-    // ✅ Create Order
+    // Create order with initial status
     const order = new Order({
       userId,
       orderItems: [],
@@ -42,14 +50,14 @@ exports.createOrder = async (req, res) => {
       address,
       location,
       paymentMethod,
-      status: "Pending",
-      paymentStatus: paymentMethod === "PayPal" ? "Paid" : "Pending",
+      status: paymentMethod === "PayPal" ? "Failed" : "Pending",
+      paymentStatus: paymentMethod === "PayPal" ? "Failed" : "Pending",
       currency: "NPR"
     });
 
     await order.save();
 
-    // ✅ Create OrderItem
+    // Create order item
     const orderItem = new OrderItem({
       orderId: order._id,
       productId,
@@ -61,10 +69,16 @@ exports.createOrder = async (req, res) => {
     });
 
     await orderItem.save();
-
-    // ✅ Push OrderItem ID to Order
     order.orderItems.push(orderItem._id);
     await order.save();
+
+    // If payment method is Cash, update stock quantities immediately
+    if (paymentMethod === "Cash") {
+      product.variants[variantIndex].quantity -= quantity;
+      product.totalQuantity = product.variants.reduce((sum, v) => sum + v.quantity, 0);
+      product.totalSold += quantity;
+      await product.save();
+    }
 
     if (paymentMethod === "PayPal") {
       try {
@@ -76,7 +90,7 @@ exports.createOrder = async (req, res) => {
           payer: { payment_method: "paypal" },
           redirect_urls: {
             return_url: `http://localhost:5173/paypal/success?orderId=${order._id}&userId=${userId}&productIds=${productId}`,
-            cancel_url: "http://localhost:5173/paypal/cancel"
+            cancel_url: "http://localhost:3001/v1/paypal/cancel"
           },
           transactions: [
             {
@@ -97,7 +111,6 @@ exports.createOrder = async (req, res) => {
         });
 
         const approvalUrl = response.data.links.find(link => link.rel === "approval_url").href;
-
         return res.json({ message: "Redirect to PayPal", approvalUrl });
 
       } catch (paypalError) {
@@ -106,32 +119,27 @@ exports.createOrder = async (req, res) => {
       }
     }
 
-    // ✅ Update product quantity for COD
-    variant.quantity -= quantity;
-    product.totalQuantity -= quantity;
-    product.totalSold += quantity;
-    await product.save();
-
-    // ✅ Send order confirmation email with productDetails array
+    // Send order confirmation email
     await sendOrderEmail(req.user.email, {
       _id: order._id,
-      productDetails: [
-        {
-          productName: product.productName,
-          color,
-          size,
-          quantity,
-          price: product.price,
-          totalPrice: totalAmount
-        }
-      ],
+      productDetails: [{
+        productName: product.productName,
+        color,
+        size,
+        quantity,
+        price: product.price,
+        totalPrice: totalAmount
+      }],
       totalAmount,
       address,
       paymentMethod,
       status: order.status
     });
 
-    return res.status(201).json({ message: "✅ Order placed successfully", order });
+    return res.status(201).json({ 
+      message: "✅ Order placed successfully", 
+      order 
+    });
 
   } catch (error) {
     console.error("❌ Order Creation Error:", error);
@@ -145,16 +153,20 @@ exports.paypalSuccess = async (req, res) => {
   try {
     const { orderId, paymentId, PayerID, userId, productIds } = req.query;
 
-    console.log(`✅ PayPal Success - Order ID: ${orderId}`);
+    if (!orderId || !paymentId || !PayerID || !userId || !productIds) {
+      return res.status(400).json({ error: "Missing required parameters" });
+    }
 
+    console.log(`✅ Processing PayPal payment for Order ID: ${orderId}`);
+
+    // 1. Generate PayPal access token
     const accessToken = await generateAccessToken();
     if (!accessToken) {
       console.error("❌ Failed to generate PayPal access token");
-      return res
-        .status(500)
-        .json({ error: "Failed to generate PayPal access token" });
+      return res.status(500).json({ error: "Failed to generate PayPal access token" });
     }
 
+    // 2. Execute PayPal payment
     const executePaymentUrl = `${PAYPAL_API}/v1/payments/payment/${paymentId}/execute`;
     const executePaymentData = { payer_id: PayerID };
 
@@ -165,38 +177,118 @@ exports.paypalSuccess = async (req, res) => {
       }
     });
 
-    console.log(
-      "✅ PayPal Payment Executed:",
-      JSON.stringify(paymentResponse.data, null, 2)
-    );
+    console.log("✅ PayPal Payment Response:", JSON.stringify(paymentResponse.data, null, 2));
 
+    // 3. Verify payment status
     if (paymentResponse.data.state !== "approved") {
+      console.error("❌ Payment not approved by PayPal");
       return res.status(400).json({ error: "Payment not approved by PayPal" });
     }
 
-    const order = await Order.findById(orderId);
+    // 4. Find and update order
+    const order = await Order.findById(orderId).populate("orderItems");
     if (!order) {
-      return res.status(400).json({ error: "Order not found" });
+      console.error("❌ Order not found:", orderId);
+      return res.status(404).json({ error: "Order not found" });
     }
 
+    if (order.userId.toString() !== userId) {
+      console.error("❌ Order user ID mismatch");
+      return res.status(403).json({ error: "Unauthorized access to order" });
+    }
+
+    if (order.paymentStatus === "Paid") {
+      console.log("ℹ️ Order already marked as paid");
+      return res.json({ message: "Payment already processed", order });
+    }
+
+    // 5. Update order status and reduce product quantities
+    order.status = "Pending";
     order.paymentStatus = "Paid";
     await order.save();
+    console.log("✅ Order marked as paid");
 
-    const cart = await Cart.findOne({ userId }).populate("cartItems");
-    if (cart) {
-      const productIdList = productIds.split(",");
-      const cartItemIdsToRemove = cart.cartItems
-        .filter((item) => productIdList.includes(item.productId.toString()))
-        .map((item) => item._id);
+    // 6. Update product quantities
+    for (const orderItem of order.orderItems) {
+      const product = await Product.findById(orderItem.productId);
+      if (!product) {
+        console.warn(`⚠️ Product not found for order item: ${orderItem._id}`);
+        continue;
+      }
 
-      await CartItem.deleteMany({ _id: { $in: cartItemIdsToRemove } });
-      console.log(`✅ Cart items cleared for order ID: ${orderId}`);
+      const variantIndex = product.variants.findIndex(
+        v => v.color === orderItem.color && v.size === orderItem.size
+      );
+
+      if (variantIndex === -1) {
+        console.warn(`⚠️ Variant not found for product: ${product._id}`);
+        continue;
+      }
+
+      // Reduce quantity
+      product.variants[variantIndex].quantity -= orderItem.quantity;
+      product.totalQuantity = product.variants.reduce((sum, v) => sum + v.quantity, 0);
+      product.totalSold += orderItem.quantity;
+      await product.save();
+      console.log(`✅ Updated quantity for product: ${product._id}`);
     }
 
-    return res.json({ message: "Payment successful", order });
+    // 7. Clear cart items
+    const cart = await Cart.findOne({ userId });
+    if (cart) {
+      const productIdList = productIds.split(",");
+      await CartItem.deleteMany({ 
+        cartId: cart._id, 
+        productId: { $in: productIdList }
+      });
+      console.log("✅ Cart items cleared");
+    }
+
+    // 8. Send confirmation email
+    try {
+      const populatedOrder = await Order.findById(orderId)
+        .populate({
+          path: "orderItems",
+          populate: {
+            path: "productId",
+            select: "productName price"
+          }
+        });
+
+      const emailData = {
+        _id: order._id,
+        productDetails: populatedOrder.orderItems.map(item => ({
+          productName: item.productId.productName,
+          color: item.color,
+          size: item.size,
+          quantity: item.quantity,
+          price: item.price,
+          totalPrice: item.totalPrice
+        })),
+        totalAmount: order.totalAmount,
+        address: order.address,
+        paymentMethod: order.paymentMethod,
+        status: order.status
+      };
+
+      await sendOrderEmail(req.user.email, emailData);
+      console.log("✅ Order confirmation email sent");
+    } catch (emailError) {
+      console.error("⚠️ Error sending confirmation email:", emailError);
+      // Don't fail the request if email fails
+    }
+
+    return res.json({ 
+      success: true,
+      message: "Payment processed successfully", 
+      order 
+    });
   } catch (error) {
     console.error("❌ PayPal Success Error:", error);
-    return res.status(500).json({ error: "Payment confirmation failed" });
+    return res.status(500).json({ 
+      error: "Payment confirmation failed",
+      details: error.message 
+    });
   }
 };
 

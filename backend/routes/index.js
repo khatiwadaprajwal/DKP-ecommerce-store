@@ -1,29 +1,25 @@
-const express = require("express")
-const app = express()
+const express = require('express');
+const router = express.Router();
+const authRoutes = require('./auth.routes');
+const userRoutes = require('./user.routes');
+const productRoutes = require('./product.routes');
+const cartRoutes = require('./cart.routes');
+const orderRoutes = require('./order.routes');
+const passwordRoutes = require('./password.routes');
+const makeadminRoutes = require('./makeadmin.routes');
+const userreviewRoutes = require('./userreview.routes');
+const sendmsgRoutes = require('./sendmsg.routes');
+const productlistRoutes = require('./productlist.routes');
 
-const auth_routes=require("./auth.routes")
-const product_routes = require("./product.routes")
-const admin_routes=require("./makeadmin.routes")
-const forgotpassword_routes=require("./password.routes")
-const user_routes=require("./user.routes")
-const cart_routes=require("./cart.routes")
-const order_routes=require("./order.routes")
-const review_routes=require("./userreview.routes")
-const msg_routes=require("./sendmsg.routes")
+router.use('/auth', authRoutes);
+router.use('/', userRoutes);
+router.use('/', productRoutes);
+router.use('/', cartRoutes);
+router.use('/', orderRoutes);
+router.use('/', passwordRoutes);
+router.use('/', makeadminRoutes);
+router.use('/', userreviewRoutes);
+router.use('/', sendmsgRoutes);
+router.use('/productlist', productlistRoutes);
 
-
-app.use("/",forgotpassword_routes)
-app.use("/",admin_routes)
-app.use("/",product_routes)
-app.use('/auth', auth_routes);
-app.use("/",user_routes);
-app.use("/",admin_routes);
-app.use("/",cart_routes)
-app.use("/",order_routes)
-app.use("/",review_routes)
-app.use("/",msg_routes)
-
-
-
-
-module.exports = app
+module.exports = router;

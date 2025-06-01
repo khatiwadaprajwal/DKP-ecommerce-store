@@ -81,5 +81,5 @@ export const CustomerRoute = () => {
     );
   }
 
-  return user.role=== 'Customer' ? <Outlet /> : <Navigate to="/login" replace />;
+  return user.role=== 'Customer' ? <Outlet /> : <Navigate to="/" replace />;
 };

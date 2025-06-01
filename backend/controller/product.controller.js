@@ -136,3 +136,40 @@ exports.deleteProduct = async (req, res) => {
         return res.status(500).json({ message: "Error deleting product", error: error.message });
     }
 };
+
+// Search products with fuzzy matching
+exports.searchProducts = async (req, res) => {
+    try {
+        const { query } = req.query;
+        
+        if (!query) {
+            return res.status(400).json({ message: "Search query is required" });
+        }
+
+        // Create text index if it doesn't exist
+        await Product.collection.createIndex({
+            productName: "text",
+            description: "text",
+            category: "text",
+            gender: "text"
+        });
+
+        // Perform fuzzy search using MongoDB's text search
+        const products = await Product.find(
+            { $text: { $search: query } },
+            { score: { $meta: "textScore" } }
+        )
+        .sort({ score: { $meta: "textScore" } })
+        .limit(50);
+
+        return res.status(200).json({ 
+            products,
+            total: products.length
+        });
+    } catch (error) {
+        return res.status(500).json({ 
+            message: "Error searching products", 
+            error: error.message 
+        });
+    }
+};

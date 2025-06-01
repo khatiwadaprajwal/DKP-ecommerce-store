@@ -1,8 +1,9 @@
-import React, { useState, createContext, useEffect } from "react";
+import React, { useState, createContext, useEffect, useCallback } from "react";
 import {  toast } from "react-hot-toast";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
+import debounce from 'lodash/debounce';
 
 export const ShopContext = createContext();
 
@@ -272,29 +273,45 @@ const addToCart = async (productId, color, size, quantity = 1) => {
     }
   };
 
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    debounce(async (query) => {
+      if (!query.trim()) {
+        setFilterProducts(products);
+        return;
+      }
+
+      try {
+        const response = await axios.get(`${backend_url}/v1/products/search?query=${encodeURIComponent(query)}`);
+        if (response.status === 200) {
+          setFilterProducts(response.data.products);
+        }
+      } catch (error) {
+        console.error("Error searching products:", error);
+        toast.error("Error searching products");
+        setFilterProducts(products);
+      }
+    }, 500),
+    [products]
+  );
+
   // Handle search function
   const handleSearchFunction = (query) => {
     setSearchQuery(query);
+    debouncedSearch(query);
     
-    // Apply search filter to products
-    if (query.trim() !== "") {
-      const searchResults = products.filter((product) =>
-        product.category.toLowerCase().includes(query.toLowerCase()) || 
-        product.productName.toLowerCase().includes(query.toLowerCase()) ||
-        (product.description && product.description.toLowerCase().includes(query.toLowerCase()))
-      );
-      
-      setFilterProducts(searchResults);
-      
-      // Navigate to the collection page if not already there
-      if (location.pathname !== "/collection") {
-        navigate("/collection");
-      }
-    } else {
-      // If search query is empty, reset filters and show all products
-      applyFilter();
+    // Navigate to the collection page if not already there
+    if (location.pathname !== "/collection") {
+      navigate("/collection");
     }
   };
+
+  // Cleanup debounced function on unmount
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
 
   //Paypal Popup for the payment 
   const openPayPalPopup = (approvalUrl) => {

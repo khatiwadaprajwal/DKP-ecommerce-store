@@ -28,7 +28,7 @@ const sendOTPByEmail = async (email, otp) => {
   }
 };
 
-module.exports = sendOTPByEmail;
+
 
 const sendOrderEmail = async (email, orderDetails) => {
     const productLines = orderDetails.productDetails

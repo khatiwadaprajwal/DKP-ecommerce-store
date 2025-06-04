@@ -7,6 +7,7 @@ const axios = require("axios");
 const mongoose = require("mongoose");
 const { generateAccessToken, PAYPAL_API } = require("../utils/paypal");
 const { sendOrderEmail,sendOrderStatusUpdateEmail } = require("../utils/mailer");
+const { verifyKhaltiPayment } = require("../utils/khalti");
 
 const EXCHANGE_RATE_NPR_TO_USD = 135; 
 
@@ -105,6 +106,14 @@ exports.createOrder = async (req, res) => {
         return res.status(500).json({ error: "PayPal payment initialization failed" });
       }
     }
+    if (paymentMethod === "Khalti") {
+  return res.status(201).json({
+    message: "Proceed with Khalti",
+    orderId: order._id,
+    totalAmount,
+    productName: product.productName
+  });
+}
 
     // ✅ Update product quantity for COD
     variant.quantity -= quantity;
@@ -143,16 +152,11 @@ exports.createOrder = async (req, res) => {
 
 exports.paypalSuccess = async (req, res) => {
   try {
-    const { orderId, paymentId, PayerID, userId, productIds } = req.query;
-
-    console.log(`✅ PayPal Success - Order ID: ${orderId}`);
+    const { paymentId, PayerID, userId, orderItemIds, address, location, paymentMethod } = req.query;
 
     const accessToken = await generateAccessToken();
     if (!accessToken) {
-      console.error("❌ Failed to generate PayPal access token");
-      return res
-        .status(500)
-        .json({ error: "Failed to generate PayPal access token" });
+      return res.status(500).json({ error: "Failed to generate PayPal access token" });
     }
 
     const executePaymentUrl = `${PAYPAL_API}/v1/payments/payment/${paymentId}/execute`;
@@ -165,38 +169,73 @@ exports.paypalSuccess = async (req, res) => {
       }
     });
 
-    console.log(
-      "✅ PayPal Payment Executed:",
-      JSON.stringify(paymentResponse.data, null, 2)
-    );
-
     if (paymentResponse.data.state !== "approved") {
       return res.status(400).json({ error: "Payment not approved by PayPal" });
     }
 
-    const order = await Order.findById(orderId);
-    if (!order) {
-      return res.status(400).json({ error: "Order not found" });
-    }
+    // Calculate total
+    const orderItemIdsArray = orderItemIds.split(",");
+    const orderItems = await OrderItem.find({ _id: { $in: orderItemIdsArray } });
+    const totalAmount = orderItems.reduce((sum, item) => sum + item.totalPrice, 0);
 
-    order.paymentStatus = "Paid";
+    // Save order
+    const order = new Order({
+      userId,
+      orderItems: orderItemIdsArray,
+      totalAmount,
+      address: decodeURIComponent(address),
+      location: decodeURIComponent(location),
+      paymentMethod,
+      status: "Pending",
+      paymentStatus: "Paid",
+      currency: "NPR"
+    });
+
     await order.save();
+
+    // Link OrderItem with orderId
+    await OrderItem.updateMany(
+      { _id: { $in: orderItemIdsArray } },
+      { $set: { orderId: order._id } }
+    );
 
     const cart = await Cart.findOne({ userId }).populate("cartItems");
     if (cart) {
-      const productIdList = productIds.split(",");
       const cartItemIdsToRemove = cart.cartItems
-        .filter((item) => productIdList.includes(item.productId.toString()))
-        .map((item) => item._id);
-
+        .filter(item => orderItems.find(oi => oi.productId.toString() === item.productId.toString()))
+        .map(item => item._id);
       await CartItem.deleteMany({ _id: { $in: cartItemIdsToRemove } });
-      console.log(`✅ Cart items cleared for order ID: ${orderId}`);
     }
 
     return res.json({ message: "Payment successful", order });
+
   } catch (error) {
     console.error("❌ PayPal Success Error:", error);
     return res.status(500).json({ error: "Payment confirmation failed" });
+  }
+};
+
+
+exports.verifyKhalti = async (req, res) => {
+  try {
+    const { token, amount, orderId } = req.body;
+
+    const order = await Order.findById(orderId);
+    if (!order) return res.status(404).json({ error: "Order not found" });
+
+    const khaltiResponse = await verifyKhaltiPayment(token, amount);
+
+    if (khaltiResponse.idx) {
+      order.paymentStatus = "Paid";
+      await order.save();
+
+      return res.json({ message: "✅ Khalti payment verified", order });
+    } else {
+      return res.status(400).json({ error: "Invalid Khalti payment" });
+    }
+  } catch (error) {
+    console.error("❌ Khalti verification error:", error.message);
+    return res.status(500).json({ error: "Khalti verification failed" });
   }
 };
 

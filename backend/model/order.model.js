@@ -11,7 +11,7 @@ const orderSchema = new mongoose.Schema({
     enum: ["Pending", "Processing", "Shipped", "Delivered", "Cancelled"], 
     default: "Pending" 
   },
-  paymentMethod: { type: String, enum: ["Cash", "PayPal"], required: true },
+  paymentMethod: { type: String, enum: ["Cash", "PayPal", "Khalti"], required: true },
   paymentStatus: { type: String, enum: ["Pending", "Paid", "Failed"], default: "Pending" },
   paymentId: { type: String }, // ✅ Stores PayPal Transaction ID
   currency: { type: String, default: "USD" }, // ✅ Store currency type (optional)

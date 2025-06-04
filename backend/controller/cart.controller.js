@@ -384,20 +384,19 @@ exports.placeOrderFromCart = async (req, res) => {
         });
       }
 
+      // Reduce stock for now
       product.variants[variantIndex].quantity -= quantity;
       product.totalQuantity = product.variants.reduce((sum, v) => sum + v.quantity, 0);
       product.totalSold += quantity;
-
       await product.save();
 
       const orderItem = new OrderItem({
-        productId: productId,
-        quantity: quantity,
+        productId,
+        quantity,
         price: product.price,
         totalPrice: quantity * product.price,
         color,
-        size,
-        orderId: null
+        size
       });
 
       await orderItem.save();
@@ -414,25 +413,6 @@ exports.placeOrderFromCart = async (req, res) => {
       });
     }
 
-    const order = new Order({
-      userId,
-      orderItems,
-      totalAmount,
-      address,
-      location,
-      paymentMethod,
-      status: "Pending",
-      paymentStatus: paymentMethod === "PayPal" ? "Paid" : "Pending",
-      currency: "NPR"
-    });
-
-    await order.save();
-
-    await OrderItem.updateMany(
-      { _id: { $in: orderItems } },
-      { $set: { orderId: order._id } }
-    );
-
     if (paymentMethod === "PayPal") {
       try {
         const accessToken = await generateAccessToken();
@@ -442,8 +422,8 @@ exports.placeOrderFromCart = async (req, res) => {
           intent: "sale",
           payer: { payment_method: "paypal" },
           redirect_urls: {
-            return_url: `http://localhost:5173/paypal/success?orderId=${order._id}&userId=${userId}&productIds=${selectedProducts.map(p => p.productId).join(',')}`,
-            cancel_url: "http://localhost:3001/v1/paypal/cancel"
+            return_url: `http://localhost:3001/v1/paypal/success?orderId=${order._id}&userId=${userId}&productIds=${selectedProducts.map(p => p.productId).join(',')}`,
+          cancel_url: "http://localhost:3001/v1/paypal/cancel",
           },
           transactions: [
             {
@@ -472,6 +452,26 @@ exports.placeOrderFromCart = async (req, res) => {
       }
     }
 
+    // COD Orders
+    const order = new Order({
+      userId,
+      orderItems,
+      totalAmount,
+      address,
+      location,
+      paymentMethod,
+      status: "Pending",
+      paymentStatus: paymentMethod === "PayPal" ? "Pending" : "Paid",
+      currency: "NPR"
+    });
+
+    await order.save();
+
+    await OrderItem.updateMany(
+      { _id: { $in: orderItems } },
+      { $set: { orderId: order._id } }
+    );
+
     const orderedProductIds = selectedProducts.map(p => p.productId);
     await CartItem.deleteMany({ cartId: cart._id, productId: { $in: orderedProductIds } });
 
@@ -491,4 +491,5 @@ exports.placeOrderFromCart = async (req, res) => {
     return res.status(500).json({ error: "Order placement failed, please try again" });
   }
 };
+
 

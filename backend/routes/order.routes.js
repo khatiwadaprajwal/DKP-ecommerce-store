@@ -3,6 +3,8 @@ const router = express.Router();
 const isLoggedIn = require("../middleware/isloggedin");
 const isadmin = require("../middleware/isadmin");
 const isSuperAdmin = require("../middleware/isSuperAdmin");
+const orderController = require("../controller/order.controller");
+
 const {
   createOrder,
   paypalSuccess,
@@ -31,5 +33,7 @@ router.put(
   isAdminOrSuperAdmin,
   changeOrderStatus
 );
+router.post("/order/khalti/verify", orderController.verifyKhalti);
+
 
 module.exports = router;

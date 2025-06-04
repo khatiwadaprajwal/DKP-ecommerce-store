@@ -10,7 +10,7 @@ const cart_routes=require("./cart.routes")
 const order_routes=require("./order.routes")
 const review_routes=require("./userreview.routes")
 const msg_routes=require("./sendmsg.routes")
-
+const payment_routes=require("./payment.routes")
 
 app.use("/",forgotpassword_routes)
 app.use("/",admin_routes)
@@ -22,8 +22,6 @@ app.use("/",cart_routes)
 app.use("/",order_routes)
 app.use("/",review_routes)
 app.use("/",msg_routes)
-
-
-
+app.use("/payment", payment_routes)
 
 module.exports = app

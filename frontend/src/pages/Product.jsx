@@ -30,6 +30,9 @@ const Product = () => {
   // Add state for QuickOrder popup
   const [isQuickOrderOpen, setIsQuickOrderOpen] = useState(false);
 
+  // Add state for Image Modal
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+
   const itemsPerPage = 4;
 
   // Fetch single product data using API
@@ -181,6 +184,29 @@ const Product = () => {
     (currentPage + 1) * itemsPerPage
   );
 
+  // Function to handle next image
+  const handleNextImage = (e) => {
+    e.stopPropagation();
+    const currentIndex = productData.images.indexOf(image);
+    const nextIndex = (currentIndex + 1) % productData.images.length;
+    setImage(productData.images[nextIndex]);
+  };
+
+  // Function to handle previous image
+  const handlePrevImage = (e) => {
+    e.stopPropagation();
+    const currentIndex = productData.images.indexOf(image);
+    const prevIndex = (currentIndex - 1 + productData.images.length) % productData.images.length;
+    setImage(productData.images[prevIndex]);
+  };
+
+  // Function to handle modal close
+  const handleModalClose = (e) => {
+    if (e.target === e.currentTarget) {
+      setIsImageModalOpen(false);
+    }
+  };
+
   return loading ? (
     <div className="flex justify-center items-center h-screen text-lg">
       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
@@ -213,7 +239,10 @@ const Product = () => {
           {/* Product Image Section - with improved sizing */}
           <div className="md:w-3/5 relative">
             {/* Main image container with improved height */}
-            <div className="w-full overflow-hidden relative rounded-lg shadow-md">
+            <div 
+              className="w-full overflow-hidden relative rounded-lg shadow-md cursor-zoom-in"
+              onClick={() => setIsImageModalOpen(true)}
+            >
               <img
                 className="w-full h-auto md:h-[450px] object-contain bg-white"
                 src={`${backend_url}/public/${image}`}
@@ -588,6 +617,115 @@ const Product = () => {
         selectedColor={selectedColor} // Changed from selectedcolor to selectedColor for consistency
         quantity={quantity}
       />
+
+      {/* Image Modal */}
+      {isImageModalOpen && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={handleModalClose}
+        >
+          <div className="relative max-w-5xl w-full mx-4 bg-white rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            {/* Close Button */}
+            <button
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors"
+              onClick={() => setIsImageModalOpen(false)}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-8 w-8"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+
+            {/* Main Image Container */}
+            <div className="relative p-4">
+              {/* Left Arrow */}
+              <button
+                className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-800 hover:text-black transition-colors bg-white/80 hover:bg-white rounded-full p-2 shadow-lg"
+                onClick={handlePrevImage}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+              </button>
+
+              {/* Right Arrow */}
+              <button
+                className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-800 hover:text-black transition-colors bg-white/80 hover:bg-white rounded-full p-2 shadow-lg"
+                onClick={handleNextImage}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </button>
+
+              {/* Main Image */}
+              <img
+                src={`${backend_url}/public/${image}`}
+                alt={productData.productName}
+                className="w-full h-[60vh] object-contain"
+              />
+
+              {/* Image Counter */}
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-gray-800 bg-white/80 px-3 py-1 rounded-full text-sm shadow-lg">
+                {productData.images.indexOf(image) + 1} / {productData.images.length}
+              </div>
+            </div>
+
+            {/* Thumbnails */}
+            <div className="border-t border-gray-200 p-4">
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {productData.images.map((img, index) => (
+                  <div
+                    key={index}
+                    className={`flex-shrink-0 cursor-pointer transition-all duration-200
+                      ${image === img ? 'ring-2 ring-black scale-105' : 'hover:scale-105'}
+                    `}
+                    onClick={() => setImage(img)}
+                  >
+                    <img
+                      src={`${backend_url}/public/${img}`}
+                      alt={`${productData.productName} - view ${index + 1}`}
+                      className="w-20 h-20 object-cover rounded-md"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   ) : (
     <div className="flex justify-center items-center h-screen">

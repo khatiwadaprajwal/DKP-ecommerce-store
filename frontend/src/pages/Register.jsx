@@ -148,7 +148,7 @@ const Register = () => {
         {/* Left Side - Image */}
         <div className="hidden md:block md:w-1/2 bg-blue-50">
           <img
-            src={assets.banner}
+            src={assets.side}
             alt="Shopping Cart with Smartphone"
             className="w-full h-full object-cover"
           />

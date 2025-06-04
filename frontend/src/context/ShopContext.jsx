@@ -25,8 +25,8 @@ const ShopcontextProvider = ({ children }) => {
   const [category, setCategory] = useState([]);
   const [sizes, setSizes] = useState([]);
   const [colors, setColors] = useState([]);
-  const [priceRange, setPriceRange] = useState([0, 5000]);
-  const [filterProducts, setFilterProducts] = useState(products);
+  const [priceRange, setPriceRange] = useState([0, 10000]);
+  const [filterProducts, setFilterProducts] = useState([]);
   // Add a new state for search query
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -59,9 +59,9 @@ const ShopcontextProvider = ({ children }) => {
     setCategory([]);
     setSizes([]);
     setColors([]);
-    setPriceRange([0, 5000]);
+    setPriceRange([0, 10000]);
     setSearchQuery("");
-    setFilterProducts(products);
+    setFilterProducts([]);
   };
 
   // Fetch Cart Data from API
@@ -191,6 +191,12 @@ const addToCart = async (productId, color, size, quantity = 1) => {
 
   // Apply filter based on all filter criteria
   const applyFilter = () => {
+    // Only apply filters if products have been loaded
+    if (products.length === 0) {
+      setFilterProducts([]);
+      return;
+    }
+
     let productsCopy = products.slice();
 
     // Filter by search query first
@@ -205,28 +211,28 @@ const addToCart = async (productId, color, size, quantity = 1) => {
     // Filter by gender
     if (gender.length > 0) {
       productsCopy = productsCopy.filter((item) =>
-        gender.includes(item.gender)
+        item.gender && gender.includes(item.gender)
       );
     }
 
     // Filter by category
     if (category.length > 0) {
       productsCopy = productsCopy.filter((item) =>
-        category.includes(item.category)
+        item.category && category.includes(item.category)
       );
     }
 
     // Filter by size
     if (sizes.length > 0) {
       productsCopy = productsCopy.filter((item) =>
-        item.size.some((s) => sizes.includes(s))
+        item.variants && item.variants.some(v => sizes.includes(v.size))
       );
     }
 
     // Filter by color
     if (colors.length > 0) {
       productsCopy = productsCopy.filter((item) =>
-        item.color.some((c) => colors.includes(c))
+        item.variants && item.variants.some(v => colors.includes(v.color))
       );
     }
 
@@ -243,7 +249,7 @@ const addToCart = async (productId, color, size, quantity = 1) => {
   const resetCategoryFilter = () => setCategory([]);
   const resetSizeFilter = () => setSizes([]);
   const resetColorFilter = () => setColors([]);
-  const resetPriceFilter = () => setPriceRange([0, 5000]);
+  const resetPriceFilter = () => setPriceRange([0, 10000]);
   const resetSearchQuery = () => setSearchQuery("");
 
   const logout = () => {
@@ -254,17 +260,15 @@ const addToCart = async (productId, color, size, quantity = 1) => {
     console.log("User logged out");
   };
 
-  useEffect(() => {
-    applyFilter();
-  }, [gender, category, sizes, colors, priceRange, searchQuery, products]);
-
   const getProductsData = async () => {
     try {
       const response = await axios.get(`${backend_url}/v1/products`);
 
       if (response.status === 200) {
-        setProducts(response.data.products);
-        setFilterProducts(response.data.products);
+        const fetchedProducts = response.data.products;
+        setProducts(fetchedProducts);
+        // Set filterProducts to all fetched products initially
+        setFilterProducts(fetchedProducts);
       } else {
         toast.error(response.data.message);
       }
@@ -347,6 +351,11 @@ const addToCart = async (productId, color, size, quantity = 1) => {
   useEffect(() => {
     getProductsData();
   }, []);
+
+  // This effect now correctly applies filters AFTER products are loaded
+  useEffect(() => {
+    applyFilter();
+  }, [gender, category, sizes, colors, priceRange, searchQuery, products]);
 
   // console.log("cartdata",cartData);
 

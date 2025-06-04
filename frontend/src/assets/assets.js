@@ -55,6 +55,7 @@ import p_img51 from './p_img51.png'
 import p_img52 from './p_img52.png'
 import slide1 from './slide1.png'
 import slide2 from './slide2.png'
+import hero from './hero.png'
 
 
 import logo from './logo.png'
@@ -76,6 +77,7 @@ import razorpay_logo from './razorpay_logo.png'
 import stripe_logo from './stripe_logo.png'
 import cross_icon from './cross_icon.png'
 import banner from './banner.png'
+import side from './side.png'
 
 export const assets = {
     banner,
@@ -99,6 +101,8 @@ export const assets = {
     cross_icon,
     slide1,
     slide2,
+    hero,
+    side,
 }
 
 export const products = [

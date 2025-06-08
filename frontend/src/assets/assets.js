@@ -78,9 +78,13 @@ import stripe_logo from './stripe_logo.png'
 import cross_icon from './cross_icon.png'
 import banner from './banner.png'
 import side from './side.png'
+import authbanner from './authbanner.png'
+import loginbanner from './loginbanner.png'
+import dikshyantaImage from './dikshyantaImage.png'
 
 export const assets = {
     banner,
+    authbanner,
     logo,
     hero_img,
     cart_icon,
@@ -103,6 +107,8 @@ export const assets = {
     slide2,
     hero,
     side,
+    loginbanner,
+    dikshyantaImage
 }
 
 export const products = [

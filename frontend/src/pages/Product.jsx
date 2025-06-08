@@ -116,8 +116,25 @@ const Product = () => {
         .map((variant) => variant.size);
 
       setAvailableSizes(sizesForColor);
-      setSelectedSize(null); // Reset size selection when color changes
-      setSelectedVariant(null); // Reset variant selection
+      
+      // Auto select size if it's 'NaN' and there are available sizes
+      if (sizesForColor.length > 0) {
+        const hasNaN = sizesForColor.includes('NaN');
+        if (hasNaN) {
+          setSelectedSize('NaN');
+          // Find and set the variant with 'NaN' size
+          const variant = productData.variants.find(
+            (v) => v.color === selectedColor && v.size === 'NaN'
+          );
+          setSelectedVariant(variant);
+        } else {
+          setSelectedSize(null);
+          setSelectedVariant(null);
+        }
+      } else {
+        setSelectedSize(null);
+        setSelectedVariant(null);
+      }
     }
   }, [selectedColor, productData]);
 

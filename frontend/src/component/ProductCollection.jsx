@@ -39,15 +39,16 @@ const ProductCollection = ({ title, collectionType }) => {
         if (response.data.success) {
           let products = [];
           switch(collectionType) {
+            case 'latest':
+              products = response.data.latestProducts;
+              break;
             case 'bestseller':
               products = response.data.bestsellers;
               break;
             case 'topRated':
               products = response.data.topRatedProducts;
               break;
-            case 'latest':
-              products = response.data.latestProducts;
-              break;
+            
           }
           setCollectionProducts(products);
         }

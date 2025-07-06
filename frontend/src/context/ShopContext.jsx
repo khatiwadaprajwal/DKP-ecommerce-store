@@ -59,7 +59,7 @@ const ShopcontextProvider = ({ children }) => {
     setCategory([]);
     setSizes([]);
     setColors([]);
-    setPriceRange([0, 10000]);
+    setPriceRange([0, 50000]);
     setSearchQuery("");
     setFilterProducts([]);
   };

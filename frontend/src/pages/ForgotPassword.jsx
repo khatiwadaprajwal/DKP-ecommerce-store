@@ -152,7 +152,7 @@ const ForgotPassword = () => {
   const LeftBanner = () => (
     <div className="hidden md:block md:w-1/2 bg-blue-50">
       <img
-        src={assets.banner}
+        src={assets.loginbanner}
         alt="Shopping Cart with Smartphone"
         className="w-full h-full object-cover"
       />

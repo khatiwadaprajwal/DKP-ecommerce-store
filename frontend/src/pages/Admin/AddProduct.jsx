@@ -30,7 +30,7 @@ const AddProduct = () => {
 
   console.log(backend_url)
   
-  const sizeOptions = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+  const sizeOptions = ['XS', 'S', 'M', 'L', 'XL', 'XXL','NaN'];
   const colorOptions = [
     // Basic Colors
     'Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Gray', 'Brown',

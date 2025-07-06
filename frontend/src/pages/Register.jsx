@@ -325,7 +325,7 @@ const Register = () => {
           </div>
         </div>
       </div>
-      <Toaster position="top-right" reverseOrder={false} />
+      {/* <Toaster position="top-right" reverseOrder={false} /> */}
     </div>
   );
 };

@@ -19,7 +19,7 @@ const Collection = () => {
   } = useContext(ShopContext);
 
   const [showFilter, setShowFilter] = useState(false);
-  const [sortType, setSortType] = useState("Relevant");
+  const [sortType, setSortType] = useState("Newest");
 
   // Pagination States
   const [currentPage, setCurrentPage] = useState(0);
@@ -36,7 +36,7 @@ const Collection = () => {
       case "high-low":
         setFilterProducts(filterProductCopy.sort((a, b) => b.price - a.price));
         break;
-      case "newest":
+      case "Newest":
         setFilterProducts(
           filterProductCopy.sort(
             (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
@@ -156,7 +156,7 @@ const Collection = () => {
               className="border border-gray-300 rounded-lg py-2 px-3 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="Relevant">Relevant</option>
-              <option value="newest">Newest</option>
+              <option value="Newest">Newest</option>
               <option value="low-high">Price (Low to High)</option>
               <option value="high-low">Price (High to Low)</option>
               <option value="best-selling">Best Selling</option>

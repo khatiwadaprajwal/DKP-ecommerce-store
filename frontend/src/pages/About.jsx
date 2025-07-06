@@ -1,5 +1,6 @@
 import React from 'react';
 import Newsletter from '../component/Newsletter';
+import { assets } from '../assets/assets';
 
 const About = () => {
   return (
@@ -24,7 +25,7 @@ const About = () => {
           <div className="flex flex-col md:flex-row items-center gap-12">
             <div className="md:w-1/2">
               <img 
-                src="/api/placeholder/600/500" 
+                src={assets.dikshyantaImage} 
                 alt="Our story" 
                 className="rounded-lg shadow-lg w-full h-auto object-cover"
               />
@@ -40,11 +41,11 @@ const About = () => {
                 who share the same vision – to make clothing that makes you feel confident and comfortable.
               </p>
               <div className="mt-8">
-                <img 
+                {/* <img 
                   src="/api/placeholder/150/60" 
                   alt="Founder's signature" 
                   className="h-12 w-auto"
-                />
+                /> */}
                 <p className="text-gray-900 font-medium mt-2">Sharada Bhattarai, Founder</p>
               </div>
             </div>

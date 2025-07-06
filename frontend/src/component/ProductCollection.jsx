@@ -3,59 +3,85 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation } from 'swiper/modules';
 import { ShopContext } from "../context/ShopContext";
 import ProductItem from "../component/ProductItem";
+import axios from 'axios';
 
 import 'swiper/css';
 import 'swiper/css/navigation';
 
 const ProductCollection = ({ title, collectionType }) => {
-  const { products } = useContext(ShopContext);
+  const { backend_url } = useContext(ShopContext);
   const [collectionProducts, setCollectionProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   useEffect(() => {
-    let filteredProducts = [];
-    
-    switch(collectionType) {
-      case 'bestseller':
-        // Use totalSold to determine bestsellers
-        filteredProducts = products
-          .sort((a, b) => b.totalSold - a.totalSold)
-          .slice(0, 8);
-        break;
-      case 'topRated':
-        // Use averageRating from the model
-        filteredProducts = products
-          .filter(product => product.averageRating >= 4.5)
-          .slice(0, 8);
-        break;
-      case 'latest':
-        // Use createdAt from timestamps
-        filteredProducts = products
-          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-          .slice(0, 8);
-        break;
-      case 'popular':
-        // New collection type based on combination of rating and sales
-        filteredProducts = products
-          .sort((a, b) => {
-            const aPopularity = (a.averageRating || 0) * (a.totalSold || 0);
-            const bPopularity = (b.averageRating || 0) * (b.totalSold || 0);
-            return bPopularity - aPopularity;
-          })
-          .slice(0, 8);
-        break;
-      case 'trending':
-        // Assuming trending is based on recent sales
-        filteredProducts = products
-          .filter(product => product.totalSold > 20)
-          .sort((a, b) => b.updatedAt - a.updatedAt)
-          .slice(0, 8);
-        break;
-      default:
-        filteredProducts = [];
-    }
-    
-    setCollectionProducts(filteredProducts);
-  }, [products, collectionType]);
+    const fetchCollectionProducts = async () => {
+      try {
+        setLoading(true);
+        let endpoint = '';
+        
+        switch(collectionType) {
+          case 'bestseller':
+            endpoint = 'bestsellers';
+            break;
+          case 'topRated':
+            endpoint = 'top-rated';
+            break;
+          case 'latest':
+            endpoint = 'latest';
+            break;
+          default:
+            throw new Error('Invalid collection type');
+        }
+
+        const response = await axios.get(`${backend_url}/v1/productlist/${endpoint}`);
+        console.log("respnse ", response )
+        
+        if (response.data.success) {
+          let products = [];
+          switch(collectionType) {
+            case 'bestseller':
+              products = response.data.bestsellers;
+              break;
+            case 'topRated':
+              products = response.data.topRatedProducts;
+              break;
+            case 'latest':
+              products = response.data.latestProducts;
+              break;
+          }
+          setCollectionProducts(products);
+        }
+      } catch (err) {
+        setError(err.message || `Failed to fetch ${collectionType} products`);
+        console.error(`Error fetching ${collectionType} products:`, err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCollectionProducts();
+  }, [backend_url, collectionType]);
+  
+  if (loading) {
+    return (
+      <div className="py-4">
+        <h2 className="text-3xl font-bold mb-8">{title}</h2>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-4">
+        <h2 className="text-3xl font-bold mb-8">{title}</h2>
+        <div className="text-center text-red-500">{error}</div>
+      </div>
+    );
+  }
   
   return (
     <div className=''>
@@ -91,7 +117,7 @@ const ProductCollection = ({ title, collectionType }) => {
               image={product.images[0]} 
               name={product.productName}
               price={product.price}
-              rating={product.averageRating} // Added rating
+              rating={product.averageRating}
             />
           </SwiperSlide>
         ))}

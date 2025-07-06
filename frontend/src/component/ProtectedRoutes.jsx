@@ -38,8 +38,8 @@ export const AuthProvider = ({ children }) => {
       error => {
         if (error.response && error.response.status === 401) {
           localStorage.removeItem('token');
-          toast.error('Session expired. Please log in again.');
-          window.location.href = '/login';
+          // toast.error('Session expired. Please log in again.');
+          window.location.href = '/';
         }
         return Promise.reject(error);
       }
@@ -81,5 +81,5 @@ export const CustomerRoute = () => {
     );
   }
 
-  return user.role=== 'Customer' ? <Outlet /> : <Navigate to="/login" replace />;
+  return user.role=== 'Customer' ? <Outlet /> : <Navigate to="/" replace />;
 };

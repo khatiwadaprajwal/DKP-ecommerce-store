@@ -7,7 +7,6 @@ const Otp = require("../model/otp.model");
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 
-
 const sendotp = async (req, res) => {
     try {
         const { email } = req.body;

@@ -78,7 +78,7 @@ export default function Profile() {
       });
       
       // Make the API call using axios
-      const response = await axiosInstance.post('/v1/changepassword', {
+      const response = await axiosInstance.put('/v1/changepassword', {
         oldPassword: passwordData.oldPassword,
         newPassword: passwordData.newPassword
       });

@@ -31,7 +31,28 @@ const AddProduct = () => {
   console.log(backend_url)
   
   const sizeOptions = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
-  const colorOptions = ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Gray', 'Brown'];
+  const colorOptions = [
+    // Basic Colors
+    'Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Gray', 'Brown',
+    // Blues
+    'Navy Blue', 'Sky Blue', 'Royal Blue', 'Teal', 'Turquoise', 'Indigo', 'Cobalt Blue',
+    // Reds & Pinks
+    'Maroon', 'Burgundy', 'Crimson', 'Pink', 'Rose', 'Magenta', 'Coral',
+    // Greens
+    'Olive', 'Mint', 'Sage', 'Emerald', 'Forest Green', 'Lime', 'Jade',
+    // Browns & Beiges
+    'Tan', 'Beige', 'Cream', 'Khaki', 'Caramel', 'Chocolate', 'Cognac',
+    // Purples
+    'Purple', 'Lavender', 'Violet', 'Plum', 'Mauve', 'Lilac',
+    // Yellows & Oranges
+    'Orange', 'Amber', 'Gold', 'Mustard', 'Peach', 'Rust',
+    // Grays
+    'Charcoal', 'Silver', 'Slate', 'Smoke', 'Pewter',
+    // Metallics
+    'Bronze', 'Copper', 'Gold', 'Silver',
+    // Others
+    'Nude', 'Ivory', 'Off-White', 'Pitch Black'
+  ];
   const categoryOptions = ['Formal','Casual', 'Ethnic'];
   const genderOptions = ['Men', 'Women', 'Kids'];
   

@@ -3,37 +3,59 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation } from 'swiper/modules';
 import { ShopContext } from "../context/ShopContext";
 import ProductItem from "../component/ProductItem";
+import axios from 'axios';
 
 import 'swiper/css';
 import 'swiper/css/navigation';
 
 const FeaturedProducts = () => {
-  const { products } = useContext(ShopContext);
+  const { backend_url } = useContext(ShopContext);
   const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   useEffect(() => {
-    // Updated to match the new product model structure
-    const featured = products
-      .filter(product => 
-        // Select products that have high ratings, high sales, or premium pricing
-        product.averageRating >= 4 ||
-        product.totalSold > 50 ||
-        product.price > 150
-      )
-      .sort((a, b) => {
-        // Sort by a combination of factors to show the most "featured" items first
-        const aScore = (a.averageRating || 0) * 2 + (a.totalSold / 100) + (a.price / 1000);
-        const bScore = (b.averageRating || 0) * 2 + (b.totalSold / 100) + (b.price / 1000);
-        return bScore - aScore;
-      })
-      .slice(0, 8);
-    
-    setFeaturedProducts(featured);
-  }, [products]);
+    const fetchFeaturedProducts = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(`${backend_url}/v1/productlist/featured`);
+        if (response.data.success) {
+          setFeaturedProducts(response.data.featuredProducts);
+        }
+      } catch (err) {
+        setError(err.message || 'Failed to fetch featured products');
+        console.error('Error fetching featured products:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFeaturedProducts();
+  }, [backend_url]);
+
+  if (loading) {
+    return (
+      <div className="py-4">
+        <h2 className="text-3xl font-bold mb-8">Featured Products</h2>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-4">
+        <h2 className="text-3xl font-bold mb-8">Featured Products</h2>
+        <div className="text-center text-red-500">{error}</div>
+      </div>
+    );
+  }
 
   return (
     <section className="py-4">
-      <div className=" mx-auto">
+      <div className="mx-auto">
         <h2 className="text-3xl font-bold mb-8">Featured Products</h2>
         <Swiper
           className='h-auto'

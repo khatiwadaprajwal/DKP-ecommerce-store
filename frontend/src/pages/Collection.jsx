@@ -28,6 +28,7 @@ const Collection = () => {
   // Sorting logic
   const sortProduct = () => {
     let filterProductCopy = [...filterProducts];
+    
     switch (sortType) {
       case "low-high":
         setFilterProducts(filterProductCopy.sort((a, b) => a.price - b.price));
@@ -192,27 +193,27 @@ const Collection = () => {
                 initial="hidden"
                 animate="visible"
               >
-                {paginatedProducts.map((product, index) => (
-                  <motion.div
-                    key={`${product._id}-${index}`}
-                    variants={itemVariants}
-                  >
-                    <ProductItem
-                      id={product._id}
-                      name={product.productName} // Updated from name to productName
-                      image={
-                        product.images instanceof Array
-                          ? product.images[0] // Updated from image to images
-                          : product.images
-                      }
-                      price={product.price}
-                      // colors={product.color} // Updated from colors to color
-                      // category={product.category}
-                      rating={product.averageRating} // Added rating
-                      // gender={product.gender} // Added gender
-                    />
-                  </motion.div>
-                ))}
+                {paginatedProducts.map((product, index) => {
+                  
+                  return (
+                    <motion.div
+                      key={`${product._id}-${index}`}
+                      variants={itemVariants}
+                    >
+                      <ProductItem
+                        id={product._id}
+                        name={product.productName}
+                        image={
+                          product.images && product.images.length > 0
+                            ? product.images[0]
+                            : product.images
+                        }
+                        price={product.price}
+                        rating={product.averageRating}
+                      />
+                    </motion.div>
+                  );
+                })}
               </motion.div>
             ) : (
               <div className="bg-white rounded-xl shadow-sm p-10 text-center">

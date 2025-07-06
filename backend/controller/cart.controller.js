@@ -357,7 +357,9 @@ exports.placeOrderFromCart = async (req, res) => {
     let orderItems = [];
     let totalAmount = 0;
     let productDetails = [];
+    let stockUpdates = [];
 
+    // First validate stock for all products
     for (let item of selectedProducts) {
       const { productId, quantity, color, size } = item;
       console.log(`🔎 Processing Product ID: ${productId} (Quantity: ${quantity}, Color: ${color}, Size: ${size})`);
@@ -384,25 +386,18 @@ exports.placeOrderFromCart = async (req, res) => {
         });
       }
 
-      // Reduce stock for now
-      product.variants[variantIndex].quantity -= quantity;
-      product.totalQuantity = product.variants.reduce((sum, v) => sum + v.quantity, 0);
-      product.totalSold += quantity;
-      await product.save();
-
-      const orderItem = new OrderItem({
-        productId,
+      // Store product and variant information for later use
+      stockUpdates.push({
+        product,
+        variantIndex,
         quantity,
-        price: product.price,
-        totalPrice: quantity * product.price,
+        productId,
         color,
-        size
+        size,
+        price: product.price
       });
 
-      await orderItem.save();
-      orderItems.push(orderItem._id);
-      totalAmount += orderItem.totalPrice;
-
+      totalAmount += quantity * product.price;
       productDetails.push({
         productName: product.productName,
         color,
@@ -411,6 +406,52 @@ exports.placeOrderFromCart = async (req, res) => {
         price: product.price,
         totalPrice: quantity * product.price
       });
+    }
+
+    // Create order with initial status
+    const order = new Order({
+      userId,
+      orderItems,
+      totalAmount,
+      address,
+      location,
+      paymentMethod,
+      status: paymentMethod === "PayPal" ? "Failed" : "Pending",
+      paymentStatus: paymentMethod === "PayPal" ? "Failed" : "Pending",
+      currency: "NPR"
+    });
+
+    await order.save();
+
+    // Create order items
+    for (const update of stockUpdates) {
+      const orderItem = new OrderItem({
+        productId: update.productId,
+        quantity: update.quantity,
+        price: update.price,
+        totalPrice: update.quantity * update.price,
+        color: update.color,
+        size: update.size,
+        orderId: order._id
+      });
+
+      await orderItem.save();
+      orderItems.push(orderItem._id);
+    }
+
+    // Update order with order items
+    order.orderItems = orderItems;
+    await order.save();
+
+    // If payment method is Cash, update stock quantities immediately
+    if (paymentMethod === "Cash") {
+      for (const update of stockUpdates) {
+        const { product, variantIndex, quantity } = update;
+        product.variants[variantIndex].quantity -= quantity;
+        product.totalQuantity = product.variants.reduce((sum, v) => sum + v.quantity, 0);
+        product.totalSold += quantity;
+        await product.save();
+      }
     }
 
     if (paymentMethod === "PayPal") {
@@ -452,29 +493,11 @@ exports.placeOrderFromCart = async (req, res) => {
       }
     }
 
-    // COD Orders
-    const order = new Order({
-      userId,
-      orderItems,
-      totalAmount,
-      address,
-      location,
-      paymentMethod,
-      status: "Pending",
-      paymentStatus: paymentMethod === "PayPal" ? "Pending" : "Paid",
-      currency: "NPR"
-    });
-
-    await order.save();
-
-    await OrderItem.updateMany(
-      { _id: { $in: orderItems } },
-      { $set: { orderId: order._id } }
-    );
-
+    // Remove items from cart
     const orderedProductIds = selectedProducts.map(p => p.productId);
     await CartItem.deleteMany({ cartId: cart._id, productId: { $in: orderedProductIds } });
 
+    // Send confirmation email
     await sendOrderEmail(req.user.email, {
       _id: order._id,
       productDetails,

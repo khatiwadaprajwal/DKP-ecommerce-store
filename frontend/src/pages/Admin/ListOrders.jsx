@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { EyeIcon, MapPinIcon } from 'lucide-react';
+import { EyeIcon, MapPinIcon, Download } from 'lucide-react';
 import axios from "axios";
 import { ShopContext } from "../../context/ShopContext";
-
+import { QRCodeSVG } from "qrcode.react";
+import { motion } from "framer-motion";
+  
 const ListOrders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -10,6 +12,8 @@ const ListOrders = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [showOrderDetails, setShowOrderDetails] = useState(null);
   const [error, setError] = useState(null);
+  const [qrOrder, setQrOrder] = useState(null);
+  const qrRef = React.useRef(null);
 
   const token = localStorage.getItem("token");
   const {backend_url}= useContext(ShopContext);
@@ -147,6 +151,28 @@ const ListOrders = () => {
     }
   };
 
+  // Helper function to download QR code as PNG
+  const downloadQRCode = () => {
+    if (qrRef.current) {
+      const svg = qrRef.current.querySelector('svg');
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new window.Image();
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        const pngFile = canvas.toDataURL('image/png');
+        const downloadLink = document.createElement('a');
+        downloadLink.download = `order-qr-${qrOrder._id}.png`;
+        downloadLink.href = pngFile;
+        downloadLink.click();
+      };
+      img.src = 'data:image/svg+xml;base64,' + window.btoa(svgData);
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <div className="flex justify-between items-center mb-6">
@@ -261,6 +287,23 @@ const ListOrders = () => {
                           title="View Details"
                         >
                           <EyeIcon className="h-5 w-5" />
+                        </button>
+                        <button
+                          onClick={() => setQrOrder(order)}
+                          className="text-green-600 hover:text-green-900 p-1"
+                          title="Generate QR Code"
+                          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          {/* Small QR code icon SVG */}
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="7" height="7" rx="2" fill="currentColor"/>
+                            <rect x="3" y="14" width="7" height="7" rx="2" fill="currentColor"/>
+                            <rect x="14" y="3" width="7" height="7" rx="2" fill="currentColor"/>
+                            <rect x="14" y="14" width="3" height="3" rx="1" fill="currentColor"/>
+                            <rect x="19" y="19" width="2" height="2" rx="1" fill="currentColor"/>
+                            <rect x="14" y="19" width="2" height="2" rx="1" fill="currentColor"/>
+                            <rect x="19" y="14" width="2" height="2" rx="1" fill="currentColor"/>
+                          </svg>
                         </button>
                       </td>
                     </tr>
@@ -394,6 +437,57 @@ const ListOrders = () => {
               )}
             </tbody>
           </table>
+        </div>
+      )}
+      {/* QR Code Modal */}
+      {qrOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 w-full" style={{ minWidth: 350, maxWidth: 500 }}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold">Order QR Code</h2>
+              <button 
+                onClick={() => setQrOrder(null)}
+                className="text-gray-500 hover:text-gray-700 text-4xl"
+              >
+                ×
+              </button>
+            </div>
+            <div ref={qrRef} className="flex flex-col items-center">
+              <QRCodeSVG
+                value={JSON.stringify({
+                  orderId: qrOrder._id,
+                  user: qrOrder.userId?.name || '',
+                  products: Array.isArray(qrOrder.orderItems)
+                    ? qrOrder.orderItems.map(item => ({
+                        name: item.productId?.productName || '',
+                        quantity: item.quantity,
+                        size: item.size,
+                        color: item.color
+                      }))
+                    : [],
+                  total: `${qrOrder.currency || 'NPR'} ${qrOrder.totalAmount?.toFixed(2) || '0.00'}`,
+                  address: qrOrder.address || '',
+                  orderStatus: qrOrder.status || '',
+                  paymentStatus: qrOrder.paymentStatus || ''
+                })}
+                size={300}
+                style={{ width: 300, height: 300, maxWidth: '100%' }}
+                className="mx-auto"
+                level="H"
+                includeMargin={true}
+              />
+              <button
+                onClick={downloadQRCode}
+                className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center gap-2"
+              >
+                <Download size={20} />
+                Download QR Code
+              </button>
+            </div>
+            <p className="text-sm text-gray-500 mt-4 text-center">
+              Scan this QR code to view order details
+            </p>
+          </div>
         </div>
       )}
     </div>

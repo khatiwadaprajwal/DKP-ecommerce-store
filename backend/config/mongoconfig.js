@@ -1,17 +1,19 @@
 const mongoose = require("mongoose");
-const dbUrl = "mongodb://127.0.0.1:27017/collegeproject";
+require('dotenv').config();
+
+
+const dbUrl= process.env.dbUrl
+
 mongoose.connect(dbUrl, {
+   
     autoIndex: true,
-    autoCreate: true
+    autoCreate: true,
+})
+.then(() => {
+    console.log("✅ MongoDB Atlas Connected Successfully!");
+})
+.catch((error) => {
+    console.error("❌ Error connecting to MongoDB Atlas:", error.message);
 });
 
-const db = mongoose.connection;
-
-db.on("error", (error) => {
-    console.error("Error connecting database:", error.message);
-});
-
-db.once("open", () => {
-    console.log("Database Connected Successfully!");
-});
-module.exports = db;
+module.exports = mongoose.connection;

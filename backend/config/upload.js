@@ -1,27 +1,25 @@
+
+
 const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
 
-// Define the storage location and filename rules
+// Storage configuration
 const myStorage = multer.diskStorage({
     destination: (req, file, cb) => {
-        let uploadPath = path.join(__dirname, "../public"); 
-        
-        // Check if directory exists, if not, create it
+        let uploadPath = path.join(__dirname, "../public");
         if (!fs.existsSync(uploadPath)) {
             fs.mkdirSync(uploadPath, { recursive: true });
         }
-
         cb(null, uploadPath);
     },
     filename: (req, file, cb) => {
         let filename = Date.now() + "." + file.originalname.split(".").pop();
-        console.log("File saved as:", filename);
         cb(null, filename);
     }
 });
 
-// Multer configuration with file type validation
+// File filter
 const uploader = multer({
     storage: myStorage,
     fileFilter: (req, file, cb) => {
@@ -36,4 +34,4 @@ const uploader = multer({
     }
 });
 
-module.exports = uploader;
+module.exports = uploader; 

@@ -1,15 +1,13 @@
 const Order = require("../model/order.model");
 const OrderItem = require("../model/orderitem.model");
 const Product = require("../model/productmodel");
-const Cart = require("../model/cart.model");
-const CartItem = require("../model/cartitem.model");
 const axios = require("axios");
-const mongoose = require("mongoose");
 const { generateAccessToken, PAYPAL_API } = require("../utils/paypal");
-const { sendOrderEmail,sendOrderStatusUpdateEmail } = require("../utils/mailer");
-const { verifyKhaltiPayment } = require("../utils/khalti");
+const { sendOrderEmail } = require("../utils/mailer");
+const mongoose = require("mongoose");
 
-const EXCHANGE_RATE_NPR_TO_USD = 135; 
+
+const EXCHANGE_RATE_NPR_TO_USD = 135;
 
 exports.createOrder = async (req, res) => {
   try {
@@ -36,7 +34,7 @@ exports.createOrder = async (req, res) => {
 
     const variant = product.variants[variantIndex];
     if (variant.quantity < quantity) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: `Insufficient stock for ${product.productName} (${color} - ${size}). Available stock: ${variant.quantity}`
       });
     }
@@ -81,6 +79,49 @@ exports.createOrder = async (req, res) => {
       await product.save();
     }
 
+    // If payment method is Khalti
+    if (paymentMethod === "Khalti") {
+      try {
+        const KHALTI_SECRET_KEY = process.env.KHALTI_SECRET_KEY;
+        const amountInPaisa = totalAmount * 100; // Khalti requires paisa
+
+        const paymentData = {
+          return_url: `http://localhost:3001/v1/payments/complete-khalti-payment?orderId=${order._id}&userId=${userId}`,
+          website_url: `http://localhost:5173`,
+          amount: amountInPaisa,
+          purchase_order_id: order._id.toString(),
+          purchase_order_name: `Order Payment`,
+          customer_info: {
+            name: req.user.fullName || "Customer",
+            email: req.user.email
+          }
+        };
+
+        const headers = {
+          Authorization: `Key ${KHALTI_SECRET_KEY}`,
+          "Content-Type": "application/json"
+        };
+
+        const khaltiResponse = await axios.post(
+          `https://a.khalti.com/api/v2/epayment/initiate/`,
+          paymentData,
+          { headers }
+        );
+
+        const khaltiUrl = khaltiResponse.data.payment_url;
+
+        // Return Khalti payment URL for redirection
+        return res.status(200).json({
+          message: "Redirect to Khalti",
+          khaltiUrl
+        });
+      } catch (khaltiError) {
+        console.error("❌ Khalti Payment Error:", khaltiError.response?.data || khaltiError.message);
+        return res.status(500).json({ error: "Khalti payment initialization failed" });
+      }
+    }
+
+    // If payment method is PayPal
     if (paymentMethod === "PayPal") {
       try {
         const accessToken = await generateAccessToken();
@@ -90,7 +131,7 @@ exports.createOrder = async (req, res) => {
           intent: "sale",
           payer: { payment_method: "paypal" },
           redirect_urls: {
-            return_url: `http://localhost:5173/paypal/success?orderId=${order._id}&userId=${userId}&productIds=${productId}`,
+            return_url: `http://localhost:5173/paypal/success?orderId=${order._id}&userId=${userId}`,
             cancel_url: "http://localhost:3001/v1/paypal/cancel"
           },
           transactions: [
@@ -119,20 +160,6 @@ exports.createOrder = async (req, res) => {
         return res.status(500).json({ error: "PayPal payment initialization failed" });
       }
     }
-    if (paymentMethod === "Khalti") {
-  return res.status(201).json({
-    message: "Proceed with Khalti",
-    orderId: order._id,
-    totalAmount,
-    productName: product.productName
-  });
-}
-
-    // ✅ Update product quantity for COD
-    variant.quantity -= quantity;
-    product.totalQuantity -= quantity;
-    product.totalSold += quantity;
-    await product.save();
 
     // ✅ Send order confirmation email with productDetails array
     await sendOrderEmail(req.user.email, {
@@ -151,9 +178,9 @@ exports.createOrder = async (req, res) => {
       status: order.status
     });
 
-    return res.status(201).json({ 
-      message: "✅ Order placed successfully", 
-      order 
+    return res.status(201).json({
+      message: "✅ Order placed successfully",
+      order
     });
 
   } catch (error) {
@@ -162,15 +189,62 @@ exports.createOrder = async (req, res) => {
   }
 };
 
+exports.completeKhaltiPayment = async (req, res) => {
+  const { pidx, orderId, userId } = req.query;
+
+  try {
+    const KHALTI_SECRET_KEY = process.env.KHALTI_SECRET_KEY;
+
+    const headers = {
+      Authorization: `Key ${KHALTI_SECRET_KEY}`,
+      "Content-Type": "application/json"
+    };
+
+    const response = await axios.post(
+      `https://a.khalti.com/api/v2/epayment/lookup/`,
+      { pidx },
+      { headers }
+    );
+
+    const paymentInfo = response.data;
+
+    if (paymentInfo.status !== "Completed") {
+      await Order.findByIdAndUpdate(orderId, {
+        paymentStatus: "Failed",
+        status: "Failed"
+      });
+
+      return res.redirect(`http://localhost:5173/payment-failed?orderId=${orderId}`);
+    }
+
+    await Order.findByIdAndUpdate(orderId, {
+      paymentStatus: "Paid",
+      status: "Confirmed",
+      transactionId: pidx
+    });
+
+    return res.redirect(`http://localhost:5173/payment-success?orderId=${orderId}`);
+  } catch (error) {
+    console.error("❌ Error verifying Khalti payment:", error.message);
+    return res.status(500).send("Payment verification failed");
+  }
+};
 
 
 exports.paypalSuccess = async (req, res) => {
   try {
-    const { paymentId, PayerID, userId, orderItemIds, address, location, paymentMethod } = req.query;
+    const { orderId, paymentId, PayerID, userId, productIds } = req.query;
+
+    if (!orderId || !paymentId || !PayerID || !userId || !productIds) {
+      return res.status(400).json({ error: "Missing required parameters" });
+    }
+
+    console.log(`✅ Processing PayPal payment for Order ID: ${orderId}`);
 
     // 1. Generate PayPal access token
     const accessToken = await generateAccessToken();
     if (!accessToken) {
+      console.error("❌ Failed to generate PayPal access token");
       return res.status(500).json({ error: "Failed to generate PayPal access token" });
     }
 
@@ -185,10 +259,7 @@ exports.paypalSuccess = async (req, res) => {
       }
     });
 
-    console.log(
-      "✅ PayPal Payment Executed:",
-      JSON.stringify(paymentResponse.data, null, 2)
-    );
+    console.log("✅ PayPal Payment Response:", JSON.stringify(paymentResponse.data, null, 2));
 
     // 3. Verify payment status
     if (paymentResponse.data.state !== "approved") {
@@ -214,17 +285,17 @@ exports.paypalSuccess = async (req, res) => {
     }
 
     // 5. Update order status and reduce product quantities
-    order.status = "Pending";
+    order.status = "Confirmed"; // ✅ Updated from "Pending"
     order.paymentStatus = "Paid";
     await order.save();
     console.log("✅ Order marked as paid");
 
-    // 6. Update product quantities
-    for (const orderItem of order.orderItems) {
+    // 6. Update product quantities in parallel
+    await Promise.all(order.orderItems.map(async (orderItem) => {
       const product = await Product.findById(orderItem.productId);
       if (!product) {
         console.warn(`⚠️ Product not found for order item: ${orderItem._id}`);
-        continue;
+        return;
       }
 
       const variantIndex = product.variants.findIndex(
@@ -233,29 +304,26 @@ exports.paypalSuccess = async (req, res) => {
 
       if (variantIndex === -1) {
         console.warn(`⚠️ Variant not found for product: ${product._id}`);
-        continue;
+        return;
       }
 
-      // Reduce quantity
+      // Prevent negative quantity
+      if (product.variants[variantIndex].quantity < orderItem.quantity) {
+        console.warn(`⚠️ Insufficient stock for ${product._id}`);
+        return;
+      }
+
       product.variants[variantIndex].quantity -= orderItem.quantity;
       product.totalQuantity = product.variants.reduce((sum, v) => sum + v.quantity, 0);
       product.totalSold += orderItem.quantity;
       await product.save();
       console.log(`✅ Updated quantity for product: ${product._id}`);
-    }
+    }));
 
     // 7. Clear cart items
     const cart = await Cart.findOne({ userId });
-
-    // Link OrderItem with orderId
-    await OrderItem.updateMany(
-      { _id: { $in: orderItemIdsArray } },
-      { $set: { orderId: order._id } }
-    );
-
-    const cart = await Cart.findOne({ userId }).populate("cartItems");
     if (cart) {
-      const productIdList = productIds.split(",");
+      const productIdList = typeof productIds === "string" ? productIds.split(",") : [];
       await CartItem.deleteMany({ 
         cartId: cart._id, 
         productId: { $in: productIdList }
@@ -274,31 +342,36 @@ exports.paypalSuccess = async (req, res) => {
           }
         });
 
-      const emailData = {
-        _id: order._id,
-        productDetails: populatedOrder.orderItems.map(item => ({
-          productName: item.productId.productName,
-          color: item.color,
-          size: item.size,
-          quantity: item.quantity,
-          price: item.price,
-          totalPrice: item.totalPrice
-        })),
-        totalAmount: order.totalAmount,
-        address: order.address,
-        paymentMethod: order.paymentMethod,
-        status: order.status
-      };
+      // ✅ Fetch user's email using userId
+      const user = await User.findById(userId);
+      const email = user?.email || null;
 
-      await sendOrderEmail(req.user.email, emailData);
-      console.log("✅ Order confirmation email sent");
+      if (email) {
+        const emailData = {
+          _id: order._id,
+          productDetails: populatedOrder.orderItems.map(item => ({
+            productName: item.productId?.productName || "Product",
+            color: item.color,
+            size: item.size,
+            quantity: item.quantity,
+            price: item.price,
+            totalPrice: item.totalPrice
+          })),
+          totalAmount: order.totalAmount,
+          address: order.address,
+          paymentMethod: order.paymentMethod,
+          status: order.status
+        };
+
+        await sendOrderEmail(email, emailData);
+        console.log("✅ Order confirmation email sent");
+      } else {
+        console.warn("⚠️ No email found for user");
+      }
+
     } catch (emailError) {
       console.error("⚠️ Error sending confirmation email:", emailError);
-      // Don't fail the request if email fails
-      const cartItemIdsToRemove = cart.cartItems
-        .filter(item => orderItems.find(oi => oi.productId.toString() === item.productId.toString()))
-        .map(item => item._id);
-      await CartItem.deleteMany({ _id: { $in: cartItemIdsToRemove } });
+      // Do not block success response
     }
 
     return res.json({ 
@@ -306,37 +379,15 @@ exports.paypalSuccess = async (req, res) => {
       message: "Payment processed successfully", 
       order 
     });
-    return res.json({ message: "Payment successful", order });
-
   } catch (error) {
     console.error("❌ PayPal Success Error:", error);
-    return res.status(500).json({ error: "Payment confirmation failed" });
+    return res.status(500).json({ 
+      error: "Payment confirmation failed",
+      details: error.message 
+    });
   }
 };
 
-
-exports.verifyKhalti = async (req, res) => {
-  try {
-    const { token, amount, orderId } = req.body;
-
-    const order = await Order.findById(orderId);
-    if (!order) return res.status(404).json({ error: "Order not found" });
-
-    const khaltiResponse = await verifyKhaltiPayment(token, amount);
-
-    if (khaltiResponse.idx) {
-      order.paymentStatus = "Paid";
-      await order.save();
-
-      return res.json({ message: "✅ Khalti payment verified", order });
-    } else {
-      return res.status(400).json({ error: "Invalid Khalti payment" });
-    }
-  } catch (error) {
-    console.error("❌ Khalti verification error:", error.message);
-    return res.status(500).json({ error: "Khalti verification failed" });
-  }
-};
 
 
 

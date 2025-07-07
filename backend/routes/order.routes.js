@@ -12,10 +12,11 @@ const {
   getOrders,
   getAllOrders,
   changeOrderStatus,
+  completeKhaltiPayment
 } = require("../controller/order.controller");
 const isAdminOrSuperAdmin = require("../middleware/isAdminorSuperAdmin");
 
-router.get("/payments/complete-khalti-payment", orderController.completeKhaltiPayment);
+router.get("/payments/complete-khalti-payment",completeKhaltiPayment);
 
 
 // Route to place an order (COD & PayPal)
@@ -36,7 +37,9 @@ router.put(
   isAdminOrSuperAdmin,
   changeOrderStatus
 );
-//router.post("/order/khalti/verify", orderController.verifyKhalti);
+
+router.get("/payments/complete-khalti-payment", orderController.completeKhaltiPayment);
+
 
 
 module.exports = router;

@@ -3,6 +3,7 @@
     "axios": "^1.7.9",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.2",
+    "cloudinary": "^2.7.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
@@ -14,8 +15,11 @@
     "nodemon": "^3.1.0",
     "path": "^0.12.7",
     "paypal-rest-sdk": "^1.8.1"
+    
   },
+  "type": "commonjs",
   "scripts": {
     "start": "nodemon app.js"
   }
+  
 }

@@ -1,6 +1,58 @@
-@import "tailwindcss";
+/* ✅ FIX: Google Fonts must be the VERY FIRST line, before Tailwind */
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Poppins:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap');
 
+@import "tailwindcss";
+
+/* Configuration & Variables */
+:root {
+  /* Font Families */
+  --font-primary: 'Poppins', sans-serif;
+  --font-heading: 'Playfair Display', serif;
+  --font-body: 'Montserrat', sans-serif;
+
+  /* Base font-size system */
+  --base-font-size: 12px;
+}
+
+/* Applying the base font size */
+html {
+  font-size: var(--base-font-size);
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: 1rem; /* 1rem = 12px based on your root setting */
+  line-height: 1.6;
+  color: #333;
+}
+
+/* Typography Headers */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* Specific Font Classes */
+.font-primary { font-family: var(--font-primary); }
+.font-heading { font-family: var(--font-heading); }
+.font-body { font-family: var(--font-body); }
+
+/* Responsive Font Sizes */
+h1 { font-size: 3rem; }
+h2 { font-size: 2rem; }
+h3 { font-size: 1.25rem; }
+p, span, a, button, input, select { font-size: 1rem; }
+small { font-size: 0.875rem; }
+
+/* Mobile Font Adjustment */
+@media screen and (max-width: 768px) {
+  :root {
+    --base-font-size: 10px;
+  }
+}
+
+/* UI Elements */
 @media (max-width: 640px) {
   a.active {
     background-color: black;
@@ -9,99 +61,41 @@
 }
 
 button:hover {
-  background-color: #e53e3e; /* Darker shade of red */
+  background-color: #e53e3e;
   transform: scale(1.05);
   transition: all 0.3s ease-in-out;
 }
 
+/* Container constraints */
+.container {
+  max-width: 100%;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
 
-  
-  :root {
-    --font-primary: 'Poppins', sans-serif;
-    --font-heading: 'Playfair Display', serif;
-    --font-body: 'Montserrat', sans-serif;
-  }
-  
-  body {
-    font-family: var(--font-body);
-    font-size: 16px;
-    line-height: 1.6;
-    color: #333;
-  }
-  
-  h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-heading);
-    font-weight: 600;
-    line-height: 1.2;
-  }
-  
-  .font-primary {
-    font-family: var(--font-primary);
-  }
-  
-  .font-heading {
-    font-family: var(--font-heading);
-  }
-  
-  .font-body {
-    font-family: var(--font-body);
-  }
-
-
-  /* Base font-size responsive system */
-  :root {
-    --base-font-size: 12px;
-    font-size: var(--base-font-size);
-  }
-  
-  /* Use relative units for text elements */
-  h1 { font-size: 3rem; }
-  h2 { font-size: 2rem; }
-  h3 { font-size: 1.25rem; }
-  p, span, a, button, input, select { font-size: 1rem; }
-  small { font-size: 0.875rem; }
-  
-  /* Font-size adjustment for browser settings */
-  @media screen and (max-width: 768px) {
-    :root {
-      --base-font-size: 10px;
-    }
-  }
-  
-  /* Container constraints to prevent extreme spreading */
+@media screen and (min-width: 1024px) {
   .container {
-    max-width: 100%;
-    width: 100%;
-    margin-left: auto;
-    margin-right: auto;
+    max-width: 1280px;
   }
-  
-  /* Prevent text from getting too large */
-  @media screen and (min-width: 1024px) {
-    .container {
-      max-width: 1280px;
-    }
-  }
-  
-  /* Ensure minimum heights don't break with larger fonts */
-  .min-h-100px {
-    min-height: 6.25rem; /* 100px in rem */
-  }
-  
-  /* Font size adjust class for components that need special handling */
-  .font-size-adjust {
-    text-size-adjust: 100%;
-    -webkit-text-size-adjust: 100%;
-  }
-  
-  /* Button and control scaling */
-  button, input, select {
-    line-height: 1.5;
-  }
-  
-  /* Ensure SVG icons scale with text */
-  svg {
-    width: 1em;
-    height: 1em;
-    vertical-align: middle;
-  }
+}
+
+/* Utilities */
+.min-h-100px {
+  min-height: 6.25rem;
+}
+
+.font-size-adjust {
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+button, input, select {
+  line-height: 1.5;
+}
+
+svg {
+  width: 1em;
+  height: 1em;
+  vertical-align: middle;
+}

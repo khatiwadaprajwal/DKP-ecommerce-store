@@ -1,63 +1,13 @@
-import React, { useEffect, useState, createContext, useContext } from 'react';
+import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { jwtDecode } from 'jwt-decode';  // <-- Fixed here
-import axios from 'axios';
-import { toast } from 'react-toastify';
-
-
-
-// Create AuthContext to share user data globally
-const AuthContext = createContext();
-
-// Custom hook to use AuthContext easily
-export const useAuth = () => useContext(AuthContext);
-
-// ----- AUTH PROVIDER -----
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        // Decode user from token
-        const decodedUser = jwtDecode(token);  // <-- Fixed here
-        setUser(decodedUser);
-        // Set axios default header
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      } catch (error) {
-        console.error('Invalid Token:', error);
-        localStorage.removeItem('token');
-        toast.error('Invalid session. Please log in again.');
-      }
-    }
-
-    // Global axios interceptor for 401 errors
-    const interceptor = axios.interceptors.response.use(
-      response => response,
-      error => {
-        if (error.response && error.response.status === 401) {
-          localStorage.removeItem('token');
-          // toast.error('Session expired. Please log in again.');
-          window.location.href = '/';
-        }
-        return Promise.reject(error);
-      }
-    );
-
-    return () => {
-      axios.interceptors.response.eject(interceptor);
-    };
-  }, []);
-
-  return <AuthContext.Provider value={{ user, setUser }}>{children}</AuthContext.Provider>;
-};
+import { useAuth } from '../context/AuthProvider'; // Import from the file created above
 
 // ----- ADMIN ROUTE -----
 export const AdminRoute = () => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
-  if (user === null) {
+  // 1. Show Spinner while checking token/refreshing
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
@@ -65,21 +15,42 @@ export const AdminRoute = () => {
     );
   }
 
-  return user.role === 'Admin' || user.role ==='SuperAdmin' ? <Outlet /> : <Navigate to="/login" replace />;
+  // 2. If no user, go to Login
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // 3. Check Role (Admin OR SuperAdmin)
+  if (user.role === 'Admin' || user.role === 'SuperAdmin') {
+    return <Outlet />;
+  }
+
+  // 4. If user exists but is not Admin, go Home
+  return <Navigate to="/" replace />;
 };
 
 // ----- CUSTOMER ROUTE -----
 export const CustomerRoute = () => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
-  if (user === null) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
-        {/* <Navigate to="/login" replace /> */}
       </div>
     );
   }
 
-  return user.role=== 'Customer' ? <Outlet /> : <Navigate to="/" replace />;
+  // 1. If not logged in
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // 2. If logged in as Customer (or you can allow all logged-in users here)
+  if (user.role === 'Customer') {
+    return <Outlet />;
+  }
+
+  // 3. Fallback
+  return <Navigate to="/" replace />;
 };

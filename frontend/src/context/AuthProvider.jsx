@@ -1,92 +1,129 @@
 import React, { useEffect, useState, createContext, useContext } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { jwtDecode } from 'jwt-decode';  // <-- Fixed here
+import { jwtDecode } from 'jwt-decode';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { ShopContext } from '../context/ShopContext'; // Needed for backend_url
 
-// Create AuthContext to share user data globally
 const AuthContext = createContext();
 
-// Custom hook to use AuthContext easily
 export const useAuth = () => useContext(AuthContext);
 
-// ----- AUTH PROVIDER -----
 export const AuthProvider = ({ children }) => {
+  const { backend_url } = useContext(ShopContext); // Get URL from your existing context
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [loading, setLoading] = useState(true);
 
+  // Helper to decode
+  const decodeUser = (t) => {
+    try { return jwtDecode(t); } catch (e) { return null; }
+  };
+
+  // 1. Initialize
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        // Decode user from token
-        const decodedUser = jwtDecode(token);  // <-- Fixed here
-        setUser(decodedUser);
-        // Set axios default header
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      } catch (error) {
-        console.error('Invalid Token:', error);
+    axios.defaults.withCredentials = true;
+    const storedToken = localStorage.getItem('token');
+    if (storedToken) {
+      const decoded = decodeUser(storedToken);
+      if (decoded) {
+        setUser(decoded);
+        setToken(storedToken);
+        axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+      } else {
         localStorage.removeItem('token');
-        toast.error('Invalid session. Please log in again.');
       }
     }
+    setLoading(false);
+  }, []);
 
-    // Global axios interceptor for 401 errors
-    const interceptor = axios.interceptors.response.use(
-      response => response,
-      error => {
-        if (error.response && error.response.status === 401) {
-          localStorage.removeItem('token');
-          toast.error('Session expired. Please log in again.');
-          window.location.href = '/login';
+  // 2. Interceptors (Already correct, but ensure this is here)
+  useEffect(() => {
+    const resInterceptor = axios.interceptors.response.use(
+      (response) => {
+        const newToken = response.headers['x-new-access-token'];
+        if (newToken) {
+          localStorage.setItem('token', newToken);
+          setToken(newToken);
+          setUser(decodeUser(newToken));
+          axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+        }
+        return response;
+      },
+      (error) => {
+        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+          // Only force logout if it's strictly an auth error, not a permission error
+           if (error.response.data.message === "Session expired. Please login again.") {
+               handleLogout(); 
+           }
         }
         return Promise.reject(error);
       }
     );
-
-    return () => {
-      axios.interceptors.response.eject(interceptor);
-    };
+    return () => axios.interceptors.response.eject(resInterceptor);
   }, []);
 
-  return <AuthContext.Provider value={{ user }}>{children}</AuthContext.Provider>;
-};
-
-// ----- ADMIN ROUTE -----
-export const AdminRoute = () => {
-  const { user } = useAuth();
-
-  if (user === null) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
-      </div>
-    );
-  }
-
-  return user.role === 'Admin' ? <Outlet /> : <Navigate to="/login" replace />;
-};
-
-// ----- CUSTOMER ROUTE -----
-export const CustomerRoute = () => {
-  const { user } = useAuth();
-
-  if (user === null) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
-      </div>
-    );
-  }
-
-  return user.role=== 'Customer' ? <Outlet /> : <Navigate to="/login" replace />;
-};
-
-
- export const logout = () => {
-    // Clear user data, token, etc.
-    localStorage.removeItem("user"); // Example: if you store user data in localStorage
-    localStorage.removeItem("token"); // Example: if you store token
-    // Optionally, reset any context state related to user
-    setUser(null);
-    console.log("User logged out");
+  const login = (newToken, userData) => {
+    localStorage.setItem('token', newToken);
+    setToken(newToken);
+    setUser(userData);
+    axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
   };
+
+  // 🔴 UPDATED LOGOUT FUNCTION
+  const handleLogout = async () => {
+    try {
+      // 1. Call Backend to clear Cookie
+      await axios.post(`${backend_url}/v1/auth/logout`); 
+    } catch (error) {
+      console.error("Logout error", error);
+    } finally {
+      // 2. Clear Frontend State regardless of backend success
+      localStorage.removeItem('token');
+      setToken(null);
+      setUser(null);
+      delete axios.defaults.headers.common['Authorization'];
+      toast.success("Logged out successfully");
+    }
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, token, loading, login, logout: handleLogout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+// ----- UPDATED ROUTES -----
+
+export const AdminRoute = () => {
+  const { user, loading } = useAuth();
+  if (loading) return <div>Loading...</div>; // Replace with your spinner component
+
+  // Allow BOTH Admin and SuperAdmin to access Admin Routes
+  if (user && (user.role === 'Admin' || user.role === 'SuperAdmin')) {
+    return <Outlet />;
+  }
+  return <Navigate to="/login" replace />;
+};
+
+export const SuperAdminRoute = () => {
+  const { user, loading } = useAuth();
+  if (loading) return <div>Loading...</div>;
+
+  // STRICTLY SuperAdmin
+  if (user && user.role === 'SuperAdmin') {
+    return <Outlet />;
+  }
+  return <Navigate to="/login" replace />;
+};
+
+export const CustomerRoute = () => {
+  const { user, loading } = useAuth();
+  if (loading) return <div>Loading...</div>;
+
+  if (user && user.role === 'Customer') {
+    return <Outlet />;
+  }
+  return <Navigate to="/login" replace />;
+};

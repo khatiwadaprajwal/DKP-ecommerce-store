@@ -7,49 +7,77 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 const isAdmin = async (req, res, next) => {
   try {
-    let token = req.headers.authorization;
+    const JWT_SECRET = process.env.JWT_SECRET;
+    const REFRESH_SECRET = process.env.REFRESH_SECRET;
 
-    if (!token) {
-      return res.status(401).json({ msg: "Unauthorized access: No token provided" });
+    // 1. Get Tokens
+    const authHeader = req.headers.authorization;
+    let accessToken = authHeader && authHeader.split(" ")[1];
+    const refreshToken = req.cookies?.refreshToken;
+
+    if (!accessToken && !refreshToken) {
+      return res.status(401).json({ message: "Unauthorized: No token provided" });
     }
 
-    // Remove "Bearer " prefix if present
-    if (token.toLowerCase().startsWith("bearer ")) {
-      token = token.slice(7);
+    // --- CASE A: Verify Access Token ---
+    if (accessToken) {
+      try {
+        const decoded = jwt.verify(accessToken, JWT_SECRET);
+        
+        // Fix: Use 'id', not 'userId' to match your login token generation
+        const user = await User.findById(decoded.id).select("-password").lean();
+
+        if (!user) return res.status(401).json({ message: "User not found" });
+
+        // ✅ ADMIN CHECK
+        if (user.role !== "Admin" && user.role !== "SuperAdmin") {
+          return res.status(403).json({ message: "Access denied: Admins only" });
+        }
+
+        req.user = user;
+        return next(); 
+
+      } catch (err) {
+        // If token is just expired, fall through to refresh logic. 
+        // If it's invalid (tampered), stop here.
+        if (err.name !== "TokenExpiredError") {
+          return res.status(401).json({ message: "Invalid token" });
+        }
+      }
     }
 
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET);
-      
 
-      // Check if token expired
-      if (decoded.exp * 1000 < Date.now()) {
-        return res.status(401).json({ msg: "Session expired, please log in again" });
-      }
+    if (refreshToken) {
+      try {
+        const decoded = jwt.verify(refreshToken, REFRESH_SECRET);
+        
+        const user = await User.findById(decoded.id).select("-password");
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      // Retrieve user by decoded ID
-      const user = await User.findById(decoded.userId).lean();
-      if (!user) {
-        return res.status(401).json({ msg: "Unauthorized access: User not found" });
-      }
+        // ✅ ADMIN CHECK (Must check here too!)
+        if (user.role !== "Admin" && user.role !== "SuperAdmin") {
+          return res.status(403).json({ message: "Access denied: Admins only" });
+        }
 
-      // Check if user is an Admin
-      if (user.role !== "Admin") {
-        return res.status(403).json({ msg: "Access denied: Admins only" });
-      }
+        // Generate NEW Access Token
+        const newAccessToken = generateAccessToken(user._id, user.role);
 
-      // Attach user to req.user for further use
-      req.user = user;
-      next();
-    } catch (error) {
-      if (error.name === "TokenExpiredError") {
-        return res.status(401).json({ msg: "Session expired, please log in again" });
+        // Send new token in header so Frontend updates itself
+        res.setHeader("x-new-access-token", newAccessToken);
+        
+        req.user = user.toObject();
+        return next();
+
+      } catch (err) {
+        return res.status(401).json({ message: "Session expired. Please login again." });
       }
-      throw error;
     }
+
+    return res.status(401).json({ message: "Unauthorized" });
+
   } catch (error) {
-    console.error("❌ Error in admin authentication:", error.message);
-    return res.status(403).json({ msg: "Unauthorized access: Invalid or expired token" });
+    console.error("❌ Admin Auth Error:", error);
+    return res.status(500).json({ message: "Internal Auth Error" });
   }
 };
 

@@ -7,48 +7,68 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 const isLoggedIn = async (req, res, next) => {
   try {
-    let token = req.headers.authorization;
+    const JWT_SECRET = process.env.JWT_SECRET;
+    const REFRESH_SECRET = process.env.REFRESH_SECRET;
 
-    if (!token) {
-      return res.status(401).json({ msg: "Unauthorized access: No token provided" });
+    // 1. Get Tokens
+    const authHeader = req.headers.authorization;
+    let accessToken = authHeader && authHeader.split(" ")[1]; // "Bearer <token>"
+    const refreshToken = req.cookies?.refreshToken;
+
+    if (!accessToken && !refreshToken) {
+      return res.status(401).json({ message: "Unauthorized: No token provided" });
     }
 
-    // Remove "Bearer " prefix if present
-    if (token.toLowerCase().startsWith("bearer ")) {
-      token = token.slice(7);
+    // 2. Try to Verify Access Token (From Header)
+    if (accessToken) {
+      try {
+        const decoded = jwt.verify(accessToken, JWT_SECRET);
+        
+        // Find user (using lean() for performance since we just need data)
+        const user = await User.findById(decoded.id).select("-password").lean();
+        
+        if (!user) return res.status(401).json({ message: "User not found" });
+
+        req.user = user;
+        return next(); // Token is valid, proceed
+      } catch (err) {
+        // If error is NOT expiration (e.g., tampered token), fail immediately
+        if (err.name !== "TokenExpiredError") {
+          return res.status(401).json({ message: "Invalid token" });
+        }
+        // If "TokenExpiredError", we intentionally fall through to step 3
+      }
     }
 
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET);
-      console.log("✅ Decoded Token:", decoded);
+    // 3. Access Token Expired or Missing? Check Refresh Token (From Cookie)
+    if (refreshToken) {
+      try {
+        const decoded = jwt.verify(refreshToken, REFRESH_SECRET);
+        
+        const user = await User.findById(decoded.id).select("-password"); // Note: We need a Mongoose doc to save if needed, but lean is fine here too usually
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      // Check if token expired
-      if (decoded.exp * 1000 < Date.now()) {
-        return res.status(401).json({ msg: "Session expired, please log in again" });
+        // Generate NEW Access Token
+        const newAccessToken = generateAccessToken(user._id, user.role);
+
+        // ⚠️ CRITICAL: Send new token in header so Frontend can update
+        res.setHeader("x-new-access-token", newAccessToken);
+
+        // Attach user and proceed
+        req.user = user.toObject(); // Convert to plain object if not using lean above
+        return next();
+
+      } catch (err) {
+        console.error("Refresh Error:", err.message);
+        return res.status(401).json({ message: "Session expired. Please login again." });
       }
-
-      // Fetch user by ID
-      const user = await User.findById(decoded.userId).lean();
-      console.log("👤 Retrieved User:", user);
-
-      if (!user) {
-        console.log("❌ User not found in DB");
-        return res.status(401).json({ msg: "Unauthorized access: User not found" });
-      }
-
-      // Attach user to req.user
-      req.user = user;
-      console.log("🟢 User attached to req.user:", req.user);
-      next();
-    } catch (error) {
-      if (error.name === "TokenExpiredError") {
-        return res.status(401).json({ msg: "Session expired, please log in again" });
-      }
-      throw error;
     }
+
+    return res.status(401).json({ message: "Unauthorized" });
+
   } catch (error) {
-    console.error("❌ Error in authentication:", error.message);
-    return res.status(401).json({ msg: "Unauthorized access: Invalid or expired token" });
+    console.error("❌ Middleware Error:", error);
+    return res.status(500).json({ message: "Internal Auth Error" });
   }
 };
 

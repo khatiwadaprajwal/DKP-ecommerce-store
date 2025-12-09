@@ -128,68 +128,84 @@ const verifyOTP = async (req, res) => {
   }
 };
 
-// Login User (with Tokens and Cookies)
+
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // 1. Find User
     const user = await User.findOne({ email });
     if (!user) return res.status(401).json({ message: "Invalid email or password" });
 
-    // 🔒 Check if user is locked
+    // 2. Lock Logic
     if (user.lockUntil && user.lockUntil > new Date()) {
       const minutesLeft = Math.ceil((user.lockUntil - Date.now()) / 60000);
       return res.status(403).json({ message: `Account locked. Try again in ${minutesLeft} minute(s)` });
     }
 
-    // 🔑 Validate password
+    // 3. Password Check
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      // Increase failed login attempts
       user.loginAttempts = (user.loginAttempts || 0) + 1;
-
-      // Lock user if attempts >= 10
+      // Lock after 10 failed attempts
       if (user.loginAttempts >= 10) {
-        user.lockUntil = new Date(Date.now() + 60 * 60 * 1000); // 1 hour lock
+        user.lockUntil = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
         await user.save();
-        return res.status(403).json({ message: "Account locked due to too many failed login attempts. Try again after 1 hour." });
+        return res.status(403).json({ message: "Account locked due to too many failed login attempts." });
       }
-
       await user.save();
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // ✅ Successful login — reset attempts and lock
+    // 4. Success - Reset Locks
     user.loginAttempts = 0;
     user.lockUntil = null;
     await user.save();
 
-    // Generate Access and Refresh Tokens
+    // 5. Generate Tokens
+    // MongoDB uses _id, we pass it as string
     const accessToken = generateAccessToken(user._id, user.role);
     const refreshToken = generateRefreshToken(user._id, user.role);
 
-    // Set cookies for tokens
-    res.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 30 * 60 * 1000, // 30 minutes
-    });
-
+    // 6. Set Refresh Token in HTTP-Only Cookie
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      secure: process.env.NODE_ENV === "production", // true in https
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
-    res.status(200).json({ message: "User logged in successfully" });
+    // 7. Send Access Token in JSON (Frontend uses this in Headers)
+    res.status(200).json({
+      message: "Login successful",
+      token: accessToken, // Matches your Prisma logic
+      user: {
+        id: user._id,
+        name: user.name, // Assuming you have a name field
+        email: user.email,
+        role: user.role
+      }
+    });
+
   } catch (error) {
-    console.error("❌ Error in login:", error.message);
+    console.error("❌ Error in login:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+const logout = (req, res) => {
+  try {
+    // Clear the Refresh Token Cookie
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", 
+      sameSite: "lax"
+    });
 
+    res.status(200).json({ message: "Logged out successfully" });
+  } catch (error) {
+    res.status(500).json({ error: "Logout failed" });
+  }
+};
 
   
-module.exports = {signup, verifyOTP, login};
+module.exports = {signup, verifyOTP, login,logout};

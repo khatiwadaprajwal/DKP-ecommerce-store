@@ -3,30 +3,22 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 require("dotenv").config();  // Load env variables
 
-const generateAccessToken = (userId, accountType) => {
-  try {
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) throw new Error("JWT Secret is not defined!");
 
-    return jwt.sign({ sub: userId, accountType }, jwtSecret, {
-      expiresIn: "30m",
-    });
-  } catch (error) {
-    throw new Error(`Error generating access token: ${error.message}`);
-  }
+
+ const generateAccessToken = (userId, role) => {
+  return jwt.sign(
+    { id: userId, role }, // Payload: consistent 'id' and 'role'
+    process.env.JWT_SECRET,
+    { expiresIn: "15m" } 
+  );
 };
 
-const generateRefreshToken = (userId, accountType) => {
-  try {
-    const refreshTokenSecret = process.env.REFRESH_SECRET;
-    if (!refreshTokenSecret) throw new Error("Refresh Token Secret is not defined!");
-
-    return jwt.sign({ sub: userId, accountType }, refreshTokenSecret, {
-      expiresIn: "24h",
-    });
-  } catch (error) {
-    throw new Error(`Error generating refresh token: ${error.message}`);
-  }
+ const generateRefreshToken = (userId, role) => {
+  return jwt.sign(
+    { id: userId, role },
+    process.env.REFRESH_SECRET,
+    { expiresIn: "7d" }
+  );
 };
 
 const generatePasswordResetToken = () => {

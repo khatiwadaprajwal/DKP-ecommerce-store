@@ -4,15 +4,13 @@ import './index.css';
 import App from './App.jsx';
 import { BrowserRouter } from 'react-router-dom';
 import ShopContextProvider from './context/ShopContext.jsx';
-import { AuthProvider } from './context/AuthProvider.jsx'; // ✅ Import from Context
+// REMOVED: AuthProvider import
 
 createRoot(document.getElementById('root')).render(
   <BrowserRouter>
     <ShopContextProvider>
-      
-      <AuthProvider>
-        <App />
-      </AuthProvider>
+     
+      <App />
     </ShopContextProvider>
   </BrowserRouter>
 );

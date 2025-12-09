@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from "react";
 import { ShopContext } from "../context/ShopContext";
 import { Link } from "react-router-dom";
-import {Toaster, toast } from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { 
   ShoppingCart, 
   Trash2, 
@@ -82,13 +82,9 @@ const Cart = () => {
       
       // Refresh cart data
       await fetchCartData();
-      if(response.status == 200){
-        toast.success("Cart updated");
-      }
       
-
-      if(response.status== 400){
-        toast.error("Insufficient Quantity");
+      if(response.status === 200){
+        toast.success("Cart updated");
       }
 
       // Update selected items if this item is selected
@@ -100,8 +96,13 @@ const Cart = () => {
       }));
       
     } catch (error) {
-      console.error("Error updating quantity:", error);
-      toast.error("Failed to update cart");
+      // Handle errors correctly (Axios throws on 400/500)
+      if (error.response && error.response.status === 400) {
+        toast.error("Insufficient Quantity");
+      } else {
+        console.error("Error updating quantity:", error);
+        toast.error("Failed to update cart");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -137,7 +138,6 @@ const Cart = () => {
       return;
     }
     
-    // FIX: Create the correct format for the PlaceOrder component
     const selectedProducts = selectedItems.map(item => {
       // Find the corresponding cart item to get all needed details
       const cartItem = cartData.find(c => c.cartItemId === item.cartItemId);
@@ -343,12 +343,6 @@ const Cart = () => {
           </div>
         </div>
       )}
-      
-      {/* Toast Container */}
-      {/* <Toaster
-  position="bottom-right"
-  reverseOrder={false}
-/> */}
     </div>
   );
 };

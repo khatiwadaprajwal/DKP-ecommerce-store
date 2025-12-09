@@ -1,9 +1,8 @@
-import React, { useState, createContext, useEffect, useCallback } from "react";
-import {  toast } from "react-hot-toast";
+import React, { useState, createContext, useEffect, useMemo } from "react";
+import { toast } from "react-hot-toast";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
-import debounce from 'lodash/debounce';
 
 export const ShopContext = createContext();
 
@@ -11,7 +10,9 @@ const ShopcontextProvider = ({ children }) => {
   const currency = "Rs";
   const delivery_fee = 0;
   const backend_url = "http://localhost:3001";
-  const [token, setToken] = useState(localStorage.getItem("token"));
+  
+  // FIX: Default to empty string to avoid null issues
+  const [token, setToken] = useState(localStorage.getItem("token") || "");
   const [user, setUser] = useState(null);
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(true);
@@ -25,33 +26,50 @@ const ShopcontextProvider = ({ children }) => {
   const [category, setCategory] = useState([]);
   const [sizes, setSizes] = useState([]);
   const [colors, setColors] = useState([]);
-  const [priceRange, setPriceRange] = useState([0, 10000]);
+  const [priceRange, setPriceRange] = useState([0, 100000]); // Increased range slightly
   const [filterProducts, setFilterProducts] = useState([]);
-  // Add a new state for search query
   const [searchQuery, setSearchQuery] = useState("");
 
   const navigate = useNavigate();
   const location = useLocation();
 
+  // FIX: Logout function defined early so it can be used in useEffect
+  const logout = () => {
+    setToken("");
+    setCartData([]);
+    setUser(null);
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+    toast.success("Logged out successfully");
+    navigate("/login");
+  };
+
+  // FIX: Handle Token Decoding and Expiry
   useEffect(() => {
     if (token) {
       try {
         const decoded = jwtDecode(token);
+        // Optional: Check if token is expired based on 'exp' claim
+        const currentTime = Date.now() / 1000;
+        if (decoded.exp && decoded.exp < currentTime) {
+          throw new Error("Token expired");
+        }
         localStorage.setItem("user", JSON.stringify(decoded));
-        setUser(JSON.parse(localStorage.getItem("user")));
+        setUser(decoded);
       } catch (error) {
-        console.error("Invalid token:", error);
+        console.error("Invalid or expired token:", error);
+        logout(); // Auto logout if token is bad
       }
+    } else {
+      setUser(null);
     }
   }, [token]);
 
   useEffect(() => {
     if (location.pathname === "/") {
-      resetAllFilters(); // Reset all filters if on home page
+      resetAllFilters();
     }
   }, [location.pathname]);
-
-  
 
   // Reset all filters
   const resetAllFilters = () => {
@@ -59,12 +77,12 @@ const ShopcontextProvider = ({ children }) => {
     setCategory([]);
     setSizes([]);
     setColors([]);
-    setPriceRange([0, 50000]);
+    setPriceRange([0, 100000]);
     setSearchQuery("");
-    setFilterProducts([]);
+    setFilterProducts(products); // Reset to all products
   };
 
-  // Fetch Cart Data from API
+  // Fetch Cart Data
   const fetchCartData = async () => {
     if (!token) {
       setCartData([]);
@@ -77,7 +95,6 @@ const ShopcontextProvider = ({ children }) => {
       });
   
       if (response.status === 200) {
-        // Check if cart exists and has items
         if (response.data.cart && response.data.cart.cartItems) {
           const formattedCart = response.data.cart.cartItems.map((item) => ({
             cartItemId: item._id,
@@ -89,7 +106,6 @@ const ShopcontextProvider = ({ children }) => {
             color: item.color,
             size: item.size
           }));
-  
           setCartData(formattedCart);
         } else {
           setCartData([]);
@@ -97,146 +113,119 @@ const ShopcontextProvider = ({ children }) => {
       }
     } catch (error) {
       console.error("Error fetching cart:", error);
-      setCartData([]);
+      // Don't clear cart data on network error, only on auth error
+      if (error.response && error.response.status === 401) {
+        setCartData([]);
+      }
     }
   };
 
+  // Fetch cart when token changes
   useEffect(() => {
-    fetchCartData();
+    if (token) {
+      fetchCartData();
+    }
   }, [token]);
 
   // Add to Cart
-const addToCart = async (productId, color, size, quantity = 1) => {
-  if (!token) {
-    toast.error("Login to add items to cart");
-    return;
-  }
-
-  try {
-    const response = await axios.post(
-      `${backend_url}/v1/add`,
-      { 
-        productId, 
-        color, 
-        size, 
-        quantity 
-      },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    if (response.status === 201) {
-      toast.success("Product added to cart");
-      fetchCartData(); // Fetch the updated cart after adding the item
+  const addToCart = async (productId, color, size, quantity = 1) => {
+    if (!token) {
+      toast.error("Login to add items to cart");
+      navigate("/login");
+      return;
     }
-  } catch (error) {
-    console.error("Error adding to cart:", error);
-    if (error.response?.status === 400) {
-      toast.error(error.response.data.msg || "Missing required product information");
-    } else if (error.response?.status === 404) {
-      toast.error("Product not found");
-    } else {
-      toast.error("Failed to add product to cart");
-    }
-  }
-};
 
-  // Get Cart Count
+    try {
+      const response = await axios.post(
+        `${backend_url}/v1/add`,
+        { productId, color, size, quantity },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.status === 201 || response.status === 200) {
+        toast.success("Product added to cart");
+        await fetchCartData();
+      }
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      if (error.response?.status === 400) {
+        toast.error(error.response.data.msg || "Missing required product information");
+      } else if (error.response?.status === 404) {
+        toast.error("Product not found");
+      } else {
+        toast.error("Failed to add product to cart");
+      }
+    }
+  };
+
   const getCartCount = () => {
     return cartData.reduce((total, item) => total + item.quantity, 0);
   };
 
-  // Toggle gender filter
-  const toggleGender = (value) => {
+  // Toggle helpers
+  const toggleFilter = (value, state, setter) => {
     if (value === "All") {
-      setGender([]);
+      setter([]);
     } else {
-      setGender((prev) =>
-        prev.includes(value)
-          ? prev.filter((item) => item !== value)
-          : [...prev, value]
+      setter((prev) =>
+        prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]
       );
     }
   };
 
-  // Toggle category filter
-  const toggleCategory = (value) => {
-    if (value === "All") {
-      setCategory([]);
-    } else {
-      setCategory((prev) =>
-        prev.includes(value)
-          ? prev.filter((item) => item !== value)
-          : [...prev, value]
-      );
-    }
-  };
+  const toggleGender = (value) => toggleFilter(value, gender, setGender);
+  const toggleCategory = (value) => toggleFilter(value, category, setCategory);
+  const toggleSizes = (value) => toggleFilter(value, sizes, setSizes);
+  const toggleColor = (value) => toggleFilter(value, colors, setColors);
 
-  // Toggle size filter
-  const toggleSizes = (value) => {
-    setSizes((prev) =>
-      prev.includes(value)
-        ? prev.filter((item) => item !== value)
-        : [...prev, value]
-    );
-  };
-
-  // Toggle color filter
-  const toggleColor = (value) => {
-    setColors((prev) =>
-      prev.includes(value)
-        ? prev.filter((item) => item !== value)
-        : [...prev, value]
-    );
-  };
-
-  // Apply filter based on all filter criteria
+  // Main Filter Logic (Client Side)
   const applyFilter = () => {
-    // Only apply filters if products have been loaded
     if (products.length === 0) {
-      setFilterProducts([]);
+      // If no products loaded yet, don't do anything
       return;
     }
 
-    let productsCopy = products.slice();
+    let productsCopy = [...products];
 
-    // Filter by search query first
+    // 1. Search Query Filter
     if (searchQuery && searchQuery.trim() !== "") {
+      const lowerQuery = searchQuery.toLowerCase();
       productsCopy = productsCopy.filter((item) =>
-        item.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()))
+        item.productName.toLowerCase().includes(lowerQuery) ||
+        item.category.toLowerCase().includes(lowerQuery) ||
+        (item.description && item.description.toLowerCase().includes(lowerQuery))
       );
     }
 
-    // Filter by gender
+    // 2. Gender Filter
     if (gender.length > 0) {
       productsCopy = productsCopy.filter((item) =>
         item.gender && gender.includes(item.gender)
       );
     }
 
-    // Filter by category
+    // 3. Category Filter
     if (category.length > 0) {
       productsCopy = productsCopy.filter((item) =>
         item.category && category.includes(item.category)
       );
     }
 
-    // Filter by size
+    // 4. Size Filter
     if (sizes.length > 0) {
       productsCopy = productsCopy.filter((item) =>
         item.variants && item.variants.some(v => sizes.includes(v.size))
       );
     }
 
-    // Filter by color
+    // 5. Color Filter
     if (colors.length > 0) {
       productsCopy = productsCopy.filter((item) =>
         item.variants && item.variants.some(v => colors.includes(v.color))
       );
     }
 
-    // Filter by price range
+    // 6. Price Filter
     productsCopy = productsCopy.filter(
       (item) => item.price >= priceRange[0] && item.price <= priceRange[1]
     );
@@ -244,80 +233,40 @@ const addToCart = async (productId, color, size, quantity = 1) => {
     setFilterProducts(productsCopy);
   };
 
-  // Reset individual filters
+  // Reset helpers
   const resetGenderFilter = () => setGender([]);
   const resetCategoryFilter = () => setCategory([]);
   const resetSizeFilter = () => setSizes([]);
   const resetColorFilter = () => setColors([]);
-  const resetPriceFilter = () => setPriceRange([0, 10000]);
+  const resetPriceFilter = () => setPriceRange([0, 100000]);
   const resetSearchQuery = () => setSearchQuery("");
-
-  const logout = () => {
-    setToken("");
-    setCartData([]);
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
-    console.log("User logged out");
-  };
 
   const getProductsData = async () => {
     try {
       const response = await axios.get(`${backend_url}/v1/products`);
-
       if (response.status === 200) {
-        const fetchedProducts = response.data.products;
-        setProducts(fetchedProducts);
-        // Set filterProducts to all fetched products initially
-        setFilterProducts(fetchedProducts);
+        setProducts(response.data.products);
+        setFilterProducts(response.data.products);
       } else {
         toast.error(response.data.message);
       }
     } catch (error) {
       console.log(error);
+      toast.error("Failed to fetch products");
     }
   };
 
-  // Debounced search function
-  const debouncedSearch = useCallback(
-    debounce(async (query) => {
-      if (!query.trim()) {
-        setFilterProducts(products);
-        return;
-      }
-
-      try {
-        const response = await axios.get(`${backend_url}/v1/products/search?query=${encodeURIComponent(query)}`);
-        if (response.status === 200) {
-          setFilterProducts(response.data.products);
-        }
-      } catch (error) {
-        console.error("Error searching products:", error);
-        toast.error("Error searching products");
-        setFilterProducts(products);
-      }
-    }, 500),
-    [products]
-  );
-
-  // Handle search function
+  // FIX: Simplified Search Function (Client-side)
+  // We removed the debounced Server-side search because it conflicts 
+  // with the client-side filters (Category/Gender).
   const handleSearchFunction = (query) => {
     setSearchQuery(query);
-    debouncedSearch(query);
-    
-    // Navigate to the collection page if not already there
     if (location.pathname !== "/collection") {
       navigate("/collection");
     }
   };
 
-  // Cleanup debounced function on unmount
-  useEffect(() => {
-    return () => {
-      debouncedSearch.cancel();
-    };
-  }, [debouncedSearch]);
-
-  //Paypal Popup for the payment 
+  // PayPal Popup
   const openPayPalPopup = (approvalUrl) => {
       const width = 600;
       const height = 700;
@@ -330,36 +279,32 @@ const addToCart = async (productId, color, size, quantity = 1) => {
         `width=${width},height=${height},top=${top},left=${left},scrollbars=yes`
       );
     
-      // Check if the window was successfully opened
       if (!paypalWindow) {
         toast.error("Popup blocked! Please allow popups and try again.");
         return;
       }
     
-      // Polling to check if the window is closed
       const interval = setInterval(() => {
         if (paypalWindow.closed) {
           clearInterval(interval);
-          toast.success("Payment processing completed!");
-    
-          // Redirect to the order page
+          // Optional: You might want to verify payment with backend here before showing success
+          toast.success("Payment window closed");
           navigate("/order");
         }
       }, 1000);
-    };
+  };
 
   useEffect(() => {
     getProductsData();
   }, []);
 
-  // This effect now correctly applies filters AFTER products are loaded
+  // Re-run filters whenever any filter state changes
   useEffect(() => {
     applyFilter();
   }, [gender, category, sizes, colors, priceRange, searchQuery, products]);
 
-  // console.log("cartdata",cartData);
-
-  const value = {
+  // FIX: Wrapped value in useMemo to prevent unnecessary re-renders
+  const value = useMemo(() => ({
     products,
     currency,
     delivery_fee,
@@ -411,7 +356,10 @@ const addToCart = async (productId, color, size, quantity = 1) => {
     setSearchQuery,
     handleSearchFunction,
     resetSearchQuery,
-  };
+  }), [
+    products, token, search, showSearch, cartData, gender, category, sizes, colors, 
+    priceRange, filterProducts, searchQuery, user, averageRating, totalReviews
+  ]);
 
   return <ShopContext.Provider value={value}>{children}</ShopContext.Provider>;
 };

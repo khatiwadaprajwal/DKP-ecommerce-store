@@ -4,18 +4,20 @@ import { Dialog, Transition } from "@headlessui/react";
 import {
   ShoppingBagIcon,
   InformationCircleIcon,
-  PrinterIcon,
   ReceiptRefundIcon,
+  CreditCardIcon, // ✅ Import Payment Icon
 } from "@heroicons/react/24/outline";
 import axios from "axios";
 import PrintInvoice from "../component/PrintInvoice";
+import { toast } from "react-hot-toast"; // ✅ Ensure you have this installed
 
 const Order = () => {
-  const { currency = "Rs", navigate, token, backend_url } = useContext(ShopContext);
+  const { navigate, token, backend_url } = useContext(ShopContext);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [paymentLoading, setPaymentLoading] = useState(false); // ✅ Loading state for Khalti click
 
   // Fetch orders from API
   useEffect(() => {
@@ -44,7 +46,34 @@ const Order = () => {
     };
 
     fetchOrders();
-  }, [token]);
+  }, [token, backend_url]);
+
+  // ✅ Handle Khalti Payment Navigation
+  const handleKhaltiPayment = async (orderId) => {
+    try {
+      setPaymentLoading(true);
+      
+      // We send the orderId to the backend to generate a new Khalti Payment URL
+      // Make sure your backend has a route like '/v1/khalti/pay-order' or reuse your payment logic
+      const response = await axios.post(
+        `${backend_url}/v1/khalti/pay-order`, // ⚠️ Ensure this route exists in your backend
+        { orderId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data && response.data.khaltiUrl) {
+        // ✅ Redirect to Khalti (Just like PayPal)
+        window.location.href = response.data.khaltiUrl;
+      } else {
+        toast.error("Unable to initiate Khalti payment.");
+      }
+    } catch (err) {
+      console.error("Khalti Error:", err);
+      toast.error("Failed to connect to Khalti.");
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
 
   const handleViewDetails = (order) => {
     setSelectedOrder(order);
@@ -307,6 +336,22 @@ const Order = () => {
                     </div>
                   </div>
                   <div className="flex space-x-2">
+                    
+                    {/* ✅ KHALTI BUTTON ADDED HERE */}
+                    {order.paymentMethod === 'Khalti' && 
+                     order.paymentStatus !== 'Paid' && 
+                     order.status !== 'Cancelled' && (
+                      <button
+                        onClick={() => handleKhaltiPayment(order._id)}
+                        disabled={paymentLoading}
+                        className="px-4 py-2 text-sm bg-purple-600 text-white rounded hover:bg-purple-700 flex items-center"
+                      >
+                        <CreditCardIcon className="h-4 w-4 mr-1" />
+                        {paymentLoading ? "Loading..." : "Pay with Khalti"}
+                      </button>
+                    )}
+                    {/* ✅ END KHALTI BUTTON */}
+
                     <button
                       onClick={() => handleViewDetails(order)}
                       className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -328,7 +373,7 @@ const Order = () => {
           ))}
         </div>
 
-        {/* Order Details Modal */}
+        {/* Order Details Modal (UNCHANGED) */}
         <Transition appear show={!!selectedOrder} as={Fragment}>
           <Dialog as="div" className="relative z-10" onClose={closeModal}>
             <Transition.Child
@@ -365,6 +410,7 @@ const Order = () => {
                       </span>
                     </Dialog.Title>
 
+                    {/* Modal Details Section */}
                     <div className="mt-4 grid grid-cols-2 gap-4">
                       <div>
                         <h4 className="font-semibold text-gray-700">
@@ -445,6 +491,7 @@ const Order = () => {
                       </div>
                     </div>
 
+                    {/* Table Section */}
                     <div className="mt-4">
                       <h4 className="font-semibold text-gray-700 mb-2">
                         Order Summary

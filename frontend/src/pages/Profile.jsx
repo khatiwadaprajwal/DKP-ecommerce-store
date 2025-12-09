@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext } from 'react';
-import axios from 'axios'; // Import axios
-import { ShopContext } from '../context/ShopContext'; // Assuming ShopContext is in this path
+import axios from 'axios';
+import { ShopContext } from '../context/ShopContext';
 import { Eye, EyeOff, User, Mail, Shield, LogOut } from 'lucide-react';
 
 export default function Profile() {
@@ -18,11 +18,9 @@ export default function Profile() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   
-  // Get logout function from ShopContext
   const { logout, navigate, backend_url } = useContext(ShopContext);
 
   useEffect(() => {
-    // Get user data from localStorage
     const userData = localStorage.getItem('user');
     if (userData) {
       setUser(JSON.parse(userData));
@@ -31,7 +29,6 @@ export default function Profile() {
 
   const togglePasswordForm = () => {
     setShowPasswordForm(!showPasswordForm);
-    // Reset form when toggling
     if (!showPasswordForm) {
       setPasswordData({
         oldPassword: '',
@@ -55,7 +52,6 @@ export default function Profile() {
     setError('');
     setSuccess('');
     
-    // Validate passwords
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       setError('New passwords do not match');
       return;
@@ -68,7 +64,6 @@ export default function Profile() {
 
     setLoading(true);
     try {
-      // Create axios instance with headers
       const axiosInstance = axios.create({
         baseURL: `${backend_url}`,
         headers: {
@@ -77,14 +72,11 @@ export default function Profile() {
         }
       });
       
-      // Make the API call using axios
       const response = await axiosInstance.put('/v1/changepassword', {
         oldPassword: passwordData.oldPassword,
         newPassword: passwordData.newPassword
       });
       
-      // Axios automatically throws errors for non-2xx responses
-      // so if we get here, it was successful
       setSuccess(response.data.msg || 'Password changed successfully');
       setPasswordData({
         oldPassword: '',
@@ -92,14 +84,12 @@ export default function Profile() {
         confirmPassword: ''
       });
       
-      // Close the form after successful change
       setTimeout(() => {
         setShowPasswordForm(false);
         setSuccess('');
       }, 3000);
       
     } catch (error) {
-      // Handle axios error responses
       const errorMessage = error.response?.data?.msg || error.message || 'Failed to change password';
       setError(errorMessage);
     } finally {
@@ -108,8 +98,8 @@ export default function Profile() {
   };
 
   const handleLogout = () => {
-    logout(); // Call logout function from ShopContext
-    navigate("/login")
+    logout();
+    navigate("/login");
   };
 
   if (!user) {
@@ -130,7 +120,6 @@ export default function Profile() {
         </div>
         
         <div className="p-6">
-          {/* User Information */}
           <div className="space-y-4">
             <div className="flex items-center space-x-3">
               <User className="text-blue-600" size={24} />
@@ -157,7 +146,6 @@ export default function Profile() {
             </div>
           </div>
           
-          {/* Action Buttons */}
           <div className="mt-8 space-y-4">
             <button
               onClick={togglePasswordForm}
@@ -175,7 +163,6 @@ export default function Profile() {
             </button>
           </div>
           
-          {/* Password Change Form */}
           {showPasswordForm && (
             <div className="mt-6 p-4 bg-gray-50 rounded-lg">
               <h2 className="text-lg font-medium mb-4">Change Password</h2>

@@ -1,56 +1,34 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from '../context/AuthProvider'; // Import from the file created above
+import { ShopContext } from '../context/ShopContext';
 
-// ----- ADMIN ROUTE -----
-export const AdminRoute = () => {
-  const { user, loading } = useAuth();
+export const CustomerRoute = () => {
+  const { token } = useContext(ShopContext);
 
-  // 1. Show Spinner while checking token/refreshing
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
-      </div>
-    );
-  }
-
-  // 2. If no user, go to Login
-  if (!user) {
+  if (!token) {
     return <Navigate to="/login" replace />;
   }
 
-  // 3. Check Role (Admin OR SuperAdmin)
-  if (user.role === 'Admin' || user.role === 'SuperAdmin') {
-    return <Outlet />;
-  }
-
-  // 4. If user exists but is not Admin, go Home
-  return <Navigate to="/" replace />;
+  return <Outlet />;
 };
 
-// ----- CUSTOMER ROUTE -----
-export const CustomerRoute = () => {
-  const { user, loading } = useAuth();
+export const AdminRoute = () => {
+  const { token, user } = useContext(ShopContext);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
-      </div>
-    );
-  }
-
-  // 1. If not logged in
-  if (!user) {
+  // If waiting for user to load, you might return null or a loader here
+  // But for now, let's just check safety:
+  
+  if (!token) {
     return <Navigate to="/login" replace />;
   }
 
-  // 2. If logged in as Customer (or you can allow all logged-in users here)
-  if (user.role === 'Customer') {
-    return <Outlet />;
+  // ✅ Safe Role Check: Handle case sensitivity and missing role
+  const role = user?.role?.toLowerCase() || "";
+  
+  if (role !== 'admin' && role !== 'superadmin') {
+    // If logged in but not admin, go to home
+    return <Navigate to="/" replace />;
   }
 
-  // 3. Fallback
-  return <Navigate to="/" replace />;
+  return <Outlet />;
 };

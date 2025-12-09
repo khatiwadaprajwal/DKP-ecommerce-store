@@ -1,30 +1,34 @@
 import React, { useContext, useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { toast } from "react-toastify"; // Use the same toast library as AuthProvider
-import { assets } from "../assets/assets"; 
+import { toast } from "react-toastify";
+import { assets } from "../assets/assets";
 import { ShopContext } from "../context/ShopContext";
-import { useAuth } from "../context/AuthProvider"; // Ensure file is named AuthProvider.jsx
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // Lock State
   const [lockTimeRemaining, setLockTimeRemaining] = useState(null);
   const [accountLocked, setAccountLocked] = useState(false);
-  
-  const navigate = useNavigate();
-  
-  // 1. Get login function from AuthContext
-  const { login } = useAuth(); 
-  
-  // 2. Get backend_url from ShopContext
-  const { backend_url, setToken } = useContext(ShopContext); 
 
-  // Countdown timer for locked accounts
+  const navigate = useNavigate();
+
+  // ✅ Get setUser from context to update it immediately
+  const { backend_url, setToken, setUser, token } = useContext(ShopContext);
+
+  // If already logged in, redirect
+  useEffect(() => {
+    if (token) {
+      // Optional: Add logic here if you want to redirect logged-in users away from login page
+      // navigate('/'); 
+    }
+  }, [token, navigate]);
+
+  // Countdown timer logic (Unchanged)
   useEffect(() => {
     let timer;
     if (lockTimeRemaining && lockTimeRemaining > 0) {
@@ -55,6 +59,8 @@ const Login = () => {
     setIsLoading(true);
 
     try {
+      // ✅ Check your endpoint. In previous steps it was /v1/login. 
+      // If your backend uses /v1/auth/login, keep this. If not, remove /auth.
       const response = await axios.post(`${backend_url}/v1/auth/login`, {
         email,
         password,
@@ -63,23 +69,32 @@ const Login = () => {
       if (response.status === 200) {
         const { token, user } = response.data;
 
-        // Update Contexts
-        login(token, user);
+        // ✅ 1. Save Token
+        localStorage.setItem("token", token);
         if (setToken) setToken(token);
 
-        // Reset UI
+        // ✅ 2. Set User Immediately (Fixes the Race Condition)
+        // This ensures AdminRoute has the user data BEFORE it loads.
+        if (setUser && user) {
+          localStorage.setItem("user", JSON.stringify(user)); // Save user for persistence
+          setUser(user);
+        }
+
         setAccountLocked(false);
         setLockTimeRemaining(null);
         toast.success("Login successful");
 
-        // Redirect based on Role
-        if (user.role === "Admin" || user.role === "SuperAdmin") {
+        // ✅ 3. Robust Role Check (Case Insensitive)
+        const role = user?.role?.toLowerCase() || "";
+        
+        if (role === "admin" || role === "superadmin") {
           navigate("/admin");
         } else {
           navigate("/");
         }
       }
     } catch (err) {
+      console.error("Login Error:", err);
       const statusCode = err.response?.status;
       const errorMessage = err.response?.data?.message || "Login failed.";
 

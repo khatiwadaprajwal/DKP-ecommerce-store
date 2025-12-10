@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import KhaltiPayment from '../payment/KhaltiPayment';
 import axios from 'axios';
 
 const CheckoutForm = ({ cartItems, totalAmount }) => {
     const navigate = useNavigate();
     const [paymentMethod, setPaymentMethod] = useState('');
-    const [orderId, setOrderId] = useState(null);
+    const [loading, setLoading] = useState(false);
     const [shippingDetails, setShippingDetails] = useState({
         fullName: '',
         address: '',
-        city: '',
+        city: '', // This will map to "location"
         phone: '',
         email: ''
     });
@@ -23,25 +22,6 @@ const CheckoutForm = ({ cartItems, totalAmount }) => {
         }));
     };
 
-    const createOrder = async () => {
-        try {
-            const response = await axios.post('/api/order/create', {
-                items: cartItems,
-                totalAmount,
-                shippingDetails,
-                paymentMethod
-            });
-
-            if (response.data.success) {
-                setOrderId(response.data.orderId);
-                return response.data.orderId;
-            }
-        } catch (error) {
-            console.error('Order creation failed:', error);
-            alert('Failed to create order. Please try again.');
-        }
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         
@@ -50,12 +30,45 @@ const CheckoutForm = ({ cartItems, totalAmount }) => {
             return;
         }
 
-        const newOrderId = await createOrder();
-        
-        if (paymentMethod === 'COD') {
-            navigate('/order-success');
+        if (!cartItems || cartItems.length === 0) {
+            alert('Cart is empty');
+            return;
         }
-        // For Khalti, the payment process will be handled by the KhaltiPayment component
+
+        setLoading(true);
+
+        // We assume we are checking out the first item or processing them individually 
+        // to match the specific JSON structure provided in your request.
+        const itemToBuy = cartItems[0]; 
+
+        const payload = {
+            productId: itemToBuy.productId || itemToBuy._id, // Adjust based on your actual object
+            quantity: itemToBuy.quantity || 1,
+            address: shippingDetails.address, // "Kathmandu, Nepal"
+            location: shippingDetails.city,   // "Lalitpur"
+            paymentMethod: paymentMethod,     // "Khalti"
+            color: itemToBuy.color || "White",
+            size: itemToBuy.size || "XS"
+        };
+
+        try {
+            const response = await axios.post('http://localhost:3001/v1/place', payload);
+
+            // Handle Khalti Redirect Response
+            if (response.data.khaltiUrl) {
+                // Redirects the user immediately to the Khalti payment page
+                window.location.href = response.data.khaltiUrl;
+            } else {
+                // Handle standard success (e.g., for COD)
+                navigate('/order-success');
+            }
+
+        } catch (error) {
+            console.error('Order creation failed:', error);
+            alert('Failed to place order. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -75,7 +88,7 @@ const CheckoutForm = ({ cartItems, totalAmount }) => {
                                 value={shippingDetails.fullName}
                                 onChange={handleInputChange}
                                 required
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
                             />
                         </div>
                         <div>
@@ -86,7 +99,7 @@ const CheckoutForm = ({ cartItems, totalAmount }) => {
                                 value={shippingDetails.phone}
                                 onChange={handleInputChange}
                                 required
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
                             />
                         </div>
                         <div>
@@ -97,7 +110,7 @@ const CheckoutForm = ({ cartItems, totalAmount }) => {
                                 value={shippingDetails.email}
                                 onChange={handleInputChange}
                                 required
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
                             />
                         </div>
                         <div>
@@ -105,21 +118,23 @@ const CheckoutForm = ({ cartItems, totalAmount }) => {
                             <input
                                 type="text"
                                 name="address"
+                                placeholder="e.g. Kathmandu, Nepal"
                                 value={shippingDetails.address}
                                 onChange={handleInputChange}
                                 required
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">City</label>
+                            <label className="block text-sm font-medium text-gray-700">City / Location</label>
                             <input
                                 type="text"
                                 name="city"
+                                placeholder="e.g. Lalitpur"
                                 value={shippingDetails.city}
                                 onChange={handleInputChange}
                                 required
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
                             />
                         </div>
                     </div>
@@ -129,27 +144,33 @@ const CheckoutForm = ({ cartItems, totalAmount }) => {
                 <div className="bg-white p-6 rounded-lg shadow-md">
                     <h3 className="text-lg font-semibold mb-4">Payment Method</h3>
                     <div className="space-y-4">
-                        <label className="flex items-center space-x-3">
+                        
+                        {/* Khalti Option - Simple Blue Text */}
+                        <label className={`flex items-center space-x-3 border p-4 rounded-lg cursor-pointer transition-colors ${paymentMethod === 'Khalti' ? 'border-blue-600 bg-blue-50' : 'border-gray-200'}`}>
                             <input
                                 type="radio"
                                 name="paymentMethod"
-                                value="KHALTI"
-                                checked={paymentMethod === 'KHALTI'}
+                                value="Khalti"
+                                checked={paymentMethod === 'Khalti'}
                                 onChange={(e) => setPaymentMethod(e.target.value)}
                                 className="h-4 w-4 text-blue-600"
                             />
-                            <span>Pay with Khalti</span>
+                            <span className="text-lg font-bold text-[#5C2D91]">
+                                Pay with Khalti
+                            </span>
                         </label>
-                        <label className="flex items-center space-x-3">
+
+                        {/* COD Option */}
+                        <label className={`flex items-center space-x-3 border p-4 rounded-lg cursor-pointer transition-colors ${paymentMethod === 'COD' ? 'border-gray-600 bg-gray-50' : 'border-gray-200'}`}>
                             <input
                                 type="radio"
                                 name="paymentMethod"
                                 value="COD"
                                 checked={paymentMethod === 'COD'}
                                 onChange={(e) => setPaymentMethod(e.target.value)}
-                                className="h-4 w-4 text-blue-600"
+                                className="h-4 w-4 text-gray-600"
                             />
-                            <span>Cash on Delivery</span>
+                            <span className="text-gray-800 font-medium">Cash on Delivery</span>
                         </label>
                     </div>
                 </div>
@@ -160,35 +181,35 @@ const CheckoutForm = ({ cartItems, totalAmount }) => {
                     <div className="space-y-2">
                         <div className="flex justify-between">
                             <span>Subtotal</span>
-                            <span>${totalAmount}</span>
+                            <span>Rs. {totalAmount}</span>
                         </div>
                         <div className="flex justify-between">
                             <span>Shipping</span>
                             <span>Free</span>
                         </div>
-                        <div className="flex justify-between font-bold">
+                        <div className="flex justify-between font-bold border-t pt-2 mt-2">
                             <span>Total</span>
-                            <span>${totalAmount}</span>
+                            <span>Rs. {totalAmount}</span>
                         </div>
                     </div>
                 </div>
 
-                {/* Payment Buttons */}
-                <div className="space-y-4">
-                    {paymentMethod === 'KHALTI' && orderId ? (
-                        <KhaltiPayment amount={totalAmount} orderId={orderId} />
-                    ) : (
-                        <button
-                            type="submit"
-                            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-                        >
-                            {paymentMethod === 'COD' ? 'Place Order' : 'Proceed to Payment'}
-                        </button>
-                    )}
-                </div>
+                {/* Submit Button */}
+                <button
+                    type="submit"
+                    disabled={loading}
+                    className={`w-full py-3 px-4 rounded-lg text-white font-semibold transition-colors shadow-md
+                        ${paymentMethod === 'Khalti' 
+                            ? 'bg-[#5C2D91] hover:bg-[#4a2475]' 
+                            : 'bg-blue-600 hover:bg-blue-700'
+                        } 
+                        ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                >
+                    {loading ? 'Processing...' : (paymentMethod === 'Khalti' ? 'Pay with Khalti' : 'Place Order')}
+                </button>
             </form>
         </div>
     );
 };
 
-export default CheckoutForm; 
+export default CheckoutForm;

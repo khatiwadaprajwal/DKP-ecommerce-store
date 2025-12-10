@@ -11,7 +11,6 @@ const ShopcontextProvider = ({ children }) => {
   const delivery_fee = 0;
   const backend_url = "http://localhost:3001";
   
-  // FIX: Default to empty string to avoid null issues
   const [token, setToken] = useState(localStorage.getItem("token") || "");
   const [user, setUser] = useState(null);
   const [search, setSearch] = useState("");
@@ -26,14 +25,13 @@ const ShopcontextProvider = ({ children }) => {
   const [category, setCategory] = useState([]);
   const [sizes, setSizes] = useState([]);
   const [colors, setColors] = useState([]);
-  const [priceRange, setPriceRange] = useState([0, 100000]); // Increased range slightly
+  const [priceRange, setPriceRange] = useState([0, 100000]); 
   const [filterProducts, setFilterProducts] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
 
   const navigate = useNavigate();
   const location = useLocation();
 
-  // FIX: Logout function defined early so it can be used in useEffect
   const logout = () => {
     setToken("");
     setCartData([]);
@@ -44,12 +42,10 @@ const ShopcontextProvider = ({ children }) => {
     navigate("/login");
   };
 
-  // FIX: Handle Token Decoding and Expiry
   useEffect(() => {
     if (token) {
       try {
         const decoded = jwtDecode(token);
-        // Optional: Check if token is expired based on 'exp' claim
         const currentTime = Date.now() / 1000;
         if (decoded.exp && decoded.exp < currentTime) {
           throw new Error("Token expired");
@@ -58,7 +54,7 @@ const ShopcontextProvider = ({ children }) => {
         setUser(decoded);
       } catch (error) {
         console.error("Invalid or expired token:", error);
-        logout(); // Auto logout if token is bad
+        logout(); 
       }
     } else {
       setUser(null);
@@ -71,7 +67,6 @@ const ShopcontextProvider = ({ children }) => {
     }
   }, [location.pathname]);
 
-  // Reset all filters
   const resetAllFilters = () => {
     setGender([]);
     setCategory([]);
@@ -79,10 +74,9 @@ const ShopcontextProvider = ({ children }) => {
     setColors([]);
     setPriceRange([0, 100000]);
     setSearchQuery("");
-    setFilterProducts(products); // Reset to all products
+    setFilterProducts(products); 
   };
 
-  // Fetch Cart Data
   const fetchCartData = async () => {
     if (!token) {
       setCartData([]);
@@ -113,21 +107,18 @@ const ShopcontextProvider = ({ children }) => {
       }
     } catch (error) {
       console.error("Error fetching cart:", error);
-      // Don't clear cart data on network error, only on auth error
       if (error.response && error.response.status === 401) {
         setCartData([]);
       }
     }
   };
 
-  // Fetch cart when token changes
   useEffect(() => {
     if (token) {
       fetchCartData();
     }
   }, [token]);
 
-  // Add to Cart
   const addToCart = async (productId, color, size, quantity = 1) => {
     if (!token) {
       toast.error("Login to add items to cart");
@@ -162,7 +153,6 @@ const ShopcontextProvider = ({ children }) => {
     return cartData.reduce((total, item) => total + item.quantity, 0);
   };
 
-  // Toggle helpers
   const toggleFilter = (value, state, setter) => {
     if (value === "All") {
       setter([]);
@@ -178,16 +168,11 @@ const ShopcontextProvider = ({ children }) => {
   const toggleSizes = (value) => toggleFilter(value, sizes, setSizes);
   const toggleColor = (value) => toggleFilter(value, colors, setColors);
 
-  // Main Filter Logic (Client Side)
   const applyFilter = () => {
-    if (products.length === 0) {
-      // If no products loaded yet, don't do anything
-      return;
-    }
+    if (products.length === 0) return;
 
     let productsCopy = [...products];
 
-    // 1. Search Query Filter
     if (searchQuery && searchQuery.trim() !== "") {
       const lowerQuery = searchQuery.toLowerCase();
       productsCopy = productsCopy.filter((item) =>
@@ -197,35 +182,18 @@ const ShopcontextProvider = ({ children }) => {
       );
     }
 
-    // 2. Gender Filter
     if (gender.length > 0) {
-      productsCopy = productsCopy.filter((item) =>
-        item.gender && gender.includes(item.gender)
-      );
+      productsCopy = productsCopy.filter((item) => item.gender && gender.includes(item.gender));
     }
-
-    // 3. Category Filter
     if (category.length > 0) {
-      productsCopy = productsCopy.filter((item) =>
-        item.category && category.includes(item.category)
-      );
+      productsCopy = productsCopy.filter((item) => item.category && category.includes(item.category));
     }
-
-    // 4. Size Filter
     if (sizes.length > 0) {
-      productsCopy = productsCopy.filter((item) =>
-        item.variants && item.variants.some(v => sizes.includes(v.size))
-      );
+      productsCopy = productsCopy.filter((item) => item.variants && item.variants.some(v => sizes.includes(v.size)));
     }
-
-    // 5. Color Filter
     if (colors.length > 0) {
-      productsCopy = productsCopy.filter((item) =>
-        item.variants && item.variants.some(v => colors.includes(v.color))
-      );
+      productsCopy = productsCopy.filter((item) => item.variants && item.variants.some(v => colors.includes(v.color)));
     }
-
-    // 6. Price Filter
     productsCopy = productsCopy.filter(
       (item) => item.price >= priceRange[0] && item.price <= priceRange[1]
     );
@@ -233,7 +201,6 @@ const ShopcontextProvider = ({ children }) => {
     setFilterProducts(productsCopy);
   };
 
-  // Reset helpers
   const resetGenderFilter = () => setGender([]);
   const resetCategoryFilter = () => setCategory([]);
   const resetSizeFilter = () => setSizes([]);
@@ -256,9 +223,6 @@ const ShopcontextProvider = ({ children }) => {
     }
   };
 
-  // FIX: Simplified Search Function (Client-side)
-  // We removed the debounced Server-side search because it conflicts 
-  // with the client-side filters (Category/Gender).
   const handleSearchFunction = (query) => {
     setSearchQuery(query);
     if (location.pathname !== "/collection") {
@@ -266,44 +230,14 @@ const ShopcontextProvider = ({ children }) => {
     }
   };
 
-  // PayPal Popup
-  const openPayPalPopup = (approvalUrl) => {
-      const width = 600;
-      const height = 700;
-      const left = (window.innerWidth - width) / 2;
-      const top = (window.innerHeight - height) / 2;
-    
-      const paypalWindow = window.open(
-        approvalUrl,
-        "PayPal Payment",
-        `width=${width},height=${height},top=${top},left=${left},scrollbars=yes`
-      );
-    
-      if (!paypalWindow) {
-        toast.error("Popup blocked! Please allow popups and try again.");
-        return;
-      }
-    
-      const interval = setInterval(() => {
-        if (paypalWindow.closed) {
-          clearInterval(interval);
-          // Optional: You might want to verify payment with backend here before showing success
-          toast.success("Payment window closed");
-          navigate("/order");
-        }
-      }, 1000);
-  };
-
   useEffect(() => {
     getProductsData();
   }, []);
 
-  // Re-run filters whenever any filter state changes
   useEffect(() => {
     applyFilter();
   }, [gender, category, sizes, colors, priceRange, searchQuery, products]);
 
-  // FIX: Wrapped value in useMemo to prevent unnecessary re-renders
   const value = useMemo(() => ({
     products,
     currency,
@@ -351,7 +285,7 @@ const ShopcontextProvider = ({ children }) => {
     setAverageRating,
     totalReviews,
     setTotalReviews,
-    openPayPalPopup,
+    // openPayPalPopup, // 🟢 REMOVED as Khalti uses direct redirect
     searchQuery,
     setSearchQuery,
     handleSearchFunction,

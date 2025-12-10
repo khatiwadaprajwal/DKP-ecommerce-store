@@ -19,6 +19,7 @@ import NotFound from "./pages/NotFound";
 import PaypalSuccess from "./pages/PaypalSuccess";
 import Profile from "./pages/profile";
 import UserLayout from "./pages/UserLayout";
+import PaymentSuccess from "./pages/khaltisucess"; // Assuming this file exists
 
 // Admin Imports
 import Adminpage from "./pages/Admin/Adminpage";
@@ -29,17 +30,16 @@ import ListOrders from "./pages/Admin/ListOrders";
 import ListUsers from "./pages/Admin/ListUsers";
 import AdminMessagesPage from "./pages/Admin/AdminMessagePage";
 
-// ✅ Import Routes from their component file (NOT AuthProvider)
+// Route Imports
 import { AdminRoute, CustomerRoute } from "./component/ProtectedRoutes";
 
 const App = () => {
   return (
     <div className="app-container">
-      {/* ✅ Single Toast Container */}
       <ToastContainer position="bottom-right" />
       
       <Routes>
-        {/* --- ADMIN ROUTES (Protected) --- */}
+        {/* --- ADMIN ROUTES --- */}
         <Route element={<AdminRoute />}>
           <Route path="/admin" element={<Adminpage />}>
             <Route index element={<Dashboard />} />
@@ -51,9 +51,8 @@ const App = () => {
           </Route>
         </Route>
 
-        {/* --- CUSTOMER/PUBLIC ROUTES --- */}
+        {/* --- CUSTOMER ROUTES --- */}
         <Route element={<UserLayout />}>
-          {/* Public */}
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -63,16 +62,18 @@ const App = () => {
           <Route path="/contact" element={<Contact />} />
           <Route path="/product/:productId" element={<Product />} />
           
-          {/* PayPal Success */}
+          {/* Payment Success Routes */}
           <Route path="/paypal/success" element={<PaypalSuccess />} />
+          
+          {/* 🟢 FIX: Changed path from "/khalti/success" to "/payment-success" to match your URL */}
+          <Route path="/payment-success" element={<PaymentSuccess />} />
 
-          {/* Protected Customer Routes (Requires Login) */}
+          {/* Protected Customer Routes */}
           <Route element={<CustomerRoute />}>
             <Route path="/profile" element={<Profile />} />
             <Route path="/placeOrder" element={<PlaceOrder />} />
             <Route path="/order" element={<Order />} />
             <Route path="/cart" element={<Cart />} />
-            {/* <Route path="/change-password" element={<ChangePassword />} /> */}
           </Route>
         </Route>
 

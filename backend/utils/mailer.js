@@ -13,7 +13,7 @@ const transporter = nodemailer.createTransport({
 
 const sendOTPByEmail = async (email, otp) => {
   const mailOptions = {
-    from: `"Your App Name" <${process.env.EMAIL_USER}>`,
+    from: `"DKP STORE" <${process.env.EMAIL_USER}>`,
     to: email,
     subject: "Your OTP Code",
     text: `Your OTP is ${otp}. It is valid for 10 minutes.`,

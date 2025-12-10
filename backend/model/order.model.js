@@ -8,7 +8,7 @@ const orderSchema = new mongoose.Schema({
   location: { type: Object, required: true }, // ✅ Stores Latitude & Longitude
   status: { 
     type: String, 
-    enum: ["Failed","Pending", "Processing", "Shipped", "Delivered", "Cancelled"], 
+    enum: ["Failed", "Pending", "Processing", "Shipped", "Delivered", "Cancelled", "Confirmed"], 
     default: "Pending" 
   },
   paymentMethod: { type: String, enum: ["Cash", "PayPal", "Khalti"], required: true },

@@ -2,6 +2,9 @@ const Order = require("../model/order.model");
 const OrderItem = require("../model/orderitem.model");
 const Product = require("../model/productmodel");
 const axios = require("axios");
+const Cart = require("../model/cart.model");
+const CartItem = require("../model/cartitem.model");
+const User = require("../model/usermodel");
 const { generateAccessToken, PAYPAL_API } = require("../utils/paypal");
 const { sendOrderEmail } = require("../utils/mailer");
 const mongoose = require("mongoose");
@@ -219,7 +222,7 @@ exports.completeKhaltiPayment = async (req, res) => {
 
     await Order.findByIdAndUpdate(orderId, {
       paymentStatus: "Paid",
-      status: "Confirmed",
+      status: "Pending",
       transactionId: pidx
     });
 
@@ -284,9 +287,13 @@ exports.paypalSuccess = async (req, res) => {
       return res.json({ message: "Payment already processed", order });
     }
 
-    // 5. Update order status and reduce product quantities
-    order.status = "Confirmed"; // ✅ Updated from "Pending"
+    // 5. Update order status
+    // 🟢 FIX: Changed "processing" to "Processing" (Capital P)
+    order.status = "Processing"; 
     order.paymentStatus = "Paid";
+    // Optional: Save transaction details
+    order.paymentId = paymentId; 
+    
     await order.save();
     console.log("✅ Order marked as paid");
 
@@ -342,7 +349,6 @@ exports.paypalSuccess = async (req, res) => {
           }
         });
 
-      // ✅ Fetch user's email using userId
       const user = await User.findById(userId);
       const email = user?.email || null;
 
@@ -365,13 +371,9 @@ exports.paypalSuccess = async (req, res) => {
 
         await sendOrderEmail(email, emailData);
         console.log("✅ Order confirmation email sent");
-      } else {
-        console.warn("⚠️ No email found for user");
       }
-
     } catch (emailError) {
       console.error("⚠️ Error sending confirmation email:", emailError);
-      // Do not block success response
     }
 
     return res.json({ 
@@ -387,7 +389,6 @@ exports.paypalSuccess = async (req, res) => {
     });
   }
 };
-
 
 
 

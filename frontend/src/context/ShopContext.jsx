@@ -1,5 +1,5 @@
 import React, { useState, createContext, useEffect, useMemo } from "react";
-import { toast } from "react-hot-toast";
+import { toast } from "react-toastify"; // Changed to react-toastify to match your App.jsx
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
@@ -153,6 +153,33 @@ const ShopcontextProvider = ({ children }) => {
     return cartData.reduce((total, item) => total + item.quantity, 0);
   };
 
+  // ✅ Restored PayPal Popup Logic
+  const openPayPalPopup = (approvalUrl) => {
+    const width = 600;
+    const height = 700;
+    const left = (window.innerWidth - width) / 2;
+    const top = (window.innerHeight - height) / 2;
+  
+    const paypalWindow = window.open(
+      approvalUrl,
+      "PayPal Payment",
+      `width=${width},height=${height},top=${top},left=${left},scrollbars=yes`
+    );
+  
+    if (!paypalWindow) {
+      toast.error("Popup blocked! Please allow popups and try again.");
+      return;
+    }
+  
+    const interval = setInterval(() => {
+      if (paypalWindow.closed) {
+        clearInterval(interval);
+        // The success page handles the rest, but we can refresh cart/orders here if needed
+        navigate("/order");
+      }
+    }, 1000);
+  };
+
   const toggleFilter = (value, state, setter) => {
     if (value === "All") {
       setter([]);
@@ -163,6 +190,7 @@ const ShopcontextProvider = ({ children }) => {
     }
   };
 
+  // ... Filter helper functions ...
   const toggleGender = (value) => toggleFilter(value, gender, setGender);
   const toggleCategory = (value) => toggleFilter(value, category, setCategory);
   const toggleSizes = (value) => toggleFilter(value, sizes, setSizes);
@@ -172,7 +200,7 @@ const ShopcontextProvider = ({ children }) => {
     if (products.length === 0) return;
 
     let productsCopy = [...products];
-
+    // ... Existing filter logic ...
     if (searchQuery && searchQuery.trim() !== "") {
       const lowerQuery = searchQuery.toLowerCase();
       productsCopy = productsCopy.filter((item) =>
@@ -181,19 +209,10 @@ const ShopcontextProvider = ({ children }) => {
         (item.description && item.description.toLowerCase().includes(lowerQuery))
       );
     }
-
-    if (gender.length > 0) {
-      productsCopy = productsCopy.filter((item) => item.gender && gender.includes(item.gender));
-    }
-    if (category.length > 0) {
-      productsCopy = productsCopy.filter((item) => item.category && category.includes(item.category));
-    }
-    if (sizes.length > 0) {
-      productsCopy = productsCopy.filter((item) => item.variants && item.variants.some(v => sizes.includes(v.size)));
-    }
-    if (colors.length > 0) {
-      productsCopy = productsCopy.filter((item) => item.variants && item.variants.some(v => colors.includes(v.color)));
-    }
+    if (gender.length > 0) productsCopy = productsCopy.filter((item) => item.gender && gender.includes(item.gender));
+    if (category.length > 0) productsCopy = productsCopy.filter((item) => item.category && category.includes(item.category));
+    if (sizes.length > 0) productsCopy = productsCopy.filter((item) => item.variants && item.variants.some(v => sizes.includes(v.size)));
+    if (colors.length > 0) productsCopy = productsCopy.filter((item) => item.variants && item.variants.some(v => colors.includes(v.color)));
     productsCopy = productsCopy.filter(
       (item) => item.price >= priceRange[0] && item.price <= priceRange[1]
     );
@@ -214,8 +233,6 @@ const ShopcontextProvider = ({ children }) => {
       if (response.status === 200) {
         setProducts(response.data.products);
         setFilterProducts(response.data.products);
-      } else {
-        toast.error(response.data.message);
       }
     } catch (error) {
       console.log(error);
@@ -225,9 +242,7 @@ const ShopcontextProvider = ({ children }) => {
 
   const handleSearchFunction = (query) => {
     setSearchQuery(query);
-    if (location.pathname !== "/collection") {
-      navigate("/collection");
-    }
+    if (location.pathname !== "/collection") navigate("/collection");
   };
 
   useEffect(() => {
@@ -239,57 +254,17 @@ const ShopcontextProvider = ({ children }) => {
   }, [gender, category, sizes, colors, priceRange, searchQuery, products]);
 
   const value = useMemo(() => ({
-    products,
-    currency,
-    delivery_fee,
-    backend_url,
-    token,
-    setToken,
-    search,
-    setSearch,
-    showSearch,
-    setShowSearch,
-    addToCart,
-    cartData,
-    setCartData,
-    fetchCartData,
-    getCartCount,
-    navigate,
-    gender,
-    setGender,
-    toggleGender,
-    category,
-    sizes,
-    setCategory,
-    setSizes,
-    toggleCategory,
-    toggleSizes,
-    colors,
-    setColors,
-    toggleColor,
-    priceRange,
-    setPriceRange,
-    applyFilter,
-    filterProducts,
-    setFilterProducts,
-    resetGenderFilter,
-    resetCategoryFilter,
-    resetSizeFilter,
-    resetColorFilter,
-    resetPriceFilter,
-    resetAllFilters,
-    logout,
-    user,
-    setUser,
-    averageRating,
-    setAverageRating,
-    totalReviews,
-    setTotalReviews,
-    // openPayPalPopup, // 🟢 REMOVED as Khalti uses direct redirect
-    searchQuery,
-    setSearchQuery,
-    handleSearchFunction,
-    resetSearchQuery,
+    products, currency, delivery_fee, backend_url, token, setToken,
+    search, setSearch, showSearch, setShowSearch, addToCart,
+    cartData, setCartData, fetchCartData, getCartCount, navigate,
+    gender, setGender, toggleGender, category, sizes, setCategory, setSizes,
+    toggleCategory, toggleSizes, colors, setColors, toggleColor,
+    priceRange, setPriceRange, applyFilter, filterProducts, setFilterProducts,
+    resetGenderFilter, resetCategoryFilter, resetSizeFilter, resetColorFilter,
+    resetPriceFilter, resetAllFilters, logout, user, setUser,
+    averageRating, setAverageRating, totalReviews, setTotalReviews,
+    openPayPalPopup, // ✅ Added back to value
+    searchQuery, setSearchQuery, handleSearchFunction, resetSearchQuery,
   }), [
     products, token, search, showSearch, cartData, gender, category, sizes, colors, 
     priceRange, filterProducts, searchQuery, user, averageRating, totalReviews

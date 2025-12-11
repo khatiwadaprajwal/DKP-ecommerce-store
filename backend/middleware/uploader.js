@@ -1,30 +1,45 @@
-const cloudinary = require("../config/cloudnary"); 
-const path = require("path");
+import cloudinary from "../config/cloudnary.js";
+import fs from "fs"; 
 
-const uploadToCloudinary = async (req, res) => {
+export const uploadToCloudinary = async (req, res) => {
     try {
+     
         if (!req.file) {
             return res.status(400).json({ message: "No file uploaded" });
         }
 
         const localPath = req.file.path;
+        console.log("UPLOADING FILE:", localPath);
 
-        // Upload to Cloudinary
+        
         const result = await cloudinary.uploader.upload(localPath, {
-            folder: "uploads", // optional: your custom folder in Cloudinary
+            folder: "uploads", 
+            resource_type: "auto", // Handles images/videos automatically
         });
 
-        // Optional: Delete local file after upload
-        fs.unlinkSync(localPath);
+        
+        try {
+            if (fs.existsSync(localPath)) {
+                fs.unlinkSync(localPath);
+            }
+        } catch (fsError) {
+            console.error("Error deleting local file:", fsError);
+        }
 
+        // 4. Send Response
         return res.status(200).json({
             message: "File uploaded to Cloudinary successfully",
             url: result.secure_url,
+            public_id: result.public_id
         });
+
     } catch (error) {
+      
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+
         console.error("Cloudinary Upload Error:", error);
-        return res.status(500).json({ error: "Upload failed" });
+        return res.status(500).json({ error: "Upload failed", details: error.message });
     }
 };
-
-module.exports = { uploadToCloudinary };

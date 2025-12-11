@@ -32,7 +32,7 @@ const isLoggedIn = async (req, res, next) => {
         req.user = user;
         return next(); // Token is valid, proceed
       } catch (err) {
-        // If error is NOT expiration (e.g., tampered token), fail immediately
+        
         if (err.name !== "TokenExpiredError") {
           return res.status(401).json({ message: "Invalid token" });
         }
@@ -45,7 +45,7 @@ const isLoggedIn = async (req, res, next) => {
       try {
         const decoded = jwt.verify(refreshToken, REFRESH_SECRET);
         
-        const user = await User.findById(decoded.id).select("-password"); // Note: We need a Mongoose doc to save if needed, but lean is fine here too usually
+        const user = await User.findById(decoded.id).select("-password");
         if (!user) return res.status(401).json({ message: "User not found" });
 
         // Generate NEW Access Token

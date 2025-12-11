@@ -86,7 +86,8 @@ const FeaturedProducts = () => {
             <SwiperSlide key={product._id}>
               <ProductItem
                 id={product._id}
-                image={product.images[0]} 
+                // ✅ SAFETY CHECK: Ensures index 0 exists
+                image={product.images && product.images.length > 0 ? product.images[0] : ""} 
                 name={product.productName}
                 price={product.price}
                 rating={product.averageRating} 

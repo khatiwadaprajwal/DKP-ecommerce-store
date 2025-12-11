@@ -194,7 +194,23 @@ const Collection = () => {
                 animate="visible"
               >
                 {paginatedProducts.map((product, index) => {
+                  // ✅ FIX: Get the first image and decide if it needs backend_url
+                  let finalImage = "";
                   
+                  if (product.images && product.images.length > 0) {
+                    const rawImg = product.images[0];
+                    if (rawImg.startsWith("http") || rawImg.startsWith("https")) {
+                      // Cloudinary URL
+                      finalImage = rawImg;
+                    } else {
+                      // Local legacy image
+                      finalImage = `${backend_url}/public/${rawImg}`;
+                    }
+                  } else {
+                    // Fallback placeholder if no image
+                    finalImage = "https://via.placeholder.com/300?text=No+Image";
+                  }
+
                   return (
                     <motion.div
                       key={`${product._id}-${index}`}
@@ -203,11 +219,7 @@ const Collection = () => {
                       <ProductItem
                         id={product._id}
                         name={product.productName}
-                        image={
-                          product.images && product.images.length > 0
-                            ? product.images[0]
-                            : product.images
-                        }
+                        image={finalImage} // ✅ Pass the fixed URL
                         price={product.price}
                         rating={product.averageRating}
                       />

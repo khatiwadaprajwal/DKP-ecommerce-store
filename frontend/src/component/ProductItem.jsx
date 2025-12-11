@@ -13,6 +13,14 @@ const ProductItem = ({ id, name, image, price, rating }) => {
     navigate(`/product/${id}`);
   };
 
+  // ✅ SMART IMAGE HELPER
+  // This ensures Cloudinary images don't get broken by adding localhost prefix
+  const getImageUrl = (img) => {
+    if (!img) return ""; // Return empty string or placeholder if needed
+    if (img.startsWith("http")) return img; // It's a Cloudinary URL
+    return `${backend_url}/public/${img}`; // It's a local legacy image
+  };
+
   return (
     <motion.div 
       className="group relative bg-white shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
@@ -23,10 +31,12 @@ const ProductItem = ({ id, name, image, price, rating }) => {
       onClick={handleProductClick}
     >
       <div className="w-full overflow-hidden bg-gray-200 relative h-64">
+        {/* ✅ UPDATED SRC LOGIC */}
         <img
-          src={`${backend_url}/public/${image}`}
+          src={getImageUrl(image)}
           alt={name}
           className="w-full h-full object-cover object-center transition-transform duration-300 group-hover:scale-105"
+          onError={(e) => { e.target.src = "https://via.placeholder.com/300?text=No+Image"; }}
         />
         
         {/* Quick actions overlay in top right corner - visible only on hover */}

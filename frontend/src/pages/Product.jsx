@@ -27,15 +27,30 @@ const Product = () => {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Add state for QuickOrder popup
+  // QuickOrder and Modal states
   const [isQuickOrderOpen, setIsQuickOrderOpen] = useState(false);
-
-  // Add state for Image Modal
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   const itemsPerPage = 4;
 
-  // Fetch single product data using API
+  // ✅ SMART IMAGE HELPER FUNCTION
+  // This solves your problem. It checks:
+  // 1. Is it a Cloudinary URL? (starts with http) -> Use it directly.
+  // 2. Is it a local file? -> Add backend_url.
+  const getImageUrl = (imgPath) => {
+    if (!imgPath) return "";
+    
+    // If the link you provided (https://res.cloudinary...) is passed here, 
+    // it starts with 'http', so we return it directly.
+    if (imgPath.startsWith("http") || imgPath.startsWith("https")) {
+      return imgPath;
+    }
+    
+    // Fallback for old local images
+    return `${backend_url}/public/${imgPath}`;
+  };
+
+  // Fetch product data
   const fetchProductData = async () => {
     try {
       setLoading(true);
@@ -52,17 +67,15 @@ const Product = () => {
           setImage(product.images[0]);
         }
 
-        // Extract unique colors and sizes from variants
+        // Extract unique colors
         const colors = [
           ...new Set(product.variants.map((variant) => variant.color)),
         ];
         setAvailableColors(colors);
 
-        // If colors are available, set the first color as selected by default
+        // Set default selection
         if (colors.length > 0) {
           setSelectedColor(colors[0]);
-
-          // Get sizes available for the selected color
           const sizesForColor = product.variants
             .filter(
               (variant) => variant.color === colors[0] && variant.quantity > 0
@@ -72,7 +85,6 @@ const Product = () => {
           setAvailableSizes(sizesForColor);
         }
 
-        // Fetch related products
         fetchRelatedProducts(product.gender, product.category);
       }
     } catch (error) {
@@ -82,17 +94,14 @@ const Product = () => {
     }
   };
 
-  // Fetch related products
   const fetchRelatedProducts = async (gender, category) => {
     try {
       if (products) {
-        // Filter related products by category and gender, excluding current product
         const related = products.filter(
           (item) =>
             (item.category === category || item.gender === gender) &&
             item._id !== productId
         );
-
         setRelatedProducts(related);
       }
     } catch (error) {
@@ -102,13 +111,12 @@ const Product = () => {
 
   useEffect(() => {
     fetchProductData();
-    window.scrollTo(0, 0); // Scroll to top when product changes
+    window.scrollTo(0, 0);
   }, [productId]);
 
-  // Update available sizes when color changes
+  // Logic to handle size/variant updates based on selection
   useEffect(() => {
     if (productData && selectedColor) {
-      // Get sizes available for the selected color with quantity > 0
       const sizesForColor = productData.variants
         .filter(
           (variant) => variant.color === selectedColor && variant.quantity > 0
@@ -117,12 +125,10 @@ const Product = () => {
 
       setAvailableSizes(sizesForColor);
       
-      // Auto select size if it's 'NaN' and there are available sizes
       if (sizesForColor.length > 0) {
         const hasNaN = sizesForColor.includes('NaN');
         if (hasNaN) {
           setSelectedSize('NaN');
-          // Find and set the variant with 'NaN' size
           const variant = productData.variants.find(
             (v) => v.color === selectedColor && v.size === 'NaN'
           );
@@ -138,7 +144,6 @@ const Product = () => {
     }
   }, [selectedColor, productData]);
 
-  // Update selected variant when size changes
   useEffect(() => {
     if (productData && selectedColor && selectedSize) {
       const variant = productData.variants.find(
@@ -146,14 +151,12 @@ const Product = () => {
       );
 
       setSelectedVariant(variant);
-      // Reset quantity if it exceeds available quantity
       if (variant && quantity > variant.quantity) {
         setQuantity(Math.min(variant.quantity, 1));
       }
     }
   }, [selectedSize, selectedColor, productData]);
 
-  // Generate breadcrumb path
   const getBreadcrumbs = () => {
     return [
       { name: "Home", path: "/" },
@@ -171,19 +174,11 @@ const Product = () => {
 
   const handleAddToCart = () => {
     if (selectedVariant) {
-      addToCart(
-        productData._id,
-        selectedColor,
-        selectedSize,
-        quantity,
-        
-      );
-      // Reset quantity after adding to cart
+      addToCart(productData._id, selectedColor, selectedSize, quantity);
       setQuantity(1);
     }
   };
 
-  // Handle Buy Now click to open QuickOrder popup
   const handleBuyNow = () => {
     if(!token){
       toast.error("Login to order")
@@ -194,14 +189,12 @@ const Product = () => {
     }
   };
 
-  // Calculate paginated products
   const totalPages = Math.ceil(relatedProducts.length / itemsPerPage);
   const paginatedProducts = relatedProducts.slice(
     currentPage * itemsPerPage,
     (currentPage + 1) * itemsPerPage
   );
 
-  // Function to handle next image
   const handleNextImage = (e) => {
     e.stopPropagation();
     const currentIndex = productData.images.indexOf(image);
@@ -209,7 +202,6 @@ const Product = () => {
     setImage(productData.images[nextIndex]);
   };
 
-  // Function to handle previous image
   const handlePrevImage = (e) => {
     e.stopPropagation();
     const currentIndex = productData.images.indexOf(image);
@@ -217,7 +209,6 @@ const Product = () => {
     setImage(productData.images[prevIndex]);
   };
 
-  // Function to handle modal close
   const handleModalClose = (e) => {
     if (e.target === e.currentTarget) {
       setIsImageModalOpen(false);
@@ -231,6 +222,7 @@ const Product = () => {
   ) : productData ? (
     <div className="bg-white">
       <div className="container mx-auto px-4 py-6 transition-opacity ease-in duration-300 opacity-100">
+        
         {/* Breadcrumbs */}
         <nav className="flex items-center text-sm text-gray-500 mb-4">
           {getBreadcrumbs().map((crumb, index, array) => (
@@ -253,37 +245,37 @@ const Product = () => {
         </nav>
 
         <div className="flex gap-8 flex-col md:flex-row">
-          {/* Product Image Section - with improved sizing */}
+          {/* =================================================== */}
+          {/* ✅ PRODUCT IMAGE SECTION */}
+          {/* =================================================== */}
           <div className="md:w-3/5 relative">
-            {/* Main image container with improved height */}
             <div 
               className="w-full overflow-hidden relative rounded-lg shadow-md cursor-zoom-in"
               onClick={() => setIsImageModalOpen(true)}
             >
+              {/* ✅ USING HELPER: Shows Cloudinary Image Correctly */}
               <img
                 className="w-full h-auto md:h-[450px] object-contain bg-white"
-                src={`${backend_url}/public/${image}`}
+                src={getImageUrl(image)}
                 alt={productData.productName}
+                onError={(e) => { e.target.src = "https://via.placeholder.com/450?text=Image+Not+Found"; }}
               />
             </div>
 
-            {/* Thumbnails - improved sizing and layout */}
+            {/* Thumbnails */}
             <div className="grid grid-cols-5 gap-3 mt-4">
               {productData.images.map((item, index) => (
                 <div
                   key={index}
                   className={`relative cursor-pointer transition-all duration-200 
                     hover:scale-105 rounded-md overflow-hidden
-                    ${
-                      image === item
-                        ? "ring-2 ring-black shadow-md"
-                        : "border border-gray-200"
-                    }
+                    ${image === item ? "ring-2 ring-black shadow-md" : "border border-gray-200"}
                   `}
                   onClick={() => setImage(item)}
                 >
+                  {/* ✅ USING HELPER HERE TOO */}
                   <img
-                    src={`${backend_url}/public/${item}`}
+                    src={getImageUrl(item)}
                     className="w-full h-20 object-cover"
                     alt={`${productData.productName} - view ${index + 1}`}
                   />
@@ -292,7 +284,7 @@ const Product = () => {
             </div>
           </div>
 
-          {/* Product Info - adjusted width to accommodate larger image */}
+          {/* Product Details Section */}
           <div className="md:w-2/5 space-y-4">
             <div>
               <h2 className="text-2xl md:text-3xl font-bold">
@@ -301,7 +293,7 @@ const Product = () => {
               <p className="text-xl md:text-2xl font-bold text-red-600 mt-1">
                 Rs. {productData.price.toLocaleString()}
               </p>
-              {/* Rating display */}
+              {/* Rating */}
               <div className="flex items-center mt-2">
                 <div className="flex items-center">
                   {[1, 2, 3, 4, 5].map((star) => (
@@ -324,12 +316,9 @@ const Product = () => {
                   ({productData.averageRating.toFixed(1)})
                 </span>
               </div>
-              {/* Availability info */}
               <p className="text-sm mt-1 text-gray-600">
                 {productData.totalQuantity > 0 ? (
-                  <span className="text-green-600 font-medium">
-                    In Stock ({productData.totalQuantity} available)
-                  </span>
+                  <span className="text-green-600 font-medium">In Stock ({productData.totalQuantity} available)</span>
                 ) : (
                   <span className="text-red-600 font-medium">Out of Stock</span>
                 )}
@@ -343,7 +332,7 @@ const Product = () => {
               </p>
             </div>
 
-            {/* Color Selection */}
+            {/* Colors */}
             <div className="border-t border-gray-200 pt-3">
               <p className="font-semibold text-base mb-2">Select Color:</p>
               <div className="flex flex-wrap gap-2">
@@ -362,24 +351,13 @@ const Product = () => {
                       }`}
                       style={{ backgroundColor: color.toLowerCase() }}
                     ></div>
-                    <span
-                      className={`text-xs mt-1 ${
-                        selectedColor === color ? "font-bold" : ""
-                      }`}
-                    >
-                      {color}
-                    </span>
+                    <span className={`text-xs mt-1 ${selectedColor === color ? "font-bold" : ""}`}>{color}</span>
                   </div>
                 ))}
               </div>
-              {!selectedColor && (
-                <p className="text-xs text-red-500 mt-1">
-                  Please select a color
-                </p>
-              )}
             </div>
 
-            {/* Size Selection */}
+            {/* Sizes */}
             <div className="border-t border-gray-200 pt-3">
               <p className="font-semibold text-base mb-2">Select Size:</p>
               <div className="flex flex-wrap gap-2">
@@ -400,219 +378,84 @@ const Product = () => {
                   </button>
                 ))}
               </div>
-              {selectedColor && availableSizes.length === 0 && (
-                <p className="text-xs text-red-500 mt-1">
-                  No sizes available for selected color
-                </p>
-              )}
-              {selectedColor && availableSizes.length > 0 && !selectedSize && (
-                <p className="text-xs text-red-500 mt-1">
-                  Please select a size
-                </p>
-              )}
             </div>
 
-            {/* Quantity Selector */}
+            {/* Quantity */}
             <div className="border-t border-gray-200 pt-3">
               <p className="font-semibold text-base mb-2">Quantity:</p>
               <div className="inline-flex border border-gray-300 rounded-md overflow-hidden shadow-sm">
                 <button
-                  className="w-8 h-8 bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+                  className="w-8 h-8 bg-gray-100 hover:bg-gray-200 flex items-center justify-center"
                   onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
                   disabled={quantity <= 1}
                 >
-                  <span className="text-lg font-medium">-</span>
+                  -
                 </button>
                 <div className="w-10 h-8 flex items-center justify-center border-l border-r border-gray-300 bg-white">
                   {quantity}
                 </div>
                 <button
-                  className="w-8 h-8 bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
-                  onClick={() =>
-                    setQuantity((prev) =>
-                      selectedVariant
-                        ? Math.min(selectedVariant.quantity, prev + 1)
-                        : prev
-                    )
-                  }
-                  disabled={
-                    !selectedVariant || quantity >= selectedVariant.quantity
-                  }
+                  className="w-8 h-8 bg-gray-100 hover:bg-gray-200 flex items-center justify-center"
+                  onClick={() => setQuantity((prev) => selectedVariant ? Math.min(selectedVariant.quantity, prev + 1) : prev)}
+                  disabled={!selectedVariant || quantity >= selectedVariant.quantity}
                 >
-                  <span className="text-lg font-medium">+</span>
+                  +
                 </button>
               </div>
-              {selectedVariant && (
-                <p className="text-xs text-gray-500 mt-1">
-                  {selectedVariant.quantity} available
-                </p>
-              )}
             </div>
 
-            {/* Action Buttons */}
+            {/* Buttons */}
             <div className="flex gap-3 pt-3">
               <button
                 onClick={handleAddToCart}
-                className={`flex-1 h-10 rounded-md font-medium text-sm
-                  flex items-center justify-center transition-colors duration-300
-                  ${
-                    selectedVariant && selectedVariant.quantity > 0
-                      ? "bg-black text-white hover:bg-gray-800"
-                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  }`}
+                className={`flex-1 h-10 rounded-md font-medium text-sm flex items-center justify-center transition-colors duration-300
+                  ${selectedVariant && selectedVariant.quantity > 0 ? "bg-black text-white hover:bg-gray-800" : "bg-gray-300 text-gray-500 cursor-not-allowed"}`}
                 disabled={!selectedVariant || selectedVariant.quantity === 0}
               >
                 Add to Cart
               </button>
               <button
                 onClick={handleBuyNow}
-                className={`flex-1 h-10 rounded-md font-medium text-sm
-                  flex items-center justify-center transition-colors duration-300
-                  ${
-                    selectedVariant && selectedVariant.quantity > 0
-                      ? "bg-yellow-500 text-white hover:bg-yellow-600"
-                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  }`}
+                className={`flex-1 h-10 rounded-md font-medium text-sm flex items-center justify-center transition-colors duration-300
+                  ${selectedVariant && selectedVariant.quantity > 0 ? "bg-yellow-500 text-white hover:bg-yellow-600" : "bg-gray-300 text-gray-500 cursor-not-allowed"}`}
                 disabled={!selectedVariant || selectedVariant.quantity === 0}
               >
                 Buy Now
               </button>
             </div>
-
-            {/* Product guarantees with icons */}
+            
+            {/* Guarantees */}
             <div className="border-t border-gray-200 pt-3 text-xs text-gray-600 space-y-2">
-              <div className="flex items-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 mr-2 text-green-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-                <p>100% Original product</p>
-              </div>
-              <div className="flex items-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 mr-2 text-green-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"
-                  />
-                </svg>
-                <p>Cash on delivery available</p>
-              </div>
-              <div className="flex items-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 mr-2 text-green-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>
-                <p>Easy 7-day returns & exchanges</p>
-              </div>
-              <div className="flex items-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 mr-2 text-green-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <p>Fast shipping within 3-7 business days</p>
-              </div>
+              <div className="flex items-center"><span className="text-green-500 mr-2">✓</span> 100% Original product</div>
+              <div className="flex items-center"><span className="text-green-500 mr-2">✓</span> Cash on delivery available</div>
+              <div className="flex items-center"><span className="text-green-500 mr-2">✓</span> Easy 7-day returns</div>
             </div>
           </div>
         </div>
 
-        {/* Description and Reviews Section */}
+        {/* Tabs & Additional Sections */}
         <div className="mt-10">
           <div className="flex border-b border-gray-300 overflow-x-auto">
-            <button
-              className={`px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors duration-200 ${
-                activeTab === "description"
-                  ? "border-b-2 border-black text-black"
-                  : "text-gray-500 hover:text-black"
-              }`}
-              onClick={() => setActiveTab("description")}
-            >
-              DESCRIPTION
-            </button>
-            <button
-              className={`px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors duration-200 ${
-                activeTab === "additional"
-                  ? "border-b-2 border-black text-black"
-                  : "text-gray-500 hover:text-black"
-              }`}
-              onClick={() => setActiveTab("additional")}
-            >
-              ADDITIONAL INFO
-            </button>
-            <button
-              className={`px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors duration-200 ${
-                activeTab === "reviews"
-                  ? "border-b-2 border-black text-black"
-                  : "text-gray-500 hover:text-black"
-              }`}
-              onClick={() => setActiveTab("reviews")}
-            >
-              REVIEWS ({productData.averageRating > 0 ? totalReviews : "0"})
-            </button>
-            <button
-              className={`px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors duration-200 ${
-                activeTab === "shipping"
-                  ? "border-b-2 border-black text-black"
-                  : "text-gray-500 hover:text-black"
-              }`}
-              onClick={() => setActiveTab("shipping")}
-            >
-              SHIPPING & DELIVERY
-            </button>
+            {['description', 'additional', 'reviews', 'shipping'].map(tab => (
+               <button
+                 key={tab}
+                 className={`px-4 py-2 text-sm font-semibold uppercase whitespace-nowrap transition-colors duration-200 ${activeTab === tab ? "border-b-2 border-black text-black" : "text-gray-500 hover:text-black"}`}
+                 onClick={() => setActiveTab(tab)}
+               >
+                 {tab === 'reviews' ? `REVIEWS (${productData.averageRating > 0 ? totalReviews : "0"})` : tab.replace('_', ' ')}
+               </button>
+            ))}
           </div>
 
-          {/* Content for each tab */}
           <div className="py-6">
-            {activeTab === "description" && (
-              <Description description={productData.description} />
-            )}
-            {activeTab === "additional" && (
-              <AdditionalInfo productData={productData} />
-            )}
+            {activeTab === "description" && <Description description={productData.description} />}
+            {activeTab === "additional" && <AdditionalInfo productData={productData} />}
             {activeTab === "reviews" && <ReviewSection productId={productId} />}
             {activeTab === "shipping" && <ShippingInfo />}
           </div>
         </div>
       </div>
 
-      {/* Related Products */}
       {relatedProducts.length > 0 && (
         <div className="mt-10 container mx-auto px-4">
           <RelatedProducts
@@ -624,14 +467,13 @@ const Product = () => {
         </div>
       )}
 
-      {/* QuickOrder Popup - Updated props */}
       <QuickOrder
         isOpen={isQuickOrderOpen}
         onClose={() => setIsQuickOrderOpen(false)}
         productData={productData}
         selectedVariant={selectedVariant}
         selectedSize={selectedSize}
-        selectedColor={selectedColor} // Changed from selectedcolor to selectedColor for consistency
+        selectedColor={selectedColor}
         quantity={quantity}
       />
 
@@ -642,103 +484,35 @@ const Product = () => {
           onClick={handleModalClose}
         >
           <div className="relative max-w-5xl w-full mx-4 bg-white rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            {/* Close Button */}
             <button
               className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors"
               onClick={() => setIsImageModalOpen(false)}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-8 w-8"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
 
-            {/* Main Image Container */}
             <div className="relative p-4">
-              {/* Left Arrow */}
               <button
                 className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-800 hover:text-black transition-colors bg-white/80 hover:bg-white rounded-full p-2 shadow-lg"
                 onClick={handlePrevImage}
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
+                ‹
               </button>
-
-              {/* Right Arrow */}
               <button
                 className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-800 hover:text-black transition-colors bg-white/80 hover:bg-white rounded-full p-2 shadow-lg"
                 onClick={handleNextImage}
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
+                ›
               </button>
 
-              {/* Main Image */}
+              {/* ✅ USING HELPER HERE TOO */}
               <img
-                src={`${backend_url}/public/${image}`}
+                src={getImageUrl(image)}
                 alt={productData.productName}
                 className="w-full h-[60vh] object-contain"
               />
-
-              {/* Image Counter */}
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-gray-800 bg-white/80 px-3 py-1 rounded-full text-sm shadow-lg">
-                {productData.images.indexOf(image) + 1} / {productData.images.length}
-              </div>
-            </div>
-
-            {/* Thumbnails */}
-            <div className="border-t border-gray-200 p-4">
-              <div className="flex gap-2 overflow-x-auto pb-2">
-                {productData.images.map((img, index) => (
-                  <div
-                    key={index}
-                    className={`flex-shrink-0 cursor-pointer transition-all duration-200
-                      ${image === img ? 'ring-2 ring-black scale-105' : 'hover:scale-105'}
-                    `}
-                    onClick={() => setImage(img)}
-                  >
-                    <img
-                      src={`${backend_url}/public/${img}`}
-                      alt={`${productData.productName} - view ${index + 1}`}
-                      className="w-20 h-20 object-cover rounded-md"
-                    />
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </div>

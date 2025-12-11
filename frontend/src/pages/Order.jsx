@@ -266,49 +266,61 @@ const Order = () => {
               <div className="p-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {order.orderItems &&
-                    order.orderItems.map((item) => (
-                      <div
-                        key={item._id}
-                        className="flex items-center space-x-4 pb-2 last:border-b-0"
-                      >
-                        <div className="flex-shrink-0">
-                          <div className="w-16 h-16 rounded flex items-center justify-center">
-                            {item.productId?.images && item.productId.images.length > 0 ? (
-                              <img
-                                src={`${backend_url}/public/${item.productId.images[0]}`}
-                                alt={item.productId?.productName || "Product"}
-                                className="w-16 h-16 object-cover"
-                              />
-                            ) : (
-                              <ShoppingBagIcon className="h-8 w-8 text-gray-400" />
-                            )}
+                    order.orderItems.map((item) => {
+                      // ✅ SMART IMAGE HELPER INSIDE MAP
+                      const rawImg = item.productId?.images && item.productId.images.length > 0 
+                        ? item.productId.images[0] 
+                        : "";
+                      
+                      const finalImg = (rawImg.startsWith("http") || rawImg.startsWith("https"))
+                        ? rawImg
+                        : `${backend_url}/public/${rawImg}`;
+
+                      return (
+                        <div
+                          key={item._id}
+                          className="flex items-center space-x-4 pb-2 last:border-b-0"
+                        >
+                          <div className="flex-shrink-0">
+                            <div className="w-16 h-16 rounded flex items-center justify-center">
+                              {rawImg ? (
+                                <img
+                                  src={finalImg}
+                                  alt={item.productId?.productName || "Product"}
+                                  className="w-16 h-16 object-cover"
+                                  onError={(e) => { e.target.src = "https://via.placeholder.com/150?text=No+Image"; }}
+                                />
+                              ) : (
+                                <ShoppingBagIcon className="h-8 w-8 text-gray-400" />
+                              )}
+                            </div>
                           </div>
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-medium text-gray-900">
-                            {item.productId?.productName || "Product"}
-                          </h3>
-                          <div className="flex space-x-4">
+                          <div>
+                            <h3 className="text-sm font-medium text-gray-900">
+                              {item.productId?.productName || "Product"}
+                            </h3>
+                            <div className="flex space-x-4">
+                              <p className="text-xs text-gray-500">
+                                Qty: {item.quantity || 1}
+                              </p>
+                              {item.color && (
+                                <p className="text-xs text-gray-500">
+                                  Color: {item.color}
+                                </p>
+                              )}
+                              {item.size && (
+                                <p className="text-xs text-gray-500">
+                                  Size: {item.size}
+                                </p>
+                              )}
+                            </div>
                             <p className="text-xs text-gray-500">
-                              Qty: {item.quantity || 1}
+                              Price: {`NPR`} {item.price?.toFixed(2) || "0.00"}
                             </p>
-                            {item.color && (
-                              <p className="text-xs text-gray-500">
-                                Color: {item.color}
-                              </p>
-                            )}
-                            {item.size && (
-                              <p className="text-xs text-gray-500">
-                                Size: {item.size}
-                              </p>
-                            )}
                           </div>
-                          <p className="text-xs text-gray-500">
-                            Price: {`NPR`} {item.price?.toFixed(2) || "0.00"}
-                          </p>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                 </div>
 
                 <div className="mt-4 flex justify-between items-center">

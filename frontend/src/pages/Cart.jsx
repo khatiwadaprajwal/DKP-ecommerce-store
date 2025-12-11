@@ -155,6 +155,13 @@ const Cart = () => {
     navigate("/placeOrder");
   };
 
+  // ✅ SMART IMAGE HELPER
+  const getImageUrl = (img) => {
+    if (!img) return "";
+    if (img.startsWith("http")) return img; // Cloudinary
+    return `${backend_url}/public/${img}`;  // Local
+  };
+
   return (
     <div className="container mx-auto px-4 py-4 sm:py-6 md:py-8 min-h-screen">
       {/* Header */}
@@ -208,11 +215,12 @@ const Cart = () => {
                   className="mr-2 sm:mr-4 w-4 h-4 sm:w-5 sm:h-5 text-blue-600 focus:ring-blue-500"
                 />
                 
-                {/* Product Image */}
+                {/* Product Image - ✅ FIXED */}
                 <img
-                  src={`${backend_url}/public/${item.image[0]}`}
+                  src={getImageUrl(item.image[0])}
                   alt={item.name}
                   className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 object-cover rounded-lg mr-3 sm:mr-6"
+                  onError={(e) => { e.target.src = "https://via.placeholder.com/150?text=No+Image"; }}
                 />
                 
                 {/* Product Details */}

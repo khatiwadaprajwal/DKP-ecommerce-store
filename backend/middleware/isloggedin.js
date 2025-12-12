@@ -10,9 +10,9 @@ const isLoggedIn = async (req, res, next) => {
     const JWT_SECRET = process.env.JWT_SECRET;
     const REFRESH_SECRET = process.env.REFRESH_SECRET;
 
-    // 1. Get Tokens
+ 
     const authHeader = req.headers.authorization;
-    let accessToken = authHeader && authHeader.split(" ")[1]; // "Bearer <token>"
+    let accessToken = authHeader && authHeader.split(" ")[1]; 
     const refreshToken = req.cookies?.refreshToken;
 
     if (!accessToken && !refreshToken) {
@@ -30,7 +30,7 @@ const isLoggedIn = async (req, res, next) => {
         if (!user) return res.status(401).json({ message: "User not found" });
 
         req.user = user;
-        return next(); // Token is valid, proceed
+        return next(); 
       } catch (err) {
         
         if (err.name !== "TokenExpiredError") {
@@ -51,11 +51,10 @@ const isLoggedIn = async (req, res, next) => {
         // Generate NEW Access Token
         const newAccessToken = generateAccessToken(user._id, user.role);
 
-        // ⚠️ CRITICAL: Send new token in header so Frontend can update
+        
         res.setHeader("x-new-access-token", newAccessToken);
 
-        // Attach user and proceed
-        req.user = user.toObject(); // Convert to plain object if not using lean above
+        req.user = user.toObject(); 
         return next();
 
       } catch (err) {

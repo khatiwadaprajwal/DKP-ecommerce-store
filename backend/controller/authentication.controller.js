@@ -178,10 +178,10 @@ const login = async (req, res) => {
     // 7. Send Access Token in JSON (Frontend uses this in Headers)
     res.status(200).json({
       message: "Login successful",
-      token: accessToken, // Matches your Prisma logic
+      token: accessToken, 
       user: {
         id: user._id,
-        name: user.name, // Assuming you have a name field
+        name: user.name, 
         email: user.email,
         role: user.role
       }

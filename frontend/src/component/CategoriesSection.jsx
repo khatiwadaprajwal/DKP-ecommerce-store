@@ -4,7 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { 
   Briefcase, 
   Smile, 
-  Flag 
+  Flag,
+  MoveRight 
 } from "lucide-react";
 
 const CategoriesSection = () => {
@@ -19,57 +20,48 @@ const CategoriesSection = () => {
   const categories = [
     {
       name: "Formal Wear",
-      description: "Sophisticated attire for the modern professional",
+      description: "Sophisticated attire for the modern professional.",
       icon: Briefcase,
-      bgColor: "bg-blue-50",
-      textColor: "text-blue-800",
-      borderColor: "border-blue-200",
       categoryValue: "Formal",
     },
     {
       name: "Casual Wear",
-      description: "Relaxed styles for everyday elegance",
+      description: "Relaxed styles for everyday elegance.",
       icon: Smile,
-      bgColor: "bg-green-50",
-      textColor: "text-green-800",
-      borderColor: "border-green-200",
       categoryValue: "Casual",
     },
     {
       name: "Ethnic Wear",
-      description: "Traditional designs with modern sensibilities",
+      description: "Traditional designs with modern sensibilities.",
       icon: Flag,
-      bgColor: "bg-purple-50",
-      textColor: "text-purple-800",
-      borderColor: "border-purple-200",
       categoryValue: "Ethnic",
     }
   ];
   
   const handleCategoryClick = (category) => {
     resetAllFilters();
-    
     if (category.categoryValue) {
       setCategory([category.categoryValue]);
     }
-    
     applyFilter();
     navigate("/collection");
   };
   
   return (
-    <section className="py-10 bg-white">
-      <div className="container mx-auto px-4 max-w-6xl">
-        <div className="text-center mb-10">
-          <h2 className="text-2xl font-bold text-gray-800 mb-3">
-            Discover Your Perfect Style
+    <section className="py-20 bg-white">
+      <div className="container mx-auto px-6 max-w-6xl">
+        
+        {/* Header */}
+        <div className="mb-12">
+          <h2 className="text-4xl md:text-5xl font-serif text-gray-900 mb-4 tracking-tight">
+            Discover Your Style
           </h2>
-          <p className="text-sm text-gray-600 max-w-2xl mx-auto">
-            Explore our curated collections that cater to every mood, occasion, and personal expression
+          <p className="text-lg text-gray-500 font-light max-w-2xl">
+            Curated collections designed for every dimension of your life
           </p>
         </div>
         
-        {/* Categories Grid */}
+        {/* Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {categories.map((category, index) => {
             const CategoryIcon = category.icon;
@@ -79,65 +71,46 @@ const CategoriesSection = () => {
                 key={index}
                 onClick={() => handleCategoryClick(category)}
                 className={`
-                  ${category.bgColor} ${category.borderColor}
-                  border rounded-3xl p-6
-                  flex flex-col items-start
-                  transition-all duration-300
-                  hover:shadow-lg cursor-pointer
-                  group
-                  relative
-                  overflow-hidden
+                  group relative cursor-pointer
+                  bg-gray-50 
+                  /* h-auto lets the div shrink to fit text */
+                  h-auto
+                  flex flex-col
+                  p-8 rounded-xl
+                  transition-all duration-500 ease-out
+                  hover:bg-black hover:shadow-xl
                 `}
               >
-                {/* Background Overlay */}
-                <div className={`
-                  absolute inset-0 
-                  opacity-5 group-hover:opacity-10
-                  transition-opacity duration-300
-                  ${category.bgColor}
-                `}></div>
-                
                 {/* Icon */}
-                <div className={`
-                  mb-4 w-16 h-16 rounded-full 
-                  flex items-center justify-center
-                  bg-white border ${category.borderColor}
-                  z-10 relative
-                  group-hover:scale-105 transition-transform
-                `}>
+                <div className="mb-6">
                   <CategoryIcon 
-                    size={32} 
-                    className={`${category.textColor}`} 
-                    strokeWidth={1.5} 
+                    size={60} 
+                    strokeWidth={1.5}
+                    className="text-gray-900 group-hover:text-white transition-colors duration-500" 
                   />
                 </div>
                 
-                {/* Category Details */}
-                <div className="z-10 relative">
-                  <h3 className={`
-                    text-xl font-bold mb-2
-                    ${category.textColor}
-                  `}>
+                {/* Content */}
+                <div className="mb-8">
+                  <h3 className="text-2xl md:text-3xl font-serif text-gray-900 mb-3 group-hover:text-white transition-colors duration-500">
                     {category.name}
                   </h3>
-                  
-                  <p className={`
-                    text-sm mb-4
-                    ${category.textColor} text-opacity-80
-                  `}>
+                  <p className="text-base text-gray-500 group-hover:text-gray-300 transition-colors duration-500 leading-relaxed">
                     {category.description}
                   </p>
-                  
-                  {/* CTA */}
-                  <div className={`
-                    flex items-center ${category.textColor}
-                    text-base font-semibold
-                    group-hover:translate-x-2 transition-transform
-                  `}>
+                </div>
+                
+                {/* Bottom Action Area */}
+                <div className="mt-auto pt-6 border-t border-gray-200 group-hover:border-gray-800 transition-colors duration-500 flex items-center justify-between">
+                  <span className="text-xs font-bold tracking-widest uppercase text-gray-900 group-hover:text-white transition-colors duration-500">
                     Explore Collection
-                    <span className="ml-2 group-hover:translate-x-1 transition-transform">
-                      →
-                    </span>
+                  </span>
+                  
+                  <div className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-black group-hover:scale-110 transition-transform duration-500">
+                    <MoveRight 
+                      size={16} 
+                      className="transform group-hover:-rotate-45 transition-transform duration-500"
+                    />
                   </div>
                 </div>
               </div>

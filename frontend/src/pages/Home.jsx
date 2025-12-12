@@ -4,7 +4,7 @@ import FeaturedProducts from "../component/FeaturedProducts";
 import ProductCollection from "../component/ProductCollection";
 import CategoriesSection from "../component/CategoriesSection";
 import BenefitsSection from "../component/BenefitsSection";
-import Newsletter from "../component/Newsletter";
+//import Newsletter from "../component/Newsletter";
 import ServiceSection from "../component/ServiceSection";
 
 // Import font CSS in your main index.js or App.js
@@ -72,7 +72,7 @@ const Home = () => {
             />
           </div>
         </div>
-        <Newsletter />
+        
         <ServiceSection />
       </div>
     </div>

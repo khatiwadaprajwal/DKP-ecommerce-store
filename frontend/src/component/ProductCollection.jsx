@@ -1,4 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation } from 'swiper/modules';
 import { ShopContext } from "../context/ShopContext";
@@ -10,6 +11,7 @@ import 'swiper/css/navigation';
 
 const ProductCollection = ({ title, collectionType }) => {
   const { backend_url } = useContext(ShopContext);
+  const navigate = useNavigate();
   const [collectionProducts, setCollectionProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -67,7 +69,9 @@ const ProductCollection = ({ title, collectionType }) => {
   if (loading) {
     return (
       <div className="py-4">
-        <h2 className="text-3xl font-bold mb-8">{title}</h2>
+        <div className="flex justify-between items-center mb-8">
+          <h2 className="text-3xl font-bold">{title}</h2>
+        </div>
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
         </div>
@@ -78,7 +82,9 @@ const ProductCollection = ({ title, collectionType }) => {
   if (error) {
     return (
       <div className="py-4">
-        <h2 className="text-3xl font-bold mb-8">{title}</h2>
+        <div className="flex justify-between items-center mb-8">
+          <h2 className="text-3xl font-bold">{title}</h2>
+        </div>
         <div className="text-center text-red-500">{error}</div>
       </div>
     );
@@ -86,7 +92,28 @@ const ProductCollection = ({ title, collectionType }) => {
   
   return (
     <div className=''>
-      <h2 className="text-3xl font-bold mb-8">{title}</h2>
+      <div className="flex justify-between items-center mb-8">
+        <h2 className="text-3xl font-bold">{title}</h2>
+        <button 
+          onClick={() => navigate('/collection')}
+          className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors"
+        >
+          View More
+          <svg 
+            className="w-4 h-4" 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth={2} 
+              d="M9 5l7 7-7 7" 
+            />
+          </svg>
+        </button>
+      </div>
       <Swiper
         modules={[Navigation]}
         spaceBetween={20}
@@ -115,7 +142,6 @@ const ProductCollection = ({ title, collectionType }) => {
           <SwiperSlide key={product._id} className=''>
             <ProductItem
               id={product._id}
-              // ✅ SAFETY CHECK: Ensures index 0 exists
               image={product.images && product.images.length > 0 ? product.images[0] : ""} 
               name={product.productName}
               price={product.price}

@@ -25,6 +25,17 @@ const Dashboard = () => {
 
   const navigate = useNavigate();
 
+  // ✅ SMART IMAGE HELPER FUNCTION
+  const getImageUrl = (imgPath) => {
+    if (!imgPath) return "";
+    
+    if (imgPath.startsWith("http") || imgPath.startsWith("https")) {
+      return imgPath;
+    }
+    
+    return `${backend_url}/public/${imgPath}`;
+  };
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
@@ -414,7 +425,7 @@ const Dashboard = () => {
                   <div className="w-16 h-16 bg-gray-200 rounded-md mr-4 flex items-center justify-center text-xs text-gray-500">
                     {product.images && (
                       <img
-                        src={`${backend_url}/public/${product.images[0]}`}
+                        src={getImageUrl(product.images[0])}
                         alt={product.name}
                         className="h-14 w-14 object-cover rounded-md"
                         onError={(e) => {
@@ -481,7 +492,7 @@ const Dashboard = () => {
                           <div className="h-10 w-10 bg-gray-200 rounded-md mr-3">
                             {product.images && product.images.length > 0 && (
                               <img
-                                src={`${backend_url}/public/${product.images[0]}`}
+                                src={getImageUrl(product.images[0])}
                                 alt={product.name}
                                 className="h-10 w-10 object-cover rounded-md"
                                 onError={(e) => {
@@ -576,7 +587,7 @@ const Dashboard = () => {
                   <div className="w-16 h-16 bg-gray-200 rounded-md mr-4 flex items-center justify-center text-xs text-gray-500">
                     {product.images && product.images.length > 0 && (
                       <img
-                        src={`${backend_url}/public/${product.images[0]}`}
+                        src={getImageUrl(product.images[0])}
                         alt={product.name}
                         className="h-14 w-14 object-cover rounded-md"
                         onError={(e) => {

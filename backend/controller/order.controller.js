@@ -289,7 +289,7 @@ exports.paypalSuccess = async (req, res) => {
 
     // 5. Update order status
     // 🟢 FIX: Changed "processing" to "Processing" (Capital P)
-    order.status = "Processing"; 
+    order.status = "Pending"; 
     order.paymentStatus = "Paid";
     // Optional: Save transaction details
     order.paymentId = paymentId; 

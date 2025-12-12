@@ -37,7 +37,26 @@ const Contact = () => {
     setLoading(true);
     
     try {
-      const response = await axios.post('http://localhost:3001/v1/send', formData);
+      // Get token from localStorage
+      const token = localStorage.getItem('token');
+      
+      // Check if token exists
+      if (!token) {
+        setStatus({
+          type: 'error',
+          message: 'Please log in to send a message.'
+        });
+        setLoading(false);
+        return;
+      }
+      
+      // Make API request with Bearer token
+      const response = await axios.post('http://localhost:3001/v1/send', formData, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
       
       setStatus({
         type: 'success',
@@ -51,9 +70,28 @@ const Contact = () => {
         msg: ''
       });
     } catch (error) {
+      console.error('Error details:', error.response || error);
+      
+      let errorMessage = 'Failed to send message. Please try again.';
+      
+      // Handle specific error cases
+      if (error.response) {
+        if (error.response.status === 401) {
+          errorMessage = 'Your session has expired. Please log in again.';
+          // Optionally clear the invalid token
+          localStorage.removeItem('token');
+        } else if (error.response.status === 403) {
+          errorMessage = 'You do not have permission to send messages.';
+        } else {
+          errorMessage = error.response.data?.error || errorMessage;
+        }
+      } else if (error.request) {
+        errorMessage = 'Cannot connect to server. Please check your connection.';
+      }
+      
       setStatus({
         type: 'error',
-        message: error.response?.data?.error || 'Failed to send message. Please try again.'
+        message: errorMessage
       });
     } finally {
       setLoading(false);

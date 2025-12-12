@@ -1,5 +1,5 @@
 import React, { useState, createContext, useEffect, useMemo } from "react";
-import { toast } from "react-toastify"; // Changed to react-toastify to match your App.jsx
+import { toast } from "react-toastify";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
@@ -153,7 +153,7 @@ const ShopcontextProvider = ({ children }) => {
     return cartData.reduce((total, item) => total + item.quantity, 0);
   };
 
-  // ✅ Restored PayPal Popup Logic
+  // ✅ FIXED: PayPal Popup with proper cart refresh on closure
   const openPayPalPopup = (approvalUrl) => {
     const width = 600;
     const height = 700;
@@ -171,10 +171,18 @@ const ShopcontextProvider = ({ children }) => {
       return;
     }
   
+    // ✅ Monitor popup closure and refresh cart
     const interval = setInterval(() => {
       if (paypalWindow.closed) {
         clearInterval(interval);
-        // The success page handles the rest, but we can refresh cart/orders here if needed
+        
+        // ✅ Refresh cart data after popup closes
+        fetchCartData();
+        
+        // ✅ Clear selected items from localStorage
+        localStorage.removeItem("selectedCartItems");
+        
+        // Navigate to orders page
         navigate("/order");
       }
     }, 1000);
@@ -190,7 +198,6 @@ const ShopcontextProvider = ({ children }) => {
     }
   };
 
-  // ... Filter helper functions ...
   const toggleGender = (value) => toggleFilter(value, gender, setGender);
   const toggleCategory = (value) => toggleFilter(value, category, setCategory);
   const toggleSizes = (value) => toggleFilter(value, sizes, setSizes);
@@ -200,7 +207,7 @@ const ShopcontextProvider = ({ children }) => {
     if (products.length === 0) return;
 
     let productsCopy = [...products];
-    // ... Existing filter logic ...
+    
     if (searchQuery && searchQuery.trim() !== "") {
       const lowerQuery = searchQuery.toLowerCase();
       productsCopy = productsCopy.filter((item) =>
@@ -263,7 +270,7 @@ const ShopcontextProvider = ({ children }) => {
     resetGenderFilter, resetCategoryFilter, resetSizeFilter, resetColorFilter,
     resetPriceFilter, resetAllFilters, logout, user, setUser,
     averageRating, setAverageRating, totalReviews, setTotalReviews,
-    openPayPalPopup, // ✅ Added back to value
+    openPayPalPopup,
     searchQuery, setSearchQuery, handleSearchFunction, resetSearchQuery,
   }), [
     products, token, search, showSearch, cartData, gender, category, sizes, colors, 

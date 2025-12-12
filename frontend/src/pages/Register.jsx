@@ -41,53 +41,73 @@ const Register = () => {
   };
 
   // Handle registration submission
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    
-    // Validate password
-    const passwordErrors = validatePassword(password);
-    
-    if (passwordErrors.length > 0) {
-      passwordErrors.forEach(error => toast.error(error));
-      return;
-    }
-    
-    // Check if passwords match
-    if (password !== confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
-    }
-    
-    setLoading(true);
 
-    try {
-      const response = await axios.post(
-        `${backend_url}/v1/auth/signup`,
-        {
-          name,
-          email,
-          password,
-        }
-      );
-      // console.log(response);
+const handleRegister = async (e) => {
+  e.preventDefault();
+  console.log("=== FORM SUBMISSION STARTED ===");
+  console.log("Name:", name);
+  console.log("Email:", email);
+  console.log("Password length:", password.length);
+  console.log("Backend URL:", backend_url);
+  
+  // Validate password
+  const passwordErrors = validatePassword(password);
+  console.log("Password validation errors:", passwordErrors);
+  
+  if (passwordErrors.length > 0) {
+    console.log("Password validation failed");
+    passwordErrors.forEach(error => toast.error(error));
+    return;
+  }
+  
+  // Check if passwords match
+  if (password !== confirmPassword) {
+    console.log("Passwords don't match");
+    toast.error("Passwords do not match");
+    return;
+  }
+  
+  console.log("Validation passed, starting API call...");
+  setLoading(true);
 
-      if (response.status === 201) {
-        setShowOTP(true);
-        toast.success(
-          "Registration successful! Please verify your email with OTP"
-        );
-      } else {
-        toast.error(response.data.message || "Registration failed");
+  try {
+    console.log("Making POST request to:", `${backend_url}/v1/auth/signup`);
+    
+    const response = await axios.post(
+      `${backend_url}/v1/auth/signup`,
+      {
+        name,
+        email,
+        password,
       }
-    } catch (error) {
-      console.error("Registration error:", error);
-      toast.error(
-        error.response?.data?.message || "An error occurred during registration"
+    );
+    
+    // console.log("API Response:", response);
+
+    if (response.status === 201) {
+      console.log("Registration successful!");
+      setShowOTP(true);
+      toast.success(
+        "Registration successful! Please verify your email with OTP"
       );
-    } finally {
-      setLoading(false);
+    } else {
+      console.log("Registration failed with status:", response.status);
+      toast.error(response.data.message || "Registration failed");
     }
-  };
+  } catch (error) {
+    console.error("=== REGISTRATION ERROR ===");
+    console.error("Error object:", error);
+    console.error("Error response:", error.response);
+    console.error("Error message:", error.message);
+    
+    toast.error(
+      error.response?.data?.message || "An error occurred during registration"
+    );
+  } finally {
+    console.log("Setting loading to false");
+    setLoading(false);
+  }
+};
 
   // Handle OTP verification
   const handleVerifyOTP = async (e) => {
@@ -243,14 +263,15 @@ const Register = () => {
 
                   <div>
                     <button
-                      type="submit"
-                      disabled={loading}
-                      className={`w-full px-8 py-3 ${
-                        loading ? "bg-gray-400" : "bg-red-500 hover:bg-red-600"
-                      } text-white rounded-md transition-colors`}
-                    >
-                      {loading ? "Processing..." : "Create Account"}
-                    </button>
+  type="submit"
+  onClick={() => console.log("Button clicked!")}
+  disabled={loading}
+  className={`w-full px-8 py-3 ${
+    loading ? "bg-gray-400" : "bg-red-500 hover:bg-red-600"
+  } text-white rounded-md transition-colors`}
+>
+  {loading ? "Processing..." : "Create Account"}
+</button>
                   </div>
                 </form>
               </>

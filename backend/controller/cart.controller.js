@@ -463,7 +463,7 @@ exports.placeOrderFromCart = async (req, res) => {
           intent: "sale",
           payer: { payment_method: "paypal" },
           redirect_urls: {
-            return_url: `http://localhost:3001/v1/paypal/success?orderId=${order._id}&userId=${userId}&productIds=${selectedProducts.map(p => p.productId).join(',')}`,
+            return_url: `http://localhost:5173/paypal/success?orderId=${order._id}&userId=${userId}&productIds=${selectedProducts.map(p => p.productId).join(',')}`,
           cancel_url: "http://localhost:3001/v1/paypal/cancel",
           },
           transactions: [

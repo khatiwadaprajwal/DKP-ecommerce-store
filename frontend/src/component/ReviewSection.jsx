@@ -27,7 +27,10 @@ const ReviewSection = ({ productId }) => {
       if (userData) {
         try {
           const parsedUserData = JSON.parse(userData);
-          setCurrentUserId(parsedUserData.userId);
+          // FIX: Try multiple possible ID properties
+          const userId = parsedUserData._id || parsedUserData.userId || parsedUserData.id;
+          setCurrentUserId(userId);
+          console.log("Current User ID:", userId); // Debug log
         } catch (error) {
           console.error("Error parsing user data:", error);
         }
@@ -76,13 +79,18 @@ const ReviewSection = ({ productId }) => {
     if (userData) {
       try {
         const parsedUserData = JSON.parse(userData);
-        const userId = parsedUserData._id;
+        // FIX: Use consistent ID property
+        const userId = parsedUserData._id || parsedUserData.userId || parsedUserData.id;
         
         // Look for reviews by this user
         const userReviewFound = reviewsArray.find(review => {
-          // Check for different possible structures of userId
-          return (review.userId && typeof review.userId === 'object' && review.userId._id === userId) || 
-                 (review.userId === userId);
+          // Get the review's user ID
+          const reviewUserId = (review.userId && typeof review.userId === 'object') 
+            ? review.userId._id 
+            : review.userId;
+          
+          console.log("Checking review userId:", reviewUserId, "against current userId:", userId); // Debug log
+          return reviewUserId === userId;
         });
         
         if (userReviewFound) {
@@ -240,10 +248,18 @@ const ReviewSection = ({ productId }) => {
 
   // Check if a review belongs to the current user
   const isUserReview = (review) => {
-    if (!currentUserId) return false;
+    if (!currentUserId) {
+      console.log("No current user ID"); // Debug log
+      return false;
+    }
     
-    return (review.userId && typeof review.userId === 'object' && review.userId._id === currentUserId) || 
-           (review.userId === currentUserId);
+    // Get the review's user ID
+    const reviewUserId = (review.userId && typeof review.userId === 'object') 
+      ? review.userId._id 
+      : review.userId;
+    
+    console.log("Comparing review userId:", reviewUserId, "with current userId:", currentUserId); // Debug log
+    return reviewUserId === currentUserId;
   };
 
   return (

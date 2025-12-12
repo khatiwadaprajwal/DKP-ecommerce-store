@@ -16,7 +16,17 @@ const ListProducts = () => {
   const token = localStorage.getItem("token");
   const {backend_url}= useContext(ShopContext);
 
-  
+   // ✅ SMART IMAGE HELPER FUNCTION
+  const getImageUrl = (imgPath) => {
+    if (!imgPath) return "";
+    
+    if (imgPath.startsWith("http") || imgPath.startsWith("https")) {
+      return imgPath;
+    }
+    
+    return `${backend_url}/public/${imgPath}`;
+  };
+
   // Updated category options based on your product model
   const categoryOptions = [
     "All",
@@ -322,7 +332,7 @@ const ListProducts = () => {
                             <div className="h-10 w-10 bg-gray-200 rounded-md mr-3">
                               {product.images && product.images.length > 0 && (
                                 <img
-                                  src={`${backend_url}/public/${product.images[0]}`}
+                                  src={getImageUrl(product.images[0])}
                                   alt={product.productName}
                                   className="h-10 w-10 object-cover rounded-md"
                                   onError={(e) => {
@@ -482,7 +492,7 @@ const ListProducts = () => {
                                         className="h-16 w-16 bg-gray-200 rounded-md overflow-hidden"
                                       >
                                         <img
-                                          src={`${backend_url}/public/${img}`}
+                                          src={getImageUrl(img)}
                                           alt={`${product.productName} ${index}`}
                                           className="h-16 w-16 object-cover"
                                           onError={(e) => {

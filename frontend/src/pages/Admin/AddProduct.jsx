@@ -1,9 +1,11 @@
 import React, { useContext, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios'; 
 import { toast } from "react-hot-toast";
 import { ShopContext } from '../../context/ShopContext';
 
 const AddProduct = () => {
+  const navigate = useNavigate();
   const [product, setProduct] = useState({
     productName: '',
     description: '',
@@ -24,7 +26,7 @@ const AddProduct = () => {
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const token = localStorage.getItem('token');
   const {backend_url} = useContext(ShopContext)
 
@@ -204,7 +206,6 @@ const AddProduct = () => {
       size: '',
       quantity: 1
     });
-    setSuccess(false);
     setError(null);
   };
   
@@ -245,8 +246,9 @@ const AddProduct = () => {
   
       console.log('Product added:', response.data.product);
       toast.success(response.data.message || 'Product added successfully!');
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000); // Auto-hide after 3 sec
+      
+      // Show success modal instead of inline message
+      setShowSuccessModal(true);
       resetForm();
   
     } catch (err) {
@@ -263,328 +265,366 @@ const AddProduct = () => {
     }
   };
 
+  const handleNavigateToList = () => {
+    setShowSuccessModal(false);
+    navigate('/admin/listProducts');
+  };
+
+  const handleAddAnother = () => {
+    setShowSuccessModal(false);
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-2xl font-semibold mb-6">Add New Product</h2>
-      
-      {success && (
-        <div className="mb-6 p-4 bg-green-100 text-green-700 rounded-md">
-          Product added successfully!
-          <button 
-            className="ml-2 text-green-800 underline"
-            onClick={() => setSuccess(false)}
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-      
-      {error && (
-        <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-md">
-          {error}
-          <button 
-            className="ml-2 text-red-800 underline"
-            onClick={() => setError(null)}
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-      
-      <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Product Name*
-            </label>
-            <input
-              type="text"
-              name="productName"
-              value={product.productName}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Price ($)*
-            </label>
-            <input
-              type="number"
-              name="price"
-              value={product.price}
-              onChange={handleChange}
-              required
-              min="0"
-              step="0.01"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Category*
-            </label>
-            <select
-              name="category"
-              value={product.category}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Select Category</option>
-              {categoryOptions.map(category => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Gender*
-            </label>
-            <select
-              name="gender"
-              value={product.gender}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Select Gender</option>
-              {genderOptions.map(gender => (
-                <option key={gender} value={gender}>
-                  {gender}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Total Quantity (Calculated)
-            </label>
-            <input
-              type="number"
-              value={product.totalQuantity}
-              readOnly
-              className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Auto-calculated from variants
-            </p>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Total Sold
-            </label>
-            <input
-              type="number"
-              name="totalSold"
-              value={product.totalSold}
-              onChange={handleChange}
-              min="0"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
+    <>
+      <div className={`bg-white rounded-lg shadow-md p-6 ${showSuccessModal ? 'blur-sm' : ''}`}>
+        <h2 className="text-2xl font-semibold mb-6">Add New Product</h2>
         
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Description*
-          </label>
-          <textarea
-            name="description"
-            value={product.description}
-            onChange={handleChange}
-            required
-            rows="4"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          ></textarea>
-        </div>
+        {error && (
+          <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-md">
+            {error}
+            <button 
+              className="ml-2 text-red-800 underline"
+              onClick={() => setError(null)}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
         
-        {/* Variant Management Section */}
-        <div className="mb-6 p-4 bg-gray-50 rounded-md border border-gray-200">
-          <h3 className="text-lg font-medium text-gray-800 mb-4">Manage Variants</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <form onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Color*
-              </label>
-              <select
-                name="color"
-                value={variantForm.color}
-                onChange={handleVariantChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select Color</option>
-                {colorOptions.map(color => (
-                  <option key={color} value={color}>
-                    {color}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Size*
-              </label>
-              <select
-                name="size"
-                value={variantForm.size}
-                onChange={handleVariantChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select Size</option>
-                {sizeOptions.map(size => (
-                  <option key={size} value={size}>
-                    {size}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Quantity*
+                Product Name*
               </label>
               <input
-                type="number"
-                name="quantity"
-                value={variantForm.quantity}
-                onChange={handleVariantChange}
-                min="1"
+                type="text"
+                name="productName"
+                value={product.productName}
+                onChange={handleChange}
+                required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Price ($)*
+              </label>
+              <input
+                type="number"
+                name="price"
+                value={product.price}
+                onChange={handleChange}
+                required
+                min="0"
+                step="0.01"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Category*
+              </label>
+              <select
+                name="category"
+                value={product.category}
+                onChange={handleChange}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select Category</option>
+                {categoryOptions.map(category => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Gender*
+              </label>
+              <select
+                name="gender"
+                value={product.gender}
+                onChange={handleChange}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select Gender</option>
+                {genderOptions.map(gender => (
+                  <option key={gender} value={gender}>
+                    {gender}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Total Quantity (Calculated)
+              </label>
+              <input
+                type="number"
+                value={product.totalQuantity}
+                readOnly
+                className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Auto-calculated from variants
+              </p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Total Sold
+              </label>
+              <input
+                type="number"
+                name="totalSold"
+                value={product.totalSold}
+                onChange={handleChange}
+                min="0"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Description*
+            </label>
+            <textarea
+              name="description"
+              value={product.description}
+              onChange={handleChange}
+              required
+              rows="4"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            ></textarea>
+          </div>
+          
+          {/* Variant Management Section */}
+          <div className="mb-6 p-4 bg-gray-50 rounded-md border border-gray-200">
+            <h3 className="text-lg font-medium text-gray-800 mb-4">Manage Variants</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Color*
+                </label>
+                <select
+                  name="color"
+                  value={variantForm.color}
+                  onChange={handleVariantChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Color</option>
+                  {colorOptions.map(color => (
+                    <option key={color} value={color}>
+                      {color}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Size*
+                </label>
+                <select
+                  name="size"
+                  value={variantForm.size}
+                  onChange={handleVariantChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Size</option>
+                  {sizeOptions.map(size => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Quantity*
+                </label>
+                <input
+                  type="number"
+                  name="quantity"
+                  value={variantForm.quantity}
+                  onChange={handleVariantChange}
+                  min="1"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={addVariant}
+                disabled={!variantForm.color || !variantForm.size || variantForm.quantity < 1}
+                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition duration-200 disabled:opacity-70"
+              >
+                Add Variant
+              </button>
+            </div>
+            
+            {/* Variants List */}
+            {product.variants.length > 0 ? (
+              <div className="mt-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Added Variants:</h4>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Color</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {product.variants.map((variant, index) => (
+                        <tr key={index}>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{variant.color}</td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{variant.size}</td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{variant.quantity}</td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm">
+                            <button
+                              type="button"
+                              onClick={() => removeVariant(index)}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              Remove
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-red-500 mt-4">
+                Please add at least one variant with size, color and quantity
+              </p>
+            )}
+          </div>
+          
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Product Images*
+            </label>
+            <div className="flex items-center gap-4 mb-4">
+              <label className={`cursor-pointer px-4 py-2 ${
+                loading ? 'bg-gray-300 cursor-not-allowed' : 'bg-gray-200 hover:bg-gray-300'
+              } text-gray-700 rounded-md transition duration-200`}>
+                <span>{loading ? 'Uploading...' : 'Add Images'}</span>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                  disabled={loading}
+                />
+              </label>
+              <span className="text-sm text-gray-500">
+                Upload at least one image
+              </span>
+            </div>
+            
+            {product.images.length > 0 ? (
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
+                {product.images.map((imageObj, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={imageObj.preview}
+                      alt={`Product preview ${index + 1}`}
+                      className="h-24 w-24 object-cover rounded-md"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-red-500">
+                Please upload at least one product image
+              </p>
+            )}
           </div>
           
           <div className="flex justify-end">
             <button
               type="button"
-              onClick={addVariant}
-              disabled={!variantForm.color || !variantForm.size || variantForm.quantity < 1}
+              onClick={handleCancel}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md mr-4 hover:bg-gray-300 transition duration-200"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading || product.variants.length === 0 || product.images.length === 0}
               className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition duration-200 disabled:opacity-70"
             >
-              Add Variant
+              {loading ? 'Adding...' : 'Add Product'}
             </button>
           </div>
-          
-          {/* Variants List */}
-          {product.variants.length > 0 ? (
-            <div className="mt-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Added Variants:</h4>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-100">
-                    <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Color</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {product.variants.map((variant, index) => (
-                      <tr key={index}>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{variant.color}</td>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{variant.size}</td>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{variant.quantity}</td>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm">
-                          <button
-                            type="button"
-                            onClick={() => removeVariant(index)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            Remove
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+        </form>
+      </div>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 animate-fadeIn">
+            <div className="flex flex-col items-center text-center">
+              {/* Success Icon */}
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              
+              <h3 className="text-2xl font-semibold text-gray-800 mb-2">
+                Product Added Successfully!
+              </h3>
+              
+              <p className="text-gray-600 mb-6">
+                Your product has been added to the inventory.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-3 w-full">
+                <button
+                  onClick={handleNavigateToList}
+                  className="flex-1 px-6 py-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition duration-200 font-medium"
+                >
+                  View All Products
+                </button>
+                <button
+                  onClick={handleAddAnother}
+                  className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition duration-200 font-medium"
+                >
+                  Add Another Product
+                </button>
               </div>
             </div>
-          ) : (
-            <p className="text-sm text-red-500 mt-4">
-              Please add at least one variant with size, color and quantity
-            </p>
-          )}
-        </div>
-        
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Product Images*
-          </label>
-          <div className="flex items-center gap-4 mb-4">
-            <label className={`cursor-pointer px-4 py-2 ${
-              loading ? 'bg-gray-300 cursor-not-allowed' : 'bg-gray-200 hover:bg-gray-300'
-            } text-gray-700 rounded-md transition duration-200`}>
-              <span>{loading ? 'Uploading...' : 'Add Images'}</span>
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleImageChange}
-                className="hidden"
-                disabled={loading}
-              />
-            </label>
-            <span className="text-sm text-gray-500">
-              Upload at least one image
-            </span>
           </div>
-          
-          {product.images.length > 0 ? (
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
-              {product.images.map((imageObj, index) => (
-                <div key={index} className="relative group">
-                  <img
-                    src={imageObj.preview}
-                    alt={`Product preview ${index + 1}`}
-                    className="h-24 w-24 object-cover rounded-md"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeImage(index)}
-                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-red-500">
-              Please upload at least one product image
-            </p>
-          )}
         </div>
-        
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md mr-4 hover:bg-gray-300 transition duration-200"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={loading || product.variants.length === 0 || product.images.length === 0}
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition duration-200 disabled:opacity-70"
-          >
-            {loading ? 'Adding...' : 'Add Product'}
-          </button>
-        </div>
-      </form>
-    </div>
+      )}
+    </>
   );
 };
 

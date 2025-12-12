@@ -1,4 +1,4 @@
-[
+export const address=[
   {
     "id": 1,
     "name": "Koshi Province",

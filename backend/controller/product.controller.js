@@ -182,12 +182,55 @@ exports.getProductById = async (req, res) => {
     }
 };
 
+// ==========================================
+// 4. DELETE PRODUCT (With Cloudinary Image Cleanup)
+// ==========================================
 exports.deleteProduct = async (req, res) => {
     try {
         const { id } = req.params;
-        const product = await Product.findByIdAndDelete(id);
-        if (!product) return res.status(404).json({ message: "Product not found" });
-        return res.status(200).json({ message: "Product deleted successfully" });
+
+        // 1. Find the product first to get access to the images
+        const product = await Product.findById(id);
+        
+        if (!product) {
+            return res.status(404).json({ message: "Product not found" });
+        }
+
+        // 2. Delete images from Cloudinary
+        if (product.images && product.images.length > 0) {
+            const deletePromises = product.images.map(imageUrl => {
+                
+                const regex = /\/upload\/(?:v\d+\/)?(.+)\.[^.]+$/;
+                const match = imageUrl.match(regex);
+                const publicId = match ? match[1] : null;
+
+                if (publicId) {
+                    return cloudinary.uploader.destroy(publicId);
+                }
+            });
+
+            // Wait for all images to be deleted
+            await Promise.all(deletePromises);
+        }
+
+        // 3. Delete from Database
+        await Product.findByIdAndDelete(id);
+
+        
+        const keysToClear = [
+            'products:latest',     
+            'products:featured',   
+            'products:bestsellers',
+            'products:toprated'
+        ];
+        
+
+        if (redisClient) {
+            await redisClient.del(keysToClear); 
+        }
+
+        return res.status(200).json({ message: "Product and associated images deleted successfully" });
+
     } catch (error) {
         return res.status(500).json({ message: "Error deleting product", error: error.message });
     }

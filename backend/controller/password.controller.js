@@ -6,23 +6,34 @@ const Otp = require("../model/otp.model");
 // Generate a 6-digit OTP
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
-
+// ✅ Send OTP (Now Hashes the OTP before storage)
 const sendotp = async (req, res) => {
     try {
         const { email } = req.body;
+        
+        // 1. Generate Raw OTP
         const otp = generateOTP();
 
-        // Store OTP in Otp model (overwrite if an OTP already exists for this email)
+        // 🔒 2. Hash the OTP (Security Step)
+        const hashedOtp = await bcrypt.hash(otp, 10);
+
+        // 3. Store the HASHED OTP in DB
         await Otp.findOneAndUpdate(
             { email }, 
-            { otp, createdAt: Date.now() }, 
+            { 
+                otp: hashedOtp, // Store hash, not raw
+                createdAt: Date.now(),
+                otpAttempts: 0, // Reset attempts on new OTP
+                isBlacklisted: false 
+            }, 
             { upsert: true, new: true } 
         );
 
-        console.log(`📩 OTP Sent to: ${email}, OTP: ${otp}`); // Debugging
+        console.log(`📩 OTP Sent to: ${email}`); // Don't log raw OTP in production
 
-        // Send OTP email
+        // 4. Send the RAW OTP via Email
         await sendOTPByEmail(email, otp);
+        
         res.status(201).json({ message: "OTP sent to email for verification" });
 
     } catch (error) {
@@ -32,10 +43,10 @@ const sendotp = async (req, res) => {
 };
 
 
-// ✅ Reset Password After Verifying OTP
+// ✅ Reset Password (Now Compares Hashed OTP)
 const resetpassword = async (req, res) => {
   try {
-      const { email, password, otp } = req.body;
+      const { email, password, otp } = req.body; // 'otp' here is raw
 
       // Find OTP entry
       const otpEntry = await Otp.findOne({ email });
@@ -49,8 +60,10 @@ const resetpassword = async (req, res) => {
           return res.status(403).json({ message: "Too many failed attempts. Try again later." });
       }
 
-      // Check if OTP matches and is valid
-      if (otpEntry.otp !== otp) {
+      // 🔒 Check if OTP matches (Using bcrypt compare)
+      const isMatch = await bcrypt.compare(otp, otpEntry.otp);
+
+      if (!isMatch) {
           otpEntry.otpAttempts += 1;
 
           // Blacklist after 10 failed attempts
@@ -80,15 +93,9 @@ const resetpassword = async (req, res) => {
 };
 
 
-
-// ✅ Change Password (Authenticated User)
-
-
+// ✅ Change Password (Authenticated User) - Unchanged but included for completeness
 const changePassword = async (req, res) => {
   try {
-    
-    //console.log("🔹 Request Body:", req.body); 
-
     const { oldPassword, newPassword } = req.body;
     if (!oldPassword || !newPassword) {
       return res.status(400).json({ msg: "Please provide old and new passwords" });
@@ -106,7 +113,6 @@ const changePassword = async (req, res) => {
 
     // Compare old password
     const isMatch = await bcrypt.compare(oldPassword, user.password);
-    console.log("🔹 Password Match:", isMatch);
 
     if (!isMatch) {
       // Increment failed attempts
@@ -124,14 +130,11 @@ const changePassword = async (req, res) => {
 
     // ✅ Success — reset lock state
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    console.log("🔹 Hashed New Password:", hashedPassword);
 
     user.password = hashedPassword;
     user.loginAttempts = 0;
     user.lockUntil = null;
     await user.save();
-
-    console.log("🔹 Updated User:", user);
 
     res.status(200).json({ msg: "Password changed successfully" });
   } catch (error) {
@@ -140,7 +143,4 @@ const changePassword = async (req, res) => {
   }
 };
 
-
-module.exports = { sendotp, resetpassword,changePassword };
-
-
+module.exports = { sendotp, resetpassword, changePassword };

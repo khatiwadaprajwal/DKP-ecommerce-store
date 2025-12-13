@@ -1,72 +1,36 @@
+// middleware/isLoggedIn.js
 const jwt = require("jsonwebtoken");
-const dotenv = require("dotenv");
 const User = require("../model/usermodel");
-
-dotenv.config();
-const JWT_SECRET = process.env.JWT_SECRET;
+require("dotenv").config();
 
 const isLoggedIn = async (req, res, next) => {
   try {
-    const JWT_SECRET = process.env.JWT_SECRET;
-    const REFRESH_SECRET = process.env.REFRESH_SECRET;
-
- 
     const authHeader = req.headers.authorization;
-    let accessToken = authHeader && authHeader.split(" ")[1]; 
-    const refreshToken = req.cookies?.refreshToken;
+    const token = authHeader && authHeader.split(" ")[1]; // Get "Bearer token"
 
-    if (!accessToken && !refreshToken) {
-      return res.status(401).json({ message: "Unauthorized: No token provided" });
+    if (!token) {
+      return res.status(401).json({ message: "Unauthorized: No access token" });
     }
 
-    // 2. Try to Verify Access Token (From Header)
-    if (accessToken) {
-      try {
-        const decoded = jwt.verify(accessToken, JWT_SECRET);
-        
-        // Find user (using lean() for performance since we just need data)
-        const user = await User.findById(decoded.id).select("-password").lean();
-        
-        if (!user) return res.status(401).json({ message: "User not found" });
-
-        req.user = user;
-        return next(); 
-      } catch (err) {
-        
-        if (err.name !== "TokenExpiredError") {
-          return res.status(401).json({ message: "Invalid token" });
-        }
-        // If "TokenExpiredError", we intentionally fall through to step 3
+    // Verify Access Token ONLY
+    jwt.verify(token, process.env.JWT_SECRET, async (err, decoded) => {
+      if (err) {
+        // IMPORTANT: We return specific error so frontend knows to try refresh
+        return res.status(403).json({ message: "Token expired or invalid" }); 
       }
-    }
 
-    // 3. Access Token Expired or Missing? Check Refresh Token (From Cookie)
-    if (refreshToken) {
-      try {
-        const decoded = jwt.verify(refreshToken, REFRESH_SECRET);
-        
-        const user = await User.findById(decoded.id).select("-password");
-        if (!user) return res.status(401).json({ message: "User not found" });
-
-        // Generate NEW Access Token
-        const newAccessToken = generateAccessToken(user._id, user.role);
-
-        
-        res.setHeader("x-new-access-token", newAccessToken);
-
-        req.user = user.toObject(); 
-        return next();
-
-      } catch (err) {
-        console.error("Refresh Error:", err.message);
-        return res.status(401).json({ message: "Session expired. Please login again." });
+      // Check if user still exists in DB
+      const user = await User.findById(decoded.id).select("-password").lean();
+      if (!user) {
+        return res.status(401).json({ message: "User no longer exists" });
       }
-    }
 
-    return res.status(401).json({ message: "Unauthorized" });
+      req.user = user;
+      next();
+    });
 
   } catch (error) {
-    console.error("❌ Middleware Error:", error);
+    console.error("Middleware Error:", error);
     return res.status(500).json({ message: "Internal Auth Error" });
   }
 };

@@ -44,6 +44,11 @@ exports.createOrder = async (req, res) => {
 
     const totalAmount = quantity * product.price;
 
+    // 🟢 CHANGED LOGIC HERE:
+    // Set Khalti/PayPal orders to "Failed" initially.
+    // They will only become "Pending" (Confirmed) if the payment callback succeeds.
+    const initialStatus = (paymentMethod === "Khalti" || paymentMethod === "PayPal") ? "Failed" : "Pending";
+
     // Create order with initial status
     const order = new Order({
       userId,
@@ -52,8 +57,8 @@ exports.createOrder = async (req, res) => {
       address,
       location,
       paymentMethod,
-      status: paymentMethod === "PayPal" ? "Failed" : "Pending",
-      paymentStatus: paymentMethod === "PayPal" ? "Failed" : "Pending",
+      status: initialStatus,        // ✅ Starts as Failed
+      paymentStatus: initialStatus, // ✅ Starts as Failed
       currency: "NPR"
     });
 
@@ -113,7 +118,6 @@ exports.createOrder = async (req, res) => {
 
         const khaltiUrl = khaltiResponse.data.payment_url;
 
-        // Return Khalti payment URL for redirection
         return res.status(200).json({
           message: "Redirect to Khalti",
           khaltiUrl
@@ -164,7 +168,7 @@ exports.createOrder = async (req, res) => {
       }
     }
 
-    // ✅ Send order confirmation email with productDetails array
+    // ✅ Send order confirmation email
     await sendOrderEmail(req.user.email, {
       _id: order._id,
       productDetails: [{
@@ -191,11 +195,29 @@ exports.createOrder = async (req, res) => {
     return res.status(500).json({ error: "Order creation failed" });
   }
 };
-
 exports.completeKhaltiPayment = async (req, res) => {
-  const { pidx, orderId, userId } = req.query;
+  // 1. Extract 'status' and 'message' along with pidx/orderId
+  const { pidx, orderId, userId, status, message } = req.query;
 
   try {
+    // ---------------------------------------------------------
+    // 🆕 UPDATED LOGIC: Handle Explicit Cancellation/Failure
+    // ---------------------------------------------------------
+    if (status === "UserCanceled" || status === "Expired" || message === "User canceled" || !pidx) {
+      
+      console.log(`⚠️ Payment Cancelled for Order: ${orderId}`);
+
+      // Immediately mark as Failed in Database
+      await Order.findByIdAndUpdate(orderId, {
+        paymentStatus: "Failed",
+        status: "Failed"
+      });
+
+      // Redirect to your frontend Failure Page
+      return res.redirect(`http://localhost:5173/payment-failed?orderId=${orderId}`);
+    }
+
+    // ... ORIGINAL SUCCESS LOGIC ...
     const KHALTI_SECRET_KEY = process.env.KHALTI_SECRET_KEY;
 
     const headers = {
@@ -211,6 +233,7 @@ exports.completeKhaltiPayment = async (req, res) => {
 
     const paymentInfo = response.data;
 
+    // Double check verification status
     if (paymentInfo.status !== "Completed") {
       await Order.findByIdAndUpdate(orderId, {
         paymentStatus: "Failed",
@@ -220,19 +243,30 @@ exports.completeKhaltiPayment = async (req, res) => {
       return res.redirect(`http://localhost:5173/payment-failed?orderId=${orderId}`);
     }
 
+    // Success Case
     await Order.findByIdAndUpdate(orderId, {
       paymentStatus: "Paid",
-      status: "Pending",
+      status: "Pending", // Or 'Confirmed'
       transactionId: pidx
     });
 
     return res.redirect(`http://localhost:5173/payment-success?orderId=${orderId}`);
+
   } catch (error) {
     console.error("❌ Error verifying Khalti payment:", error.message);
+    
+    // Fallback: If code crashes, still mark as failed so it doesn't stay Pending
+    if (orderId) {
+        await Order.findByIdAndUpdate(orderId, {
+            paymentStatus: "Failed",
+            status: "Failed"
+        });
+        return res.redirect(`http://localhost:5173/payment-failed?orderId=${orderId}`);
+    }
+    
     return res.status(500).send("Payment verification failed");
   }
 };
-
 
 exports.paypalSuccess = async (req, res) => {
   try {

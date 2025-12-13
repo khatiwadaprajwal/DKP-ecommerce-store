@@ -1,20 +1,33 @@
 const UserReview = require("../model/userreview.model");
 const Product = require("../model/productmodel");
 
+const redisClient = require('../config/redis');
+
 exports.addReview = async (req, res) => {
   try {
     const { productId, rating, reviewText } = req.body;
     const userId = req.user._id; 
-    // Check if the product exists
+    
     const product = await Product.findById(productId);
     if (!product) {
       return res.status(404).json({ error: "Product not found" });
     }
 
-    // Create a new review
+ 
     const review = new UserReview({ userId, productId, rating, reviewText });
     await review.save();
-    await updateProductRating(productId);
+    
+
+    await updateProductRating(productId); 
+
+    
+    const keysToClear = [
+        'products:bestsellers', 
+        'products:toprated',   
+        'products:featured'     
+    ];
+
+    await redisClient.del(keysToClear);
 
     res.status(201).json({ message: "Review added successfully", review });
   } catch (error) {
@@ -22,8 +35,6 @@ exports.addReview = async (req, res) => {
     res.status(500).json({ error: "Failed to add review" });
   }
 };
-
-
 exports.getProductReviews = async (req, res) => {
   try {
     const { productId } = req.params;

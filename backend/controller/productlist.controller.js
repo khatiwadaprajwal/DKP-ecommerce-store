@@ -1,9 +1,14 @@
 const Product = require('../model/productmodel');
 const UserReview = require('../model/userreview.model');
+const redisClient = require('../config/redis'); // Import Redis Client
+
+// Helper: Define Cache Expiration Time (in seconds)
+// 3600 = 1 hour. Adjust based on how often your data changes.
+const CACHE_TTL = 3600; 
 
 // Sentiment analysis helper function
 const analyzeSentiment = (reviewText) => {
-
+    if (!reviewText) return 0; // Handle empty reviews
     const positiveWords = ['excellent', 'amazing', 'great', 'good', 'love', 'perfect', 'best', 'awesome', 'fantastic', 'wonderful'];
     const negativeWords = ['bad', 'poor', 'terrible', 'awful', 'worst', 'disappointing', 'horrible', 'useless', 'waste', 'regret'];
     
@@ -21,24 +26,34 @@ const analyzeSentiment = (reviewText) => {
 // Get bestseller products
 exports.getBestsellerProducts = async (req, res) => {
     try {
-        // Get all products with their reviews
+        const cacheKey = 'products:bestsellers';
+
+        // 1. Check Redis Cache
+        const cachedData = await redisClient.get(cacheKey);
+        if (cachedData) {
+            return res.status(200).json({
+                success: true,
+                bestsellers: JSON.parse(cachedData),
+                source: 'cache' // Optional: for debugging
+            });
+        }
+
+        // 2. If not in cache, perform the heavy logic
         const products = await Product.find();
         const productScores = [];
 
         for (const product of products) {
             const reviews = await UserReview.find({ productId: product._id });
             
-            // Calculate sentiment score
             let sentimentScore = 0;
             reviews.forEach(review => {
                 sentimentScore += analyzeSentiment(review.reviewText);
             });
             
-            // Calculate total score based on sales, ratings, and sentiment
             const totalScore = (
-                (product.totalSold * 0.4) + // 40% weight to sales
-                (product.averageRating * 0.3) + // 30% weight to ratings
-                (sentimentScore * 0.3) // 30% weight to sentiment
+                (product.totalSold * 0.4) + 
+                (product.averageRating * 0.3) + 
+                (sentimentScore * 0.3)
             );
             
             productScores.push({
@@ -47,15 +62,18 @@ exports.getBestsellerProducts = async (req, res) => {
             });
         }
 
-        // Sort by total score and get top 8 products
         const bestsellers = productScores
             .sort((a, b) => b.totalScore - a.totalScore)
             .slice(0, 8)
             .map(item => item.product);
 
+        // 3. Save result to Redis
+        await redisClient.setEx(cacheKey, CACHE_TTL, JSON.stringify(bestsellers));
+
         res.status(200).json({
             success: true,
-            bestsellers
+            bestsellers,
+            source: 'db'
         });
     } catch (error) {
         res.status(500).json({
@@ -69,16 +87,26 @@ exports.getBestsellerProducts = async (req, res) => {
 // Get featured products
 exports.getFeaturedProducts = async (req, res) => {
     try {
-        // Featured products are selected based on:
-        // 1. High average rating (>= 4)
-        // 2. Good stock availability
-        // 3. Recent sales activity
+        const cacheKey = 'products:featured';
+
+        // 1. Check Redis
+        const cachedData = await redisClient.get(cacheKey);
+        if (cachedData) {
+            return res.status(200).json({
+                success: true,
+                featuredProducts: JSON.parse(cachedData)
+            });
+        }
+
+        // 2. DB Query
         const featuredProducts = await Product.find({
             averageRating: { $gte: 4 },
-            
         })
-        .sort({  averageRating: -1 })
+        .sort({ averageRating: -1 })
         .limit(8);
+
+        // 3. Save to Redis
+        await redisClient.setEx(cacheKey, CACHE_TTL, JSON.stringify(featuredProducts));
 
         res.status(200).json({
             success: true,
@@ -96,9 +124,21 @@ exports.getFeaturedProducts = async (req, res) => {
 // Get latest products
 exports.getLatestProducts = async (req, res) => {
     try {
+        const cacheKey = 'products:latest';
+
+        const cachedData = await redisClient.get(cacheKey);
+        if (cachedData) {
+            return res.status(200).json({
+                success: true,
+                latestProducts: JSON.parse(cachedData)
+            });
+        }
+
         const latestProducts = await Product.find()
             .sort({ createdAt: -1 })
             .limit(8);
+
+        await redisClient.setEx(cacheKey, CACHE_TTL, JSON.stringify(latestProducts));
 
         res.status(200).json({
             success: true,
@@ -116,24 +156,34 @@ exports.getLatestProducts = async (req, res) => {
 // Get top rated products
 exports.getTopRatedProducts = async (req, res) => {
     try {
-        // Get products with their average ratings and review counts
+        const cacheKey = 'products:toprated';
+
+        const cachedData = await redisClient.get(cacheKey);
+        if (cachedData) {
+            return res.status(200).json({
+                success: true,
+                topRatedProducts: JSON.parse(cachedData)
+            });
+        }
+
         const products = await Product.find()
             .sort({ averageRating: -1 })
             .limit(8);
 
-        // Get detailed review information for each product
         const topRatedProducts = await Promise.all(
             products.map(async (product) => {
                 const reviews = await UserReview.find({ productId: product._id });
                 const reviewCount = reviews.length;
                 
                 return {
-                    ...product.toObject(),
+                    ...product.toObject(), // Convert Mongoose doc to plain object
                     reviewCount,
-                    reviews: reviews.slice(0, 3) // Include top 3 reviews
+                    reviews: reviews.slice(0, 3) 
                 };
             })
         );
+
+        await redisClient.setEx(cacheKey, CACHE_TTL, JSON.stringify(topRatedProducts));
 
         res.status(200).json({
             success: true,
@@ -146,4 +196,4 @@ exports.getTopRatedProducts = async (req, res) => {
             error: error.message
         });
     }
-}; 
+};

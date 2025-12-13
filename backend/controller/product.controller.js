@@ -1,8 +1,8 @@
 const Product = require("../model/productmodel");
 const mongoose = require('mongoose');
-const cloudinary = require("../config/cloudnary"); // ✅ Using the fixed require file
-const fs = require("fs"); // ✅ Needed to delete local files
-
+const cloudinary = require("../config/cloudnary"); 
+const fs = require("fs"); 
+const redisClient = require('../config/redis');
 // ==========================================
 // 1. CREATE PRODUCT
 // ==========================================
@@ -13,33 +13,27 @@ exports.createProduct = async (req, res) => {
         // ✅ Step 1: Handle Cloudinary Uploads
         let imageUrls = [];
         
-        // If files exist, upload them to Cloudinary
         if (req.files && req.files.length > 0) {
             for (const file of req.files) {
                 try {
-                    // Upload to Cloudinary
                     const result = await cloudinary.uploader.upload(file.path, {
                         folder: "ecommerce_products",
                         resource_type: "image"
                     });
                     
-                    // Save the Secure URL
                     imageUrls.push(result.secure_url);
-
-                    // 🗑️ Delete local file after upload
                     if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
                 } catch (uploadError) {
                     console.error("Cloudinary Error:", uploadError);
-                    // Try to delete local file if upload fails
                     if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
                 }
             }
         }
 
-        // ✅ Step 2: Parse Variants (Your Old Logic)
+        // ✅ Step 2: Parse Variants
         const parsedVariants = typeof variants === 'string' ? JSON.parse(variants) : variants;
 
-        // ✅ Step 3: Calculate Quantity (Your Old Logic)
+        // ✅ Step 3: Calculate Quantity
         const totalQuantity = Array.isArray(parsedVariants) 
             ? parsedVariants.reduce((acc, curr) => acc + (parseInt(curr.quantity) || 0), 0)
             : 0;
@@ -51,13 +45,24 @@ exports.createProduct = async (req, res) => {
             category,
             price,
             gender,
-            images: imageUrls, // Saving Cloudinary URLs, not local paths
+            images: imageUrls,
             variants: parsedVariants,
             totalQuantity,
             totalSold: totalSold || 0
         });
 
         await newProduct.save();
+
+       
+        const keysToClear = [
+            'products:latest',     
+            'products:featured',   
+            'products:bestsellers',
+            'products:toprated'
+        ];
+        
+
+        await redisClient.del(keysToClear);
 
         return res.status(201).json({
             message: "Product created successfully",
@@ -66,7 +71,6 @@ exports.createProduct = async (req, res) => {
         });
 
     } catch (error) {
-        // Cleanup files if main logic crashes
         if (req.files) {
             req.files.forEach(f => {
                 if(fs.existsSync(f.path)) fs.unlinkSync(f.path);

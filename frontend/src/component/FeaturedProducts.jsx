@@ -26,7 +26,6 @@ const FeaturedProducts = () => {
         }
       } catch (err) {
         setError(err.message || 'Failed to fetch featured products');
-        console.error('Error fetching featured products:', err);
       } finally {
         setLoading(false);
       }
@@ -37,95 +36,70 @@ const FeaturedProducts = () => {
 
   if (loading) {
     return (
-      <div className="py-16">
-        <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold">Featured Products</h2>
-          </div>
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
-          </div>
+      <div className="py-16 container mx-auto px-4">
+        <div className="animate-pulse flex flex-col space-y-8">
+           <div className="h-8 bg-gray-200 w-1/4 mb-6 rounded"></div>
+           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[1,2,3,4].map(i => <div key={i} className="h-64 bg-gray-100 rounded"></div>)}
+           </div>
         </div>
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className="py-16">
-        <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold">Featured Products</h2>
-          </div>
-          <p className="text-red-500 text-center">{error}</p>
-        </div>
-      </div>
-    );
-  }
-
+  if (error) return null; 
   return (
-    <div className="">
-      
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-3xl font-bold">Featured Products</h2>
-          <button 
+    <div className="py-12 border-b border-gray-100">
+      {/* Header */}
+      <div className="flex justify-between items-end mb-10 px-2">
+        <div>
+          <h2 className="text-3xl md:text-4xl font-serif text-gray-900">Featured Collection</h2>
+          <p className="text-gray-500 text-sm mt-2 font-light tracking-wide">Handpicked favorites just for you</p>
+        </div>
+        
+        <button 
           onClick={() => navigate('/collection')}
-          className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors"
+          className="group flex items-center gap-2 text-sm font-medium text-gray-900 hover:text-gray-600 transition-colors pb-1 border-b border-gray-300 hover:border-gray-900"
         >
-          View More
+          View All
           <svg 
-            className="w-4 h-4" 
+            className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" 
             fill="none" 
             stroke="currentColor" 
             viewBox="0 0 24 24"
           >
-            <path 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              strokeWidth={2} 
-              d="M9 5l7 7-7 7" 
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 8l4 4m0 0l-4 4m4-4H3" />
           </svg>
         </button>
-        </div>
-        <Swiper
-          modules={[Navigation]}
-          spaceBetween={20}
-          slidesPerView={4}
-          navigation
-         breakpoints={{
-          0: {
-            slidesPerView: 2,
-            spaceBetween: 10,
-          },
-          640: {
-            slidesPerView: 3,
-            spaceBetween: 20,
-          },
-          768: {
-            slidesPerView: 4,
-            spaceBetween: 30,
-          },
-          1024: {
-            slidesPerView: 5,
-            spaceBetween: 40,
-          },
-        }}
-        >
-          {featuredProducts.map((product) => (
-            <SwiperSlide key={product._id}>
-              <ProductItem 
-                id={product._id}
-                image={product.images && product.images.length > 0 ? product.images[0] : ""} 
-                name={product.productName}
-                price={product.price}
-                rating={product.averageRating} 
-              />
-            </SwiperSlide>
-          ))}
-        </Swiper>
       </div>
-  
+
+      {/* Slider */}
+      <Swiper
+        modules={[Navigation]}
+        spaceBetween={24}
+        slidesPerView={4}
+        navigation
+        className="pb-8"
+        breakpoints={{
+          0: { slidesPerView: 2, spaceBetween: 16 },
+          640: { slidesPerView: 3, spaceBetween: 20 },
+          1024: { slidesPerView: 4, spaceBetween: 24 },
+          1280: { slidesPerView: 5, spaceBetween: 30 },
+        }}
+      >
+        {featuredProducts.map((product) => (
+          <SwiperSlide key={product._id}>
+            <ProductItem 
+              id={product._id}
+              image={product.images && product.images.length > 0 ? product.images[0] : ""} 
+              name={product.productName}
+              price={product.price}
+              rating={product.averageRating} 
+            />
+          </SwiperSlide>
+        ))}
+      </Swiper>
+    </div>
   );
 };
 

@@ -3,9 +3,9 @@ import { ShopContext } from "../context/ShopContext";
 import { useNavigate } from "react-router-dom";
 import { 
   Briefcase, 
-  Smile, 
-  Flag,
-  MoveRight 
+  Sunset, 
+  Sparkles, 
+  ArrowUpRight 
 } from "lucide-react";
 
 const CategoriesSection = () => {
@@ -19,21 +19,24 @@ const CategoriesSection = () => {
   
   const categories = [
     {
+      id: "01",
       name: "Formal Wear",
-      description: "Sophisticated attire for the modern professional.",
+      description: "Sharp cuts & premium fabrics.",
       icon: Briefcase,
       categoryValue: "Formal",
     },
     {
+      id: "02",
       name: "Casual Wear",
-      description: "Relaxed styles for everyday elegance.",
-      icon: Smile,
+      description: "Effortless everyday comfort.",
+      icon: Sunset,
       categoryValue: "Casual",
     },
     {
+      id: "03",
       name: "Ethnic Wear",
-      description: "Traditional designs with modern sensibilities.",
-      icon: Flag,
+      description: "Timeless traditional designs.",
+      icon: Sparkles,
       categoryValue: "Ethnic",
     }
   ];
@@ -48,20 +51,17 @@ const CategoriesSection = () => {
   };
   
   return (
-    <section className="py-20 bg-white">
-      <div className="container mx-auto px-6 max-w-6xl">
+    <section className="py-16 bg-white">
+      <div className="container mx-auto px-4 md:px-8 max-w-7xl">
         
         {/* Header */}
-        <div className="mb-12">
-          <h2 className="text-4xl md:text-5xl font-serif text-gray-900 mb-4 tracking-tight">
-            Discover Your Style
+        <div className="flex justify-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-serif text-gray-900 text-center leading-tight max-w-2xl">
+            Explore our collections 
           </h2>
-          <p className="text-lg text-gray-500 font-light max-w-2xl">
-            Curated collections designed for every dimension of your life
-          </p>
         </div>
         
-        {/* Grid */}
+        {/* Categories Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {categories.map((category, index) => {
             const CategoryIcon = category.icon;
@@ -70,48 +70,48 @@ const CategoriesSection = () => {
               <div 
                 key={index}
                 onClick={() => handleCategoryClick(category)}
-                className={`
-                  group relative cursor-pointer
-                  bg-gray-50 
-                  /* h-auto lets the div shrink to fit text */
-                  h-auto
-                  flex flex-col
-                  p-8 rounded-xl
-                  transition-all duration-500 ease-out
-                  hover:bg-black hover:shadow-xl
-                `}
+                // Reduced height to h-[380px] for a more compact look
+                className="group relative h-[380px] w-full cursor-pointer overflow-hidden rounded-2xl bg-gray-50 hover:bg-[#111] transition-all duration-700 ease-out"
               >
-                {/* Icon */}
-                <div className="mb-6">
-                  <CategoryIcon 
-                    size={60} 
-                    strokeWidth={1.5}
-                    className="text-gray-900 group-hover:text-white transition-colors duration-500" 
-                  />
+                {/* 1. BACKGROUND WATERMARK ICON (Larger Size) */}
+                {/* Increased size to 500 and adjusted position to dominate the background */}
+                <div className="absolute right-[-25%] bottom-[-25%] opacity-[0.05] group-hover:opacity-[0.1] group-hover:scale-105 transition-all duration-700">
+                  <CategoryIcon size={500} strokeWidth={0.5} className="text-black group-hover:text-white" />
                 </div>
-                
-                {/* Content */}
-                <div className="mb-8">
-                  <h3 className="text-2xl md:text-3xl font-serif text-gray-900 mb-3 group-hover:text-white transition-colors duration-500">
+
+                {/* 2. TOP NUMBERING */}
+                <div className="absolute top-6 left-6">
+                  <span className="text-xs font-bold tracking-widest text-gray-400 group-hover:text-gray-500 transition-colors duration-500">
+                    /{category.id}
+                  </span>
+                </div>
+
+                {/* 3. CENTER CONTENT */}
+                <div className="absolute inset-0 flex flex-col justify-center items-center px-6 text-center z-10">
+                  
+                  {/* Floating Icon Circle */}
+                  <div className="mb-6 p-5 rounded-full bg-white shadow-sm group-hover:bg-white/10 group-hover:backdrop-blur-sm transition-all duration-500 group-hover:scale-110">
+                    <CategoryIcon 
+                      size={28} 
+                      strokeWidth={1.5}
+                      className="text-gray-900 group-hover:text-white transition-colors duration-500" 
+                    />
+                  </div>
+
+                  <h3 className="text-3xl font-serif text-gray-900 mb-3 group-hover:text-white transition-colors duration-500">
                     {category.name}
                   </h3>
-                  <p className="text-base text-gray-500 group-hover:text-gray-300 transition-colors duration-500 leading-relaxed">
+                  
+                  <p className="text-gray-500 max-w-[200px] text-sm leading-relaxed group-hover:text-gray-300 transition-colors duration-500">
                     {category.description}
                   </p>
                 </div>
-                
-                {/* Bottom Action Area */}
-                <div className="mt-auto pt-6 border-t border-gray-200 group-hover:border-gray-800 transition-colors duration-500 flex items-center justify-between">
-                  <span className="text-xs font-bold tracking-widest uppercase text-gray-900 group-hover:text-white transition-colors duration-500">
-                    Explore Collection
+
+                {/* 4. BOTTOM ACTION BUTTON */}
+                <div className="absolute bottom-8 left-0 right-0 flex justify-center opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500 delay-100">
+                  <span className="inline-flex items-center gap-2 text-white text-xs font-bold uppercase tracking-widest border-b border-white/30 pb-1">
+                    Shop Now <ArrowUpRight size={14} />
                   </span>
-                  
-                  <div className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-black group-hover:scale-110 transition-transform duration-500">
-                    <MoveRight 
-                      size={16} 
-                      className="transform group-hover:-rotate-45 transition-transform duration-500"
-                    />
-                  </div>
                 </div>
               </div>
             );

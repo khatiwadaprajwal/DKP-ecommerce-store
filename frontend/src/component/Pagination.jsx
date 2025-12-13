@@ -1,14 +1,22 @@
 import React from 'react';
 
-const Pagination = ({ totalPages, currentPage, onPageChange }) => {
+// ✅ Added 'pageCount' to destructuring to match Collection.jsx usage
+const Pagination = ({ totalPages, pageCount, currentPage, onPageChange }) => {
+  
+  // ✅ Handle Prop Mismatch: Collection passes 'pageCount', this component used 'totalPages'
+  const total = totalPages || pageCount || 0;
+
+  // Don't render if there's 0 or 1 page
+  if (total <= 1) return null;
+
   // Determine which page numbers to show
   const getPageNumbers = () => {
     const pages = [];
     const maxVisible = 5; // Maximum visible pagination items
     
-    if (totalPages <= maxVisible) {
+    if (total <= maxVisible) {
       // Show all pages if total is less than max visible
-      for (let i = 0; i < totalPages; i++) {
+      for (let i = 0; i < total; i++) {
         pages.push(i);
       }
     } else {
@@ -17,13 +25,13 @@ const Pagination = ({ totalPages, currentPage, onPageChange }) => {
       
       // Calculate center pages
       let startPage = Math.max(1, currentPage - 1);
-      let endPage = Math.min(currentPage + 1, totalPages - 2);
+      let endPage = Math.min(currentPage + 1, total - 2);
       
       // Adjust to show 3 pages
-      if (startPage > totalPages - 4) {
-        startPage = totalPages - 4;
+      if (startPage > total - 4) {
+        startPage = total - 4;
       }
-      if (endPage < 3 && totalPages > 3) {
+      if (endPage < 3 && total > 3) {
         endPage = 3;
       }
       
@@ -38,12 +46,12 @@ const Pagination = ({ totalPages, currentPage, onPageChange }) => {
       }
       
       // Add ellipsis before last page if needed
-      if (endPage < totalPages - 2) {
+      if (endPage < total - 2) {
         pages.push('...');
       }
       
       // Always include last page
-      pages.push(totalPages - 1);
+      pages.push(total - 1);
     }
     
     return pages;
@@ -52,15 +60,15 @@ const Pagination = ({ totalPages, currentPage, onPageChange }) => {
   const pageNumbers = getPageNumbers();
   
   return (
-    <div className="flex items-center justify-center space-x-1">
+    <div className="flex items-center justify-center space-x-1 mt-8">
       {/* Previous button */}
       <button
         onClick={() => currentPage > 0 && onPageChange(currentPage - 1)}
         disabled={currentPage === 0}
-        className={`px-4 py-2 rounded-md ${
+        className={`px-4 py-2 rounded-md border ${
           currentPage === 0
-            ? 'text-gray-400 cursor-not-allowed'
-            : 'text-gray-700 hover:bg-gray-200'
+            ? 'text-gray-300 border-gray-200 cursor-not-allowed'
+            : 'text-gray-700 border-gray-300 hover:bg-gray-50'
         } transition-colors`}
         aria-label="Previous page"
       >
@@ -77,10 +85,10 @@ const Pagination = ({ totalPages, currentPage, onPageChange }) => {
           ) : (
             <button
               onClick={() => onPageChange(page)}
-              className={`px-4 py-2 rounded-md ${
+              className={`px-4 py-2 rounded-md border ${
                 currentPage === page
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-700 hover:bg-gray-200'
+                  ? 'bg-black text-white border-black'
+                  : 'text-gray-700 border-gray-300 hover:bg-gray-50'
               } transition-colors`}
               aria-label={`Page ${page + 1}`}
               aria-current={currentPage === page ? 'page' : undefined}
@@ -93,12 +101,12 @@ const Pagination = ({ totalPages, currentPage, onPageChange }) => {
       
       {/* Next button */}
       <button
-        onClick={() => currentPage < totalPages - 1 && onPageChange(currentPage + 1)}
-        disabled={currentPage >= totalPages - 1}
-        className={`px-4 py-2 rounded-md ${
-          currentPage >= totalPages - 1
-            ? 'text-gray-400 cursor-not-allowed'
-            : 'text-gray-700 hover:bg-gray-200'
+        onClick={() => currentPage < total - 1 && onPageChange(currentPage + 1)}
+        disabled={currentPage >= total - 1}
+        className={`px-4 py-2 rounded-md border ${
+          currentPage >= total - 1
+            ? 'text-gray-300 border-gray-200 cursor-not-allowed'
+            : 'text-gray-700 border-gray-300 hover:bg-gray-50'
         } transition-colors`}
         aria-label="Next page"
       >

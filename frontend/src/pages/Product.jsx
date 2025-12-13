@@ -1,18 +1,29 @@
 import React, { useContext, useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { toast } from "react-toastify"; 
 import { ShopContext } from "../context/ShopContext";
+import { useAuth } from "../context/AuthProvider"; 
+import api from "../config/api"; 
+
+// Component Imports
 import ReviewSection from "../component/ReviewSection";
 import RelatedProducts from "../component/RelatedProducts";
 import Description from "../component/Description";
 import AdditionalInfo from "../component/AdditionalInfo";
 import ShippingInfo from "../component/ShippingInfo";
 import QuickOrder from "../component/QuickOrder";
-import axios from "axios";
-import { toast } from "react-hot-toast";
+import { assets } from "../assets/assets"; 
 
 const Product = () => {
   const { productId } = useParams();
-  const { addToCart, products, totalReviews, token, backend_url } = useContext(ShopContext);
+  const navigate = useNavigate();
+
+  const { token } = useAuth(); 
+  const { addToCart, products } = useContext(ShopContext);
+
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
+  
+  // State
   const [productData, setProductData] = useState(null);
   const [image, setImage] = useState("");
   const [selectedVariant, setSelectedVariant] = useState(null);
@@ -21,182 +32,163 @@ const Product = () => {
   const [quantity, setQuantity] = useState(1);
   const [availableSizes, setAvailableSizes] = useState([]);
   const [availableColors, setAvailableColors] = useState([]);
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("description");
-  const [currentPage, setCurrentPage] = useState(0);
+  
+  // ✅ FIX 1: Add Pagination State for Related Products
   const [relatedProducts, setRelatedProducts] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 4; // Number of related items to show per page
+  
   const [loading, setLoading] = useState(true);
 
-  // QuickOrder and Modal states
+  // Modal States
   const [isQuickOrderOpen, setIsQuickOrderOpen] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
-  const itemsPerPage = 4;
+  // ✅ FIX 2: Define Modal Close Handler
+  const handleModalClose = () => setIsImageModalOpen(false);
 
-  // ✅ SMART IMAGE HELPER FUNCTION
-  // This solves your problem. It checks:
-  // 1. Is it a Cloudinary URL? (starts with http) -> Use it directly.
-  // 2. Is it a local file? -> Add backend_url.
+  // Helper: Image URL
   const getImageUrl = (imgPath) => {
     if (!imgPath) return "";
-    
-    // If the link you provided (https://res.cloudinary...) is passed here, 
-    // it starts with 'http', so we return it directly.
     if (imgPath.startsWith("http") || imgPath.startsWith("https")) {
       return imgPath;
     }
-    
-    // Fallback for old local images
-    return `${backend_url}/public/${imgPath}`;
+    const cleanPath = imgPath.startsWith("/") ? imgPath.slice(1) : imgPath;
+    return `${BACKEND_URL}/public/${cleanPath}`;
   };
 
-  // Fetch product data
   const fetchProductData = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(
-        `${backend_url}/v1/product/${productId}`
-      );
+      const response = await api.get(`/v1/product/${productId}`);
 
       if (response.status === 200) {
         const product = response.data.product;
+
+        // Ensure images array exists even if backend returns single 'image'
+        if (!product.images && product.image) {
+            product.images = Array.isArray(product.image) ? product.image : [product.image];
+        }
+
         setProductData(product);
 
-        // Set the first image as the main image
         if (product.images && product.images.length > 0) {
           setImage(product.images[0]);
         }
 
-        // Extract unique colors
-        const colors = [
-          ...new Set(product.variants.map((variant) => variant.color)),
-        ];
-        setAvailableColors(colors);
+        // Setup Variants
+        if (product.variants) {
+            const colors = [...new Set(product.variants.map((v) => v.color))];
+            setAvailableColors(colors);
 
-        // Set default selection
-        if (colors.length > 0) {
-          setSelectedColor(colors[0]);
-          const sizesForColor = product.variants
-            .filter(
-              (variant) => variant.color === colors[0] && variant.quantity > 0
-            )
-            .map((variant) => variant.size);
-
-          setAvailableSizes(sizesForColor);
+            if (colors.length > 0) {
+            setSelectedColor(colors[0]);
+            const sizesForColor = product.variants
+                .filter((v) => v.color === colors[0] && v.quantity > 0)
+                .map((v) => v.size);
+            setAvailableSizes(sizesForColor);
+            }
         }
 
         fetchRelatedProducts(product.gender, product.category);
       }
     } catch (error) {
-      console.error("Error fetching product data:", error);
+      console.error("Error fetching product:", error);
+      toast.error("Failed to load product details");
     } finally {
       setLoading(false);
     }
   };
 
   const fetchRelatedProducts = async (gender, category) => {
-    try {
-      if (products) {
-        const related = products.filter(
-          (item) =>
-            (item.category === category || item.gender === gender) &&
-            item._id !== productId
-        );
-        setRelatedProducts(related);
-      }
-    } catch (error) {
-      console.error("Error fetching related products:", error);
+    if (products && products.length > 0) {
+      const related = products.filter(
+        (item) =>
+          (item.category === category || item.gender === gender) &&
+          item._id !== productId
+      );
+      setRelatedProducts(related);
     }
   };
 
+  // ✅ FIX 3: Calculate Pagination Logic
+  const totalPages = Math.ceil(relatedProducts.length / itemsPerPage);
+  const paginatedProducts = relatedProducts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // ✅ FIX 4: Safety check for Total Reviews
+  const totalReviews = productData?.numReviews || 0; 
+
+  // --- Effects ---
   useEffect(() => {
     fetchProductData();
     window.scrollTo(0, 0);
-  }, [productId]);
+  }, [productId, products]); 
 
-  // Logic to handle size/variant updates based on selection
+  // Variant Logic
   useEffect(() => {
-    if (productData && selectedColor) {
+    if (productData && selectedColor && productData.variants) {
       const sizesForColor = productData.variants
-        .filter(
-          (variant) => variant.color === selectedColor && variant.quantity > 0
-        )
-        .map((variant) => variant.size);
+        .filter((v) => v.color === selectedColor && v.quantity > 0)
+        .map((v) => v.size);
 
       setAvailableSizes(sizesForColor);
       
       if (sizesForColor.length > 0) {
-        const hasNaN = sizesForColor.includes('NaN');
-        if (hasNaN) {
+        if (sizesForColor.includes('NaN')) {
           setSelectedSize('NaN');
-          const variant = productData.variants.find(
-            (v) => v.color === selectedColor && v.size === 'NaN'
-          );
-          setSelectedVariant(variant);
         } else {
           setSelectedSize(null);
-          setSelectedVariant(null);
         }
       } else {
         setSelectedSize(null);
-        setSelectedVariant(null);
       }
     }
   }, [selectedColor, productData]);
 
   useEffect(() => {
-    if (productData && selectedColor && selectedSize) {
+    if (productData && selectedColor && selectedSize && productData.variants) {
       const variant = productData.variants.find(
         (v) => v.color === selectedColor && v.size === selectedSize
       );
-
       setSelectedVariant(variant);
+      
       if (variant && quantity > variant.quantity) {
-        setQuantity(Math.min(variant.quantity, 1));
+        setQuantity(Math.max(1, variant.quantity)); 
       }
+    } else {
+      setSelectedVariant(null);
     }
   }, [selectedSize, selectedColor, productData]);
 
-  const getBreadcrumbs = () => {
-    return [
-      { name: "Home", path: "/" },
-      {
-        name: productData?.gender || "Gender",
-        path: `/collection?gender=${productData?.gender}`,
-      },
-      {
-        name: productData?.category || "Category",
-        path: `/collection?category=${productData?.category}`,
-      },
-      { name: productData?.productName || "Product", path: "#" },
-    ];
-  };
-
+  // Actions
   const handleAddToCart = () => {
-    if (selectedVariant) {
-      addToCart(productData._id, selectedColor, selectedSize, quantity);
-      setQuantity(1);
+    if (!selectedVariant) {
+      toast.error("Please select a size/color");
+      return;
     }
+    addToCart(productData._id, selectedColor, selectedSize, quantity);
   };
 
   const handleBuyNow = () => {
-    if(!token){
-      toast.error("Login to order")
+    if (!token) {
+      toast.error("Please login to purchase");
       navigate("/login");
+      return;
     }
-    if (selectedVariant) {
-      setIsQuickOrderOpen(true);
+    if (!selectedVariant) {
+      toast.error("Please select a size/color");
+      return;
     }
+    setIsQuickOrderOpen(true);
   };
-
-  const totalPages = Math.ceil(relatedProducts.length / itemsPerPage);
-  const paginatedProducts = relatedProducts.slice(
-    currentPage * itemsPerPage,
-    (currentPage + 1) * itemsPerPage
-  );
 
   const handleNextImage = (e) => {
     e.stopPropagation();
+    if (!productData?.images) return;
     const currentIndex = productData.images.indexOf(image);
     const nextIndex = (currentIndex + 1) % productData.images.length;
     setImage(productData.images[nextIndex]);
@@ -204,39 +196,49 @@ const Product = () => {
 
   const handlePrevImage = (e) => {
     e.stopPropagation();
+    if (!productData?.images) return;
     const currentIndex = productData.images.indexOf(image);
     const prevIndex = (currentIndex - 1 + productData.images.length) % productData.images.length;
     setImage(productData.images[prevIndex]);
   };
 
-  const handleModalClose = (e) => {
-    if (e.target === e.currentTarget) {
-      setIsImageModalOpen(false);
-    }
+  // Breadcrumbs Helper
+  const getBreadcrumbs = () => {
+     if(!productData) return [];
+     return [
+        { name: "Home", path: "/" },
+        { name: "Collection", path: "/collection" },
+        { name: productData.productName, path: "#" }
+     ];
   };
 
-  return loading ? (
+  if (loading) return (
     <div className="flex justify-center items-center h-screen text-lg">
       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
     </div>
-  ) : productData ? (
+  );
+
+  if (!productData) return (
+    <div className="flex justify-center items-center h-screen">
+      <div className="text-xl text-gray-700">Product not found</div>
+    </div>
+  );
+
+  return (
     <div className="bg-white">
       <div className="container mx-auto px-4 py-6 transition-opacity ease-in duration-300 opacity-100">
         
         {/* Breadcrumbs */}
         <nav className="flex items-center text-sm text-gray-500 mb-4">
           {getBreadcrumbs().map((crumb, index, array) => (
-            <React.Fragment key={crumb.path}>
+            <React.Fragment key={index}>
               {index > 0 && <span className="mx-2 text-gray-400">›</span>}
               {index === array.length - 1 ? (
                 <span className="font-medium text-black truncate max-w-xs">
                   {crumb.name}
                 </span>
               ) : (
-                <Link
-                  to={crumb.path}
-                  className="hover:text-black truncate transition-colors duration-200"
-                >
+                <Link to={crumb.path} className="hover:text-black truncate transition-colors duration-200">
                   {crumb.name}
                 </Link>
               )}
@@ -245,15 +247,12 @@ const Product = () => {
         </nav>
 
         <div className="flex gap-8 flex-col md:flex-row">
-          {/* =================================================== */}
-          {/* ✅ PRODUCT IMAGE SECTION */}
-          {/* =================================================== */}
+          {/* Image Section */}
           <div className="md:w-3/5 relative">
             <div 
               className="w-full overflow-hidden relative rounded-lg shadow-md cursor-zoom-in"
               onClick={() => setIsImageModalOpen(true)}
             >
-              {/* ✅ USING HELPER: Shows Cloudinary Image Correctly */}
               <img
                 className="w-full h-auto md:h-[450px] object-contain bg-white"
                 src={getImageUrl(image)}
@@ -261,10 +260,8 @@ const Product = () => {
                 onError={(e) => { e.target.src = "https://via.placeholder.com/450?text=Image+Not+Found"; }}
               />
             </div>
-
-            {/* Thumbnails */}
             <div className="grid grid-cols-5 gap-3 mt-4">
-              {productData.images.map((item, index) => (
+              {productData.images && productData.images.map((item, index) => (
                 <div
                   key={index}
                   className={`relative cursor-pointer transition-all duration-200 
@@ -273,7 +270,6 @@ const Product = () => {
                   `}
                   onClick={() => setImage(item)}
                 >
-                  {/* ✅ USING HELPER HERE TOO */}
                   <img
                     src={getImageUrl(item)}
                     className="w-full h-20 object-cover"
@@ -293,7 +289,7 @@ const Product = () => {
               <p className="text-xl md:text-2xl font-bold text-red-600 mt-1">
                 Rs. {productData.price.toLocaleString()}
               </p>
-              {/* Rating */}
+              
               <div className="flex items-center mt-2">
                 <div className="flex items-center">
                   {[1, 2, 3, 4, 5].map((star) => (
@@ -424,7 +420,6 @@ const Product = () => {
               </button>
             </div>
             
-            {/* Guarantees */}
             <div className="border-t border-gray-200 pt-3 text-xs text-gray-600 space-y-2">
               <div className="flex items-center"><span className="text-green-500 mr-2">✓</span> 100% Original product</div>
               <div className="flex items-center"><span className="text-green-500 mr-2">✓</span> Cash on delivery available</div>
@@ -433,7 +428,7 @@ const Product = () => {
           </div>
         </div>
 
-        {/* Tabs & Additional Sections */}
+        {/* Tabs */}
         <div className="mt-10">
           <div className="flex border-b border-gray-300 overflow-x-auto">
             {['description', 'additional', 'reviews', 'shipping'].map(tab => (
@@ -442,7 +437,7 @@ const Product = () => {
                  className={`px-4 py-2 text-sm font-semibold uppercase whitespace-nowrap transition-colors duration-200 ${activeTab === tab ? "border-b-2 border-black text-black" : "text-gray-500 hover:text-black"}`}
                  onClick={() => setActiveTab(tab)}
                >
-                 {tab === 'reviews' ? `REVIEWS (${productData.averageRating > 0 ? totalReviews : "0"})` : tab.replace('_', ' ')}
+                 {tab === 'reviews' ? `REVIEWS (${totalReviews})` : tab.replace('_', ' ')}
                </button>
             ))}
           </div>
@@ -459,10 +454,10 @@ const Product = () => {
       {relatedProducts.length > 0 && (
         <div className="mt-10 container mx-auto px-4">
           <RelatedProducts
-            products={paginatedProducts}
-            totalPages={totalPages}
-            currentPage={currentPage}
-            onPageChange={setCurrentPage}
+            products={paginatedProducts} // ✅ Passed Correctly
+            totalPages={totalPages}     // ✅ Passed Correctly
+            currentPage={currentPage}   // ✅ Passed Correctly
+            onPageChange={setCurrentPage} // ✅ Passed Correctly
           />
         </div>
       )}
@@ -477,7 +472,6 @@ const Product = () => {
         quantity={quantity}
       />
 
-      {/* Image Modal */}
       {isImageModalOpen && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
@@ -506,8 +500,6 @@ const Product = () => {
               >
                 ›
               </button>
-
-              {/* ✅ USING HELPER HERE TOO */}
               <img
                 src={getImageUrl(image)}
                 alt={productData.productName}
@@ -517,10 +509,6 @@ const Product = () => {
           </div>
         </div>
       )}
-    </div>
-  ) : (
-    <div className="flex justify-center items-center h-screen">
-      <div className="text-xl text-gray-700">Product not found</div>
     </div>
   );
 };

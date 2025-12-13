@@ -4,13 +4,16 @@ import './index.css';
 import App from './App.jsx';
 import { BrowserRouter } from 'react-router-dom';
 import ShopContextProvider from './context/ShopContext.jsx';
-// REMOVED: AuthProvider import
+
+import { AuthProvider } from './context/AuthProvider.jsx'; 
 
 createRoot(document.getElementById('root')).render(
   <BrowserRouter>
-    <ShopContextProvider>
-     
-      <App />
-    </ShopContextProvider>
+    {/* ✅ AuthProvider MUST be the outer layer so ShopContext can use it */}
+    <AuthProvider>
+      <ShopContextProvider>
+        <App />
+      </ShopContextProvider>
+    </AuthProvider>
   </BrowserRouter>
 );

@@ -1,20 +1,27 @@
-import React, { useContext, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Bars3Icon, XMarkIcon, HomeIcon, PlusCircleIcon, ShoppingBagIcon, ShoppingCartIcon, UserGroupIcon, EyeIcon } from '@heroicons/react/24/outline';
-import { Link, useLocation } from 'react-router-dom';
-import { ShopContext } from "../../context/ShopContext";
-
+import React, { useState } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { 
+  Bars3Icon, 
+  XMarkIcon, 
+  HomeIcon, 
+  PlusCircleIcon, 
+  ShoppingBagIcon, 
+  ShoppingCartIcon, 
+  UserGroupIcon, 
+  EyeIcon 
+} from '@heroicons/react/24/outline';
+import { useAuth } from "../../context/AuthProvider"; // ✅ Use AuthProvider
 
 const Navbar = ({ toggleSidebar, isSidebarOpen }) => {
   const navigate = useNavigate();
-  const [visible, setVisible] = useState(false);
   const location = useLocation();
-  const {token , setToken, logout}= useContext(ShopContext);
+  const [visible, setVisible] = useState(false);
   
-  const handleLogout = () => {
-    logout();
-    // localStorage.removeItem('token');
-    // localStorage.removeItem('user');
+  // ✅ Get logout from AuthContext
+  const { logout } = useAuth();
+  
+  const handleLogout = async () => {
+    await logout(); // ✅ AuthProvider handles API, LocalStorage, and Headers
     navigate('/login');
   };
 
@@ -49,7 +56,6 @@ const Navbar = ({ toggleSidebar, isSidebarOpen }) => {
       icon: UserGroupIcon
     }
   ];
-
   return (
     <header className="bg-white shadow sticky top-0 z-20">
       <div className="flex items-center justify-between px-4 py-4">

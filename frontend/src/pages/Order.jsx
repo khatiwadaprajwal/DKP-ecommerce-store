@@ -1,75 +1,119 @@
-import React, { useState, useContext, Fragment, useEffect } from "react";
-import { ShopContext } from "../context/ShopContext";
+import React, { useState, Fragment, useEffect } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import {
   ShoppingBagIcon,
   InformationCircleIcon,
   ReceiptRefundIcon,
-  CreditCardIcon, // ✅ Import Payment Icon
+  CreditCardIcon, 
 } from "@heroicons/react/24/outline";
-import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify"; // ✅ Changed to match your Login/Register
 import PrintInvoice from "../component/PrintInvoice";
-import { toast } from "react-hot-toast"; // ✅ Ensure you have this installed
+
+
+import api from "../config/api";
+
+import { useAuth } from "../context/AuthProvider";
 
 const Order = () => {
-  const { navigate, token, backend_url } = useContext(ShopContext);
+  // ✅ Use standard hooks instead of ShopContext for these
+  const navigate = useNavigate();
+  const { token } = useAuth(); 
+  
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [paymentLoading, setPaymentLoading] = useState(false); // ✅ Loading state for Khalti click
+  const [paymentLoading, setPaymentLoading] = useState(false);
 
   // Fetch orders from API
   useEffect(() => {
     const fetchOrders = async () => {
+      // If no token, don't fetch (or redirect)
+      if (!token) return;
+
       try {
         setLoading(true);
-        const response = await axios.get(
-          `${backend_url}/v1/myorders`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        // ✅ Use api.get (BaseURL and Headers are handled automatically)
+        const response = await api.get("/v1/myorders");
 
         if (response.data && response.data.success) {
-          setOrders(response.data.orders);
+          let fetchedOrders = response.data.orders;
+
+          // ---------------------------------------------------------------
+          // 🟢 NEW FUNCTIONALITY: Auto-Check Khalti Payment Status
+          // ---------------------------------------------------------------
+          // This looks for Pending Khalti orders and checks if they are actually Paid
+          const pendingKhaltiOrders = fetchedOrders.filter(
+            (o) => o.paymentMethod === "Khalti" && o.status === "Pending" && o.paymentStatus !== "Paid"
+          );
+
+          if (pendingKhaltiOrders.length > 0) {
+            // Run checks in parallel
+            const updatedOrders = await Promise.all(
+              fetchedOrders.map(async (order) => {
+                if (order.paymentMethod === "Khalti" && order.status === "Pending" && order.paymentStatus !== "Paid") {
+                  try {
+                    // Call the backend check-status route
+                    const checkRes = await api.post("/v1/check-status", { orderId: order._id });
+                    
+                    // If backend returns updated status, use it
+                    if (checkRes.data) {
+                      return { 
+                        ...order, 
+                        status: checkRes.data.status, 
+                        paymentStatus: checkRes.data.paymentStatus 
+                      };
+                    }
+                  } catch (e) {
+                    // Fail silently and keep original order state
+                    console.error("Status check failed", e);
+                  }
+                }
+                return order;
+              })
+            );
+            fetchedOrders = updatedOrders;
+          }
+          // ---------------------------------------------------------------
+          // 🔴 END NEW FUNCTIONALITY
+          // ---------------------------------------------------------------
+
+          setOrders(fetchedOrders);
         } else {
           setOrders([]);
         }
-        setLoading(false);
       } catch (err) {
         console.error("Error fetching orders:", err);
         setError(
           err.response?.data?.error ||
-            "Failed to load your orders. Please try again later."
+          "Failed to load your orders. Please try again later."
         );
+      } finally {
         setLoading(false);
       }
     };
 
     fetchOrders();
-  }, [token, backend_url]);
+  }, [token]);
 
   // ✅ Handle Khalti Payment Navigation
   const handleKhaltiPayment = async (orderId) => {
     try {
       setPaymentLoading(true);
       
-      // We send the orderId to the backend to generate a new Khalti Payment URL
-      // Make sure your backend has a route like '/v1/khalti/pay-order' or reuse your payment logic
-      const response = await axios.post(
-        `${backend_url}/v1/khalti/pay-order`, // ⚠️ Ensure this route exists in your backend
-        { orderId },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      // ✅ Use api.post (Auto headers)
+      const response = await api.post("/v1/khalti/pay-order", { orderId });
 
       if (response.data && response.data.khaltiUrl) {
-        // ✅ Redirect to Khalti (Just like PayPal)
+        // Redirect to Khalti
         window.location.href = response.data.khaltiUrl;
       } else {
         toast.error("Unable to initiate Khalti payment.");
       }
     } catch (err) {
       console.error("Khalti Error:", err);
-      toast.error("Failed to connect to Khalti.");
+      toast.error(err.response?.data?.message || "Failed to connect to Khalti.");
     } finally {
       setPaymentLoading(false);
     }
@@ -90,15 +134,11 @@ const Order = () => {
       );
       if (!confirmed) return;
 
-      const response = await axios.delete(
-        `${backend_url}/v1/cancel/${orderId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
+      // ✅ Use api.delete (Auto headers)
+      const response = await api.delete(`/v1/cancel/${orderId}`);
 
       if (response.data && response.data.message) {
-        // Refresh orders list
+        // Refresh orders list locally
         const updatedOrders = orders.map((order) =>
           order._id === orderId ? { ...order, status: "Cancelled" } : order
         );
@@ -109,16 +149,15 @@ const Order = () => {
           setSelectedOrder({ ...selectedOrder, status: "Cancelled" });
         }
 
-        alert("Order cancelled successfully");
+        toast.success("Order cancelled successfully");
       }
     } catch (err) {
       console.error("Error cancelling order:", err);
-      alert(
+      toast.error(
         err.response?.data?.error || "Failed to cancel order. Please try again."
       );
     }
-  };
-
+  }
   // Loading state
   if (loading) {
     return (
@@ -242,21 +281,25 @@ const Order = () => {
                   <span className="text-sm font-medium text-gray-500">
                     Order ID: {order._id}
                   </span>
-                  <span
-                    className={`ml-4 px-2 py-1 text-xs rounded-full ${
-                      order.status === "Delivered"
-                        ? "bg-green-100 text-green-800"
-                        : order.status === "Cancelled"
-                        ? "bg-red-100 text-red-800"
-                        : order.status === "Shipped"
-                        ? "bg-blue-100 text-blue-800"
-                        : order.status === "Processing"
-                        ? "bg-purple-100 text-purple-800"
-                        : "bg-yellow-100 text-yellow-800"
-                    }`}
-                  >
-                    {order.status}
-                  </span>
+                 <span
+  className={`ml-4 px-2 py-1 text-xs rounded-full ${
+    order.status === "Delivered"
+      ? "bg-green-100 text-green-800"
+      : order.status === "Cancelled"
+      ? "bg-red-100 text-red-800"
+      // 👇 ADD THIS LINE 👇
+      : order.status === "Failed"
+      ? "bg-red-100 text-red-800" 
+      // 👆 END ADD 👆
+      : order.status === "Shipped"
+      ? "bg-blue-100 text-blue-800"
+      : order.status === "Processing"
+      ? "bg-purple-100 text-purple-800"
+      : "bg-yellow-100 text-yellow-800"
+  }`}
+>
+  {order.status}
+</span>
                 </div>
                 <div className="text-sm text-gray-600">
                   {formatDate(order.orderDate || order.createdAt)}
@@ -272,9 +315,10 @@ const Order = () => {
                         ? item.productId.images[0] 
                         : "";
                       
+                      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
                       const finalImg = (rawImg.startsWith("http") || rawImg.startsWith("https"))
                         ? rawImg
-                        : `${backend_url}/public/${rawImg}`;
+                        : `${BACKEND_URL}/public/${rawImg}`;
 
                       return (
                         <div

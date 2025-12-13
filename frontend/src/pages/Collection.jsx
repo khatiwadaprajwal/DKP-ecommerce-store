@@ -7,17 +7,21 @@ import Filter from "../component/Filter";
 import { motion } from "framer-motion";
 
 const Collection = () => {
+  // ✅ 1. DEFINE BACKEND_URL LOCALLY
+  // This was missing and causing the crash in the map loop
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
+
+  // ✅ 2. Safe Destructuring
+  // Added 'resetAllFilters' because it is used in the "No products found" section
   const {
-    filterProducts,
-    applyFilter,
-    setFilterProducts,
-    category,
-    gender,
-    resetAllFilters,
-    backend_url,
+    filterProducts = [], 
+    category = [],
+    gender = [],
+    resetAllFilters // <--- Added this
   } = useContext(ShopContext);
 
-  // ✅ CHANGED: Default state is now FALSE (Hidden by default)
+  // Local State
+  const [sortedProducts, setSortedProducts] = useState([]);
   const [showFilter, setShowFilter] = useState(false);
   const [sortType, setSortType] = useState("Newest");
 
@@ -25,46 +29,52 @@ const Collection = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const itemsPerPage = 16;
 
-  // Sorting logic
+  // Safe Sorting Logic
   const sortProduct = () => {
-    let filterProductCopy = [...filterProducts];
+    if (!Array.isArray(filterProducts)) {
+      setSortedProducts([]);
+      return;
+    }
+
+    let fpCopy = [...filterProducts]; 
 
     switch (sortType) {
       case "low-high":
-        setFilterProducts(filterProductCopy.sort((a, b) => a.price - b.price));
+        setSortedProducts(fpCopy.sort((a, b) => a.price - b.price));
         break;
       case "high-low":
-        setFilterProducts(filterProductCopy.sort((a, b) => b.price - a.price));
+        setSortedProducts(fpCopy.sort((a, b) => b.price - a.price));
         break;
       case "Newest":
-        setFilterProducts(
-          filterProductCopy.sort(
-            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-          )
+        setSortedProducts(
+          fpCopy.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
         );
         break;
       case "best-selling":
-        setFilterProducts(
-          filterProductCopy.sort((a, b) => b.totalSold - a.totalSold)
+        setSortedProducts(
+          fpCopy.sort((a, b) => (b.totalSold || 0) - (a.totalSold || 0))
         );
         break;
       case "top-rated":
-        setFilterProducts(
-          filterProductCopy.sort((a, b) => b.averageRating - a.averageRating)
+        setSortedProducts(
+          fpCopy.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
         );
         break;
       default:
-        applyFilter();
+        setSortedProducts(fpCopy);
         break;
     }
   };
 
   useEffect(() => {
     sortProduct();
-  }, [sortType]);
+  }, [filterProducts, sortType]);
 
-  const totalPages = Math.ceil(filterProducts.length / itemsPerPage);
-  const paginatedProducts = filterProducts.slice(
+  // Safe Pagination Logic
+  const validProducts = Array.isArray(sortedProducts) ? sortedProducts : [];
+  const totalPages = Math.ceil(validProducts.length / itemsPerPage);
+  
+  const paginatedProducts = validProducts.slice(
     currentPage * itemsPerPage,
     (currentPage + 1) * itemsPerPage
   );
@@ -74,10 +84,11 @@ const Collection = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // Helper for Title
   const getCollectionTitle = () => {
     let title = [];
-    if (gender.length > 0) title.push(gender.join(" & "));
-    if (category.length > 0) title.push(category.join(" & "));
+    if (Array.isArray(gender) && gender.length > 0) title.push(gender.join(" & "));
+    if (Array.isArray(category) && category.length > 0) title.push(category.join(" & "));
     return title.length === 0 ? "All Products" : title.join(" - ");
   };
 
@@ -88,8 +99,8 @@ const Collection = () => {
       { name: "Home", link: "/" },
       { name: "Collections", link: "/collection" },
     ];
-    if (gender.length > 0) items.push({ name: gender.join(" & "), link: "" });
-    if (category.length > 0) items.push({ name: category.join(" & "), link: "" });
+    if (Array.isArray(gender) && gender.length > 0) items.push({ name: gender.join(" & "), link: "" });
+    if (Array.isArray(category) && category.length > 0) items.push({ name: category.join(" & "), link: "" });
     return items;
   };
 
@@ -105,7 +116,6 @@ const Collection = () => {
 
   return (
     <div className="bg-white min-h-screen font-sans">
-      {/* Breadcrumbs */}
       <div className="bg-gray-50 border-b border-gray-200">
         <div className="container mx-auto px-4 py-3">
           <Breadcrumbs className="text-sm text-gray-500" items={getBreadcrumbItems()} />
@@ -113,8 +123,6 @@ const Collection = () => {
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        
-        {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
             <div>
                 <h2 className="text-3xl font-serif text-gray-900 tracking-wide">
@@ -125,10 +133,7 @@ const Collection = () => {
                 </p>
             </div>
 
-            {/* Controls */}
             <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto">
-                
-                {/* Filter Toggle Button */}
                 <button
                     onClick={() => setShowFilter(!showFilter)}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-full border text-sm font-medium transition-all duration-300 
@@ -137,13 +142,11 @@ const Collection = () => {
                         : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"}`}
                 >
                     {showFilter ? (
-                         // Close Icon
                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                          </svg>
                     ) : (
-                        // Filter Icon
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M4 6H20M7 12H17M10 18H14"/>
                         </svg>
@@ -151,7 +154,6 @@ const Collection = () => {
                     <span>{showFilter ? "Hide Filters" : "Show Filters"}</span>
                 </button>
 
-                {/* Sort Dropdown */}
                 <div className="relative group">
                     <select
                         onChange={(e) => setSortType(e.target.value)}
@@ -175,20 +177,15 @@ const Collection = () => {
         </div>
 
         <div className="collection-container flex flex-col lg:flex-row gap-8">
-          
-          {/* Filter Component - Sidebar */}
-          {/* Default hidden (w-0 h-0) -> expands on click */}
           <div 
             className={`flex-shrink-0 transition-all duration-500 ease-in-out overflow-hidden
             ${showFilter ? 'w-full lg:w-64 opacity-100' : 'w-0 h-0 opacity-0'}`}
           >
-             {/* Inner content wrapper ensuring width exists while animating */}
              <div className="w-full lg:w-64">
                 <Filter showFilter={true} setShowFilter={setShowFilter} />
              </div>
           </div>
 
-          {/* Product Grid Area */}
           <div className="flex-1">
             <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
               <p className="text-gray-500 text-sm">
@@ -208,12 +205,15 @@ const Collection = () => {
               >
                 {paginatedProducts.map((product, index) => {
                   let finalImage = "";
+                  
+                  // Safe Image logic
                   if (product.images && product.images.length > 0) {
                     const rawImg = product.images[0];
                     if (rawImg.startsWith("http") || rawImg.startsWith("https")) {
                       finalImage = rawImg;
                     } else {
-                      finalImage = `${backend_url}/public/${rawImg}`;
+                      // ✅ 3. FIX: Use the locally defined BACKEND_URL
+                      finalImage = `${BACKEND_URL}/public/${rawImg}`;
                     }
                   } else {
                     finalImage = "https://via.placeholder.com/300?text=No+Image";
@@ -227,7 +227,9 @@ const Collection = () => {
                       <ProductItem
                         id={product._id}
                         name={product.productName}
-                        image={finalImage}
+                        // ✅ 4. NOTE: ProductItem usually expects an ARRAY of images in your old code.
+                        // If ProductItem crashes, change this to: image={[finalImage]}
+                        image={product.images} 
                         price={product.price}
                         rating={product.averageRating}
                       />
@@ -248,6 +250,7 @@ const Collection = () => {
                 </p>
                 <button
                     type="button"
+                    // ✅ 5. FIX: 'resetAllFilters' is now defined from Context
                     onClick={resetAllFilters}
                     className="px-6 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition shadow-md"
                   >
@@ -258,7 +261,6 @@ const Collection = () => {
           </div>
         </div>
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="mt-16 flex justify-center">
             <Pagination

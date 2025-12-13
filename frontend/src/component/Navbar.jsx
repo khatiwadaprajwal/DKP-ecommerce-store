@@ -6,13 +6,15 @@ import {
   ShoppingCart,
   Menu,
   X,
-  Heart,
   LogOut,
   LogIn,
   Package,
   ChevronDown,
   Settings,
 } from "lucide-react";
+
+// ✅ Import useAuth for Authentication Logic
+import { useAuth } from "../context/AuthProvider";
 import { ShopContext } from "../context/ShopContext";
 
 const Navbar = () => {
@@ -22,13 +24,15 @@ const Navbar = () => {
   const [selectedCategory, setSelectedCategory] = useState("SELECT CATEGORY");
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [userInitials, setUserInitials] = useState(""); // State to store user initials
-  const [isAdmin, setIsAdmin] = useState(false); // New state to check if user is admin
+  const [userInitials, setUserInitials] = useState(""); 
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // ✅ 1. Get Auth Data & Logout function from useAuth
+  const { logout, user, token } = useAuth();
+
+  // ✅ 2. Get Shop Data from ShopContext (Removed auth properties)
   const {
     getCartCount,
-    token,
-    logout,
-    user,
     search,
     setSearch,
     showSearch,
@@ -39,72 +43,42 @@ const Navbar = () => {
     applyFilter,
     resetAllFilters
   } = useContext(ShopContext);
+
   const location = useLocation();
   const profileDropdownRef = useRef(null);
   const searchInputRef = useRef(null);
   const categoryDropdownRef = useRef(null);
 
-  // Available categories for the dropdown
-  const categories = [
-    "SELECT CATEGORY",
-    "Men",
-    "Women",
-    "Kids",
-  ];
+  const categories = ["SELECT CATEGORY", "Men", "Women", "Kids"];
 
-  // Get user initials and check admin status from localStorage
+  // ✅ 3. Update User Initials & Admin Status based on useAuth data
   useEffect(() => {
-    if (token) {
-      let userData;
-
-      // Try to get user from context first
-      if (user && user.name) {
-        const initials = `${user.name[0]}`.toUpperCase();
+    if (token && user) {
+      // Determine Name
+      const name = user.name || user.firstName || "User";
+      
+      // Set Initials
+      if (name) {
+        const initials = name.charAt(0).toUpperCase();
         setUserInitials(initials);
-        // Check if user is admin from context
-        setIsAdmin(user.role === "Admin" || user.role == "SuperAdmin");
-      } else {
-        // Fallback to localStorage if user isn't in context
-        try {
-          userData = JSON.parse(localStorage.getItem("user"));
-          if (userData) {
-            if (userData.firstName && userData.lastName) {
-              const initials =
-                `${userData.firstName[0]}${userData.lastName[0]}`.toUpperCase();
-              setUserInitials(initials);
-            } else if (userData.name) {
-              const initials = `${userData.name[0]}`.toUpperCase();
-              setUserInitials(initials);
-            }
-
-            // Check if user is admin from localStorage
-            setIsAdmin(userData.role === "Admin" || user.role === "SuperAdmin");
-          }
-        } catch (error) {
-          console.error("Error parsing user data from localStorage:", error);
-          setUserInitials("");
-          setIsAdmin(false);
-        }
       }
+
+      // Check Admin Role
+      const role = user.role || "";
+      setIsAdmin(role === "Admin" || role === "SuperAdmin" || role === "admin" || role === "superadmin");
     } else {
       setUserInitials("");
       setIsAdmin(false);
     }
   }, [token, user]);
 
-  // Handle clicks outside of the profile dropdown and category dropdown
+  // Handle clicks outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (
-        profileDropdownRef.current &&
-        !profileDropdownRef.current.contains(event.target)
-      ) {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
         setIsProfileOpen(false);
       }
-      if (
-        categoryDropdownRef.current &&
-        !categoryDropdownRef.current.contains(event.target)
-      ) {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target)) {
         setIsCategoryDropdownOpen(false);
       }
     };
@@ -115,14 +89,14 @@ const Navbar = () => {
     };
   }, []);
 
-  // Focus search input when opened
+  // Focus search input
   useEffect(() => {
     if (isSearchOpen && searchInputRef.current) {
       searchInputRef.current.focus();
     }
   }, [isSearchOpen]);
 
-  // Configure smooth scrolling
+  // Smooth scrolling
   useEffect(() => {
     document.documentElement.style.scrollBehavior = "smooth";
     return () => {
@@ -130,22 +104,22 @@ const Navbar = () => {
     };
   }, []);
 
-  // Close search when route changes
+  // Close search on route change
   useEffect(() => {
     setIsSearchOpen(false);
   }, [location.pathname]);
 
-  // Handle logout function
-  const handleLogout = () => {
-    logout(); // Call logout function from context
+  // ✅ 4. Fixed Logout Function
+  const handleLogout = async () => {
+    await logout(); // Calls the function from AuthProvider
     setIsMenuOpen(false);
     setIsProfileOpen(false);
-    setUserInitials(""); // Clear user initials on logout
-    setIsAdmin(false); // Reset admin status on logout
+    setUserInitials(""); 
+    setIsAdmin(false); 
     navigate("/login");
   };
 
-  // Scroll to top when route changes
+  // Scroll to top
   useEffect(() => {
     window.scrollTo({
       top: 0,
@@ -160,14 +134,12 @@ const Navbar = () => {
     { label: "CONTACT", path: "/contact" },
   ];
 
-  // Handle search submission
   const handleSearch = (e) => {
     e.preventDefault();
     handleSearchFunction(searchQuery);
     setIsSearchOpen(false);
   };
 
-  // Handle smooth scrolling for in-page links
   const handleNavClick = (e, path) => {
     if (path.includes("#") && location.pathname === path.split("#")[0]) {
       e.preventDefault();
@@ -178,7 +150,6 @@ const Navbar = () => {
         targetElement.scrollIntoView({ behavior: "smooth" });
       }
     }
-
     setIsMenuOpen(false);
   };
 
@@ -186,67 +157,42 @@ const Navbar = () => {
     setIsProfileOpen(!isProfileOpen);
   };
 
-  // Toggle category dropdown
   const toggleCategoryDropdown = () => {
     setIsCategoryDropdownOpen(!isCategoryDropdownOpen);
   };
 
-  // Handle category selection
   const handleCategorySelect = (category) => {
     setSelectedCategory(category);
     setIsCategoryDropdownOpen(false);
-    
-    // Apply gender filter after selection
     handleGenderSelect(category);
   };
 
-  // Generate a background color based on the user's initials for consistency
   const getUserInitialsColor = () => {
-    if (!userInitials) return "#4F46E5"; // Default color
-
-    // Simple hash function to generate a color based on the initials
+    if (!userInitials) return "#4F46E5";
     let hash = 0;
     for (let i = 0; i < userInitials.length; i++) {
       hash = userInitials.charCodeAt(i) + ((hash << 5) - hash);
     }
-
-    // Convert to a hue value (0-360)
     const hue = hash % 360;
-
-    // Use a nice saturation and lightness for pastel colors
     return `hsl(${hue}, 70%, 45%)`;
   };
 
-  // Get user name for display
   const getUserDisplayName = () => {
-    try {
-      const userData = user || JSON.parse(localStorage.getItem("user"));
-      if (userData) {
-        if (userData.firstName && userData.lastName) {
-          return `${userData.firstName} ${userData.lastName}`;
-        } else if (userData.name) {
-          return userData.name;
-        }
-      }
-      return "User";
-    } catch (error) {
-      return "User";
+    if (user) {
+        return user.name || user.firstName || "User";
     }
+    return "User";
   };
 
   const handleGenderSelect = (category) => {
-
-    if(category && category == "SELECT CATEGORY"){
+    if(category && category === "SELECT CATEGORY"){
       setGender([])
       return;
     }
-
     resetAllFilters();
-    
     if (category && category !== "SELECT CATEGORY") {
       setGender([category]);
     }
-    
     applyFilter();
     navigate("/collection");
   };

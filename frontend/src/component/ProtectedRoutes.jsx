@@ -1,9 +1,14 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { ShopContext } from '../context/ShopContext';
+// ✅ Import useAuth instead of ShopContext
+import { useAuth } from '../context/AuthProvider';
 
 export const CustomerRoute = () => {
-  const { token } = useContext(ShopContext);
+  // ✅ Use useAuth
+  const { token, loading } = useAuth();
+
+  // Optional: Show a loading spinner while checking auth status
+  if (loading) return <div>Loading...</div>;
 
   if (!token) {
     return <Navigate to="/login" replace />;
@@ -13,20 +18,19 @@ export const CustomerRoute = () => {
 };
 
 export const AdminRoute = () => {
-  const { token, user } = useContext(ShopContext);
+  // ✅ Use useAuth
+  const { token, user, loading } = useAuth();
 
-  // If waiting for user to load, you might return null or a loader here
-  // But for now, let's just check safety:
-  
+  if (loading) return <div>Loading...</div>;
+
   if (!token) {
     return <Navigate to="/login" replace />;
   }
 
-  // ✅ Safe Role Check: Handle case sensitivity and missing role
+  // Robust Role Check
   const role = user?.role?.toLowerCase() || "";
   
   if (role !== 'admin' && role !== 'superadmin') {
-    // If logged in but not admin, go to home
     return <Navigate to="/" replace />;
   }
 

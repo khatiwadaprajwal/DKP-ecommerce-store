@@ -1,16 +1,14 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation } from 'swiper/modules';
-import { ShopContext } from "../context/ShopContext";
 import ProductItem from "../component/ProductItem";
-import axios from 'axios';
+import api from '../config/api'; // ✅ Use centralized API
 
 import 'swiper/css';
 import 'swiper/css/navigation';
 
 const FeaturedProducts = () => {
-  const { backend_url } = useContext(ShopContext);
   const navigate = useNavigate();
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,11 +18,17 @@ const FeaturedProducts = () => {
     const fetchFeaturedProducts = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${backend_url}/v1/productlist/featured`);
-        if (response.data.success) {
+        // ✅ api.get handles BaseURL automatically
+        const response = await api.get('/v1/productlist/featured');
+        
+        // Handle different response structures gracefully
+        if (response.data.success && response.data.featuredProducts) {
           setFeaturedProducts(response.data.featuredProducts);
+        } else if (Array.isArray(response.data)) {
+          setFeaturedProducts(response.data);
         }
       } catch (err) {
+        console.error("Error fetching featured products:", err);
         setError(err.message || 'Failed to fetch featured products');
       } finally {
         setLoading(false);
@@ -32,7 +36,11 @@ const FeaturedProducts = () => {
     };
 
     fetchFeaturedProducts();
-  }, [backend_url]);
+  }, []);
+
+  if (loading) return <div className="text-center py-10 text-gray-500">Loading featured items...</div>;
+  if (error) return null; // Hide section on error
+  if (featuredProducts.length === 0) return null;
 
   if (loading) {
     return (

@@ -1,16 +1,14 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation } from 'swiper/modules';
-import { ShopContext } from "../context/ShopContext";
 import ProductItem from "../component/ProductItem";
-import axios from 'axios';
+import api from '../config/api'; // ✅ Use centralized API
 
 import 'swiper/css';
 import 'swiper/css/navigation';
 
 const ProductCollection = ({ title, collectionType }) => {
-  const { backend_url } = useContext(ShopContext);
   const navigate = useNavigate();
   const [collectionProducts, setCollectionProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +27,8 @@ const ProductCollection = ({ title, collectionType }) => {
           default: throw new Error('Invalid collection type');
         }
 
-        const response = await axios.get(`${backend_url}/v1/productlist/${endpoint}`);
+        // ✅ api.get handles BaseURL automatically
+        const response = await api.get(`/v1/productlist/${endpoint}`);
         
         if (response.data.success) {
           let products = [];
@@ -42,6 +41,7 @@ const ProductCollection = ({ title, collectionType }) => {
           setCollectionProducts(products);
         }
       } catch (err) {
+        console.error(`Error fetching ${collectionType}:`, err);
         setError(err.message);
       } finally {
         setLoading(false);
@@ -49,10 +49,10 @@ const ProductCollection = ({ title, collectionType }) => {
     };
 
     fetchCollectionProducts();
-  }, [backend_url, collectionType]);
+  }, [collectionType]);
   
   if (loading) return <div className="h-96 w-full bg-gray-50 animate-pulse rounded-lg my-8"></div>;
-  if (error) return null;
+  if (error || collectionProducts.length === 0) return null;
   
   return (
     <div className="py-10">

@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { PencilIcon, TrashIcon, EyeIcon, PlusIcon } from "@heroicons/react/24/outline";
-import axios from "axios";
-import { ShopContext } from "../../context/ShopContext";
+import api from "../../config/api"; // ✅ Use centralized API
 
 const ListProducts = () => {
   const [products, setProducts] = useState([]);
@@ -10,13 +9,15 @@ const ListProducts = () => {
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
+  
+  // Modal & Edit States
   const [showProductDetails, setShowProductDetails] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
-  const [editingVariant, setEditingVariant] = useState(null);
-  const token = localStorage.getItem("token");
-  const {backend_url}= useContext(ShopContext);
+  
+  // ✅ Define Backend URL locally for Image Helper (since we removed it from Context)
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
 
-   // ✅ SMART IMAGE HELPER FUNCTION
+  // ✅ SMART IMAGE HELPER FUNCTION
   const getImageUrl = (imgPath) => {
     if (!imgPath) return "";
     
@@ -24,28 +25,22 @@ const ListProducts = () => {
       return imgPath;
     }
     
-    return `${backend_url}/public/${imgPath}`;
+    // Ensure we don't double slashes
+    const baseUrl = BACKEND_URL.replace(/\/$/, "");
+    const path = imgPath.replace(/^\//, "");
+    
+    return `${baseUrl}/public/${path}`;
   };
 
-  // Updated category options based on your product model
-  const categoryOptions = [
-    "All",
-    "Formal",
-    "Casual",
-    "Ethnic"
-  ];
-  const genderOptions = ["Men", "Women", "Kids"];
-  
-  // Common size options
-  const sizeOptions = ["XS", "S", "M", "L", "XL", "XXL"];
+  const categoryOptions = ["All", "Formal", "Casual", "Ethnic"];
 
+  // Fetch products
   useEffect(() => {
-    // Fetch products
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${backend_url}/v1/products`);
-
+        // ✅ api.get automatically uses BaseURL
+        const response = await api.get("/v1/products");
         setProducts(response.data.products);
         setError(null);
       } catch (error) {
@@ -63,11 +58,9 @@ const ListProducts = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this product?")) {
       try {
-        await axios.delete(`${backend_url}/v1/product/${id}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        // ✅ No manual headers needed. Interceptor handles Token.
+        await api.delete(`/v1/product/${id}`);
+        
         setProducts(products.filter((product) => product._id !== id));
         alert("Product deleted successfully!");
       } catch (error) {
@@ -80,15 +73,8 @@ const ListProducts = () => {
   const saveEditedProduct = async () => {
     if (editingProduct) {
       try {
-        await axios.put(
-          `${backend_url}/v1/product/${editingProduct._id}`,
-          editingProduct,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        // ✅ No manual headers, cleaned up URL
+        await api.put(`/v1/product/${editingProduct._id}`, editingProduct);
 
         setProducts(
           products.map((product) =>
@@ -114,15 +100,8 @@ const ListProducts = () => {
     };
 
     try {
-      const response = await axios.put(
-        `${backend_url}/v1/product/${productId}`,
-        updatedProduct,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      // ✅ No manual headers, cleaned up URL
+      await api.put(`/v1/product/${productId}`, updatedProduct);
 
       setProducts(
         products.map((product) =>
@@ -149,7 +128,7 @@ const ListProducts = () => {
     return matchesSearch && matchesCategory;
   });
 
-  // Function to determine status based on available stock
+  // UI Helpers
   const getProductStatus = (product) => {
     if (product.totalQuantity <= 0) return "Out of Stock";
     if (product.totalQuantity < 10) return "Low Stock";
@@ -158,83 +137,52 @@ const ListProducts = () => {
 
   const getStatusBadgeClass = (status) => {
     switch (status) {
-      case "In Stock":
-        return "bg-green-100 text-green-800";
-      case "Low Stock":
-        return "bg-yellow-100 text-yellow-800";
-      case "Out of Stock":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+      case "In Stock": return "bg-green-100 text-green-800";
+      case "Low Stock": return "bg-yellow-100 text-yellow-800";
+      case "Out of Stock": return "bg-red-100 text-red-800";
+      default: return "bg-gray-100 text-gray-800";
     }
   };
 
   const getCategoryBadgeClass = (category) => {
     switch (category) {
-      case "Formal":
-        return "bg-blue-100 text-blue-800";
-      case "Casual":
-        return "bg-green-100 text-green-800";
-      case "Ethnic":
-        return "bg-yellow-100 text-yellow-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+      case "Formal": return "bg-blue-100 text-blue-800";
+      case "Casual": return "bg-green-100 text-green-800";
+      case "Ethnic": return "bg-yellow-100 text-yellow-800";
+      default: return "bg-gray-100 text-gray-800";
     }
   };
 
-  // Handle adding a new variant
+  // Variant Helpers
   const addVariant = () => {
     if (editingProduct) {
       const newVariants = [...(editingProduct.variants || [])];
-      newVariants.push({
-        color: "",
-        size: "",
-        quantity: 0
-      });
-      
-      setEditingProduct({
-        ...editingProduct,
-        variants: newVariants
-      });
+      newVariants.push({ color: "", size: "", quantity: 0 });
+      setEditingProduct({ ...editingProduct, variants: newVariants });
     }
   };
 
-  // Handle removing a variant
   const removeVariant = (index) => {
     if (editingProduct) {
       const newVariants = [...editingProduct.variants];
       newVariants.splice(index, 1);
-      
-      // Recalculate total quantity based on variants
       const totalQuantity = newVariants.reduce((sum, variant) => sum + variant.quantity, 0);
-      
-      setEditingProduct({
-        ...editingProduct,
-        variants: newVariants,
-        totalQuantity: totalQuantity
-      });
+      setEditingProduct({ ...editingProduct, variants: newVariants, totalQuantity });
     }
   };
 
-  // Handle updating a variant
   const updateVariant = (index, field, value) => {
     if (editingProduct) {
       const newVariants = [...editingProduct.variants];
       newVariants[index] = {
         ...newVariants[index],
-        [field]: field === 'quantity' ? parseInt(value) : value
+        [field]: field === 'quantity' ? parseInt(value) || 0 : value
       };
-      
-      // Recalculate total quantity based on variants
       const totalQuantity = newVariants.reduce((sum, variant) => sum + variant.quantity, 0);
-      
-      setEditingProduct({
-        ...editingProduct,
-        variants: newVariants,
-        totalQuantity: totalQuantity
-      });
+      setEditingProduct({ ...editingProduct, variants: newVariants, totalQuantity });
     }
   };
+
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">

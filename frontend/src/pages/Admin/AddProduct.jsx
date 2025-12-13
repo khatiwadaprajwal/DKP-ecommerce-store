@@ -1,11 +1,14 @@
-import React, { useContext, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios'; 
-import { toast } from "react-hot-toast";
-import { ShopContext } from '../../context/ShopContext';
+import { toast } from "react-toastify"; // Changed to 'react-toastify' for consistency
+import api from '../../config/api'; // ✅ Import API instance
+import { useAuth } from '../../context/AuthProvider'; // ✅ Import Auth Hook
 
 const AddProduct = () => {
   const navigate = useNavigate();
+  // ✅ Get token/auth state from AuthContext (Optional for checking login status)
+  const { token } = useAuth(); 
+  
   const [product, setProduct] = useState({
     productName: '',
     description: '',
@@ -27,32 +30,18 @@ const AddProduct = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const token = localStorage.getItem('token');
-  const {backend_url} = useContext(ShopContext)
 
-  console.log(backend_url)
-  
   const sizeOptions = ['XS', 'S', 'M', 'L', 'XL', 'XXL','NaN'];
   const colorOptions = [
-    // Basic Colors
     'Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Gray', 'Brown',
-    // Blues
     'Navy Blue', 'Sky Blue', 'Royal Blue', 'Teal', 'Turquoise', 'Indigo', 'Cobalt Blue',
-    // Reds & Pinks
     'Maroon', 'Burgundy', 'Crimson', 'Pink', 'Rose', 'Magenta', 'Coral',
-    // Greens
     'Olive', 'Mint', 'Sage', 'Emerald', 'Forest Green', 'Lime', 'Jade',
-    // Browns & Beiges
     'Tan', 'Beige', 'Cream', 'Khaki', 'Caramel', 'Chocolate', 'Cognac',
-    // Purples
     'Purple', 'Lavender', 'Violet', 'Plum', 'Mauve', 'Lilac',
-    // Yellows & Oranges
     'Orange', 'Amber', 'Gold', 'Mustard', 'Peach', 'Rust',
-    // Grays
     'Charcoal', 'Silver', 'Slate', 'Smoke', 'Pewter',
-    // Metallics
     'Bronze', 'Copper', 'Gold', 'Silver',
-    // Others
     'Nude', 'Ivory', 'Off-White', 'Pitch Black'
   ];
   const categoryOptions = ['Formal','Casual', 'Ethnic'];
@@ -60,7 +49,6 @@ const AddProduct = () => {
   
   const handleChange = (e) => {
     const { name, value, type } = e.target;
-    
     if (type === 'number') {
       setProduct({ ...product, [name]: Number(value) });
     } else {
@@ -70,7 +58,6 @@ const AddProduct = () => {
   
   const handleVariantChange = (e) => {
     const { name, value, type } = e.target;
-    
     if (type === 'number') {
       setVariantForm({ ...variantForm, [name]: Number(value) });
     } else {
@@ -79,13 +66,11 @@ const AddProduct = () => {
   };
   
   const addVariant = () => {
-    // Check if this variant already exists
     const existingVariantIndex = product.variants.findIndex(
       v => v.color === variantForm.color && v.size === variantForm.size
     );
     
     if (existingVariantIndex !== -1) {
-      // Update existing variant
       const updatedVariants = [...product.variants];
       updatedVariants[existingVariantIndex] = {
         ...updatedVariants[existingVariantIndex],
@@ -95,13 +80,10 @@ const AddProduct = () => {
       setProduct({
         ...product,
         variants: updatedVariants,
-        // Update total quantity
         totalQuantity: calculateTotalQuantity(updatedVariants)
       });
-      
       toast.info('Variant updated successfully');
     } else {
-      // Add new variant
       const newVariant = {
         color: variantForm.color,
         size: variantForm.size,
@@ -113,14 +95,11 @@ const AddProduct = () => {
       setProduct({ 
         ...product, 
         variants: updatedVariants,
-        // Update total quantity
         totalQuantity: calculateTotalQuantity(updatedVariants)
       });
-      
       toast.success('Variant added successfully');
     }
     
-    // Reset variant form
     setVariantForm({
       color: '',
       size: '',
@@ -141,7 +120,6 @@ const AddProduct = () => {
       variants: updatedVariants,
       totalQuantity: calculateTotalQuantity(updatedVariants)
     });
-    
     toast.info('Variant removed');
   };
   
@@ -151,8 +129,8 @@ const AddProduct = () => {
   
     try {
       const newImagePreviews = files.map(file => ({
-        file, // keep file for FormData
-        preview: URL.createObjectURL(file), // for preview only
+        file, 
+        preview: URL.createObjectURL(file), 
         name: file.name
       }));
   
@@ -173,13 +151,10 @@ const AddProduct = () => {
   const removeImage = (index) => {
     try {
       const imageToRemove = product.images[index];
-      
-      // Revoke the object URL to avoid memory leaks
       if (imageToRemove.preview) {
         URL.revokeObjectURL(imageToRemove.preview);
       }
       
-      // Remove from local state
       const newImages = [...product.images];
       newImages.splice(index, 1);
       setProduct({ ...product, images: newImages });
@@ -215,11 +190,9 @@ const AddProduct = () => {
     setError(null);
   
     try {
-      // Validation
       if (product.variants.length === 0) throw new Error('Please add at least one variant with size, color and quantity');
       if (product.images.length === 0) throw new Error('Please upload at least one product image');
   
-      // Prepare FormData
       const formData = new FormData();
       formData.append('productName', product.productName);
       formData.append('description', product.description);
@@ -229,31 +202,27 @@ const AddProduct = () => {
       formData.append('totalQuantity', product.totalQuantity);
       formData.append('totalSold', product.totalSold);
       
-      // Append variants as JSON string
       formData.append('variants', JSON.stringify(product.variants));
       
-      // Append images
       product.images.forEach(img => formData.append('images', img.file));
 
       console.log('Submitting product:', product);
   
-      const response = await axios.post(`${backend_url}/v1/product`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data'
-        }
-      });
+      // ✅ Use api.post
+      // Note: No manual Authorization header. api.js handles it.
+      // Note: No manual Content-Type header. axios handles FormData boundary automatically.
+      const response = await api.post('/v1/product', formData);
   
       console.log('Product added:', response.data.product);
       toast.success(response.data.message || 'Product added successfully!');
       
-      // Show success modal instead of inline message
       setShowSuccessModal(true);
       resetForm();
   
     } catch (err) {
       console.error('Error adding product:', err);
       setError(err.response?.data?.message || err.message || 'Failed to add product. Please try again.');
+      toast.error(err.response?.data?.message || 'Error adding product');
     } finally {
       setLoading(false);
     }

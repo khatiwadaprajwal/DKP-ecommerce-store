@@ -16,10 +16,12 @@ import Product from "./pages/Product";
 import PlaceOrder from "./pages/PlaceOrder";
 import ForgotPassword from "./pages/ForgotPassword";
 import NotFound from "./pages/NotFound";
+import PaymentVerify from './pages/paymentVerify';
 import PaypalSuccess from "./pages/PaypalSuccess";
 import Profile from "./pages/profile";
 import UserLayout from "./pages/UserLayout";
-import PaymentSuccess from "./pages/khaltisucess"; // Assuming this file exists
+import PaymentSuccess from "./pages/khaltisucess"; 
+import PaymentFailed from "./pages/paymentfailed";
 
 // Admin Imports
 import Adminpage from "./pages/Admin/Adminpage";
@@ -39,7 +41,7 @@ const App = () => {
       <ToastContainer position="bottom-right" />
       
       <Routes>
-        {/* --- ADMIN ROUTES --- */}
+        {/* --- 1. ADMIN ROUTES (Protected) --- */}
         <Route element={<AdminRoute />}>
           <Route path="/admin" element={<Adminpage />}>
             <Route index element={<Dashboard />} />
@@ -51,24 +53,27 @@ const App = () => {
           </Route>
         </Route>
 
-        {/* --- CUSTOMER ROUTES --- */}
+        {/* --- 2. AUTH ROUTES (NO HEADER/FOOTER) --- */}
+        {/* ✅ Moved these OUTSIDE of UserLayout so they don't get the Navbar/Footer */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/payment/verify" element={<PaymentVerify />} /> 
+        <Route path="/payment-failed" element={<PaymentFailed />} />
+
+        {/* --- 3. CUSTOMER ROUTES (WITH HEADER/FOOTER) --- */}
         <Route element={<UserLayout />}>
           <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/collection" element={<Collection />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/product/:productId" element={<Product />} />
           
-          {/* Payment Success Routes */}
+          {/* Payment Success Pages (Usually keep Header/Footer for these) */}
           <Route path="/paypal/success" element={<PaypalSuccess />} />
-          
-          {/* 🟢 FIX: Changed path from "/khalti/success" to "/payment-success" to match your URL */}
           <Route path="/payment-success" element={<PaymentSuccess />} />
 
-          {/* Protected Customer Routes */}
+          {/* Protected Customer Routes (Cart, Order, etc.) */}
           <Route element={<CustomerRoute />}>
             <Route path="/profile" element={<Profile />} />
             <Route path="/placeOrder" element={<PlaceOrder />} />

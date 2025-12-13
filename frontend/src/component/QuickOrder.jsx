@@ -1,13 +1,14 @@
 import React, { useState, useContext, useEffect } from "react";
 import { ShopContext } from "../context/ShopContext";
-import { MapPin, CreditCard, DollarSign, X, Package, MapIcon } from "lucide-react";
-import axios from "axios";
+import { useAuth } from "../context/AuthProvider"; 
+import { MapPin, CreditCard, DollarSign, X, Package } from "lucide-react";
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
-import { address as addressData } from "../assets/address.js";
+import { address as addressData } from "../assets/address.js"; // Ensure this path is correct
+import api from "../config/api"; 
 
 // Fix Leaflet Icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -17,16 +18,31 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
+// Helper Component for Map Clicks
 const LocationPicker = ({ onLocationSelected }) => {
   const [position, setPosition] = useState(null);
-  const map = useMapEvents({
-    click(e) { setPosition(e.latlng); onLocationSelected(e.latlng); },
+  useMapEvents({
+    click(e) { 
+      setPosition(e.latlng); 
+      if (onLocationSelected) onLocationSelected(e.latlng); 
+    },
   });
   return position === null ? null : <Marker position={position} />;
 };
 
-const QuickOrder = ({ isOpen, onClose, productData, selectedSize, selectedColor, quantity }) => {
-  const { token, delivery_fee, fetchCartData, backend_url, openPayPalPopup } = useContext(ShopContext);
+const QuickOrder = ({ 
+  isOpen, 
+  onClose, 
+  productData, 
+  product, 
+  selectedSize, 
+  selectedColor, 
+  variant, 
+  quantity 
+}) => {
+  const { token } = useAuth();
+  const { delivery_fee = 0, fetchCartData, openPayPalPopup } = useContext(ShopContext);
+  
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("Cash");
@@ -37,7 +53,13 @@ const QuickOrder = ({ isOpen, onClose, productData, selectedSize, selectedColor,
     phone: "" 
   });
   
-  // Nepal address state
+  // ✅ Normalize Props (Handle mismatch between Product.jsx passing 'variant' vs 'selectedSize')
+  // Use 'finalProduct' everywhere in this component to prevent undefined errors
+  const finalProduct = productData || product;
+  const finalSize = selectedSize || variant?.size;
+  const finalColor = selectedColor || variant?.color;
+
+  // Address State
   const [selectedProvince, setSelectedProvince] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [selectedMunicipality, setSelectedMunicipality] = useState("");
@@ -48,12 +70,14 @@ const QuickOrder = ({ isOpen, onClose, productData, selectedSize, selectedColor,
   const [locationSelected, setLocationSelected] = useState(false);
 
   useEffect(() => {
-    if (navigator.geolocation) {
+    if (isOpen && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => setLocation({ lat: position.coords.latitude, lng: position.coords.longitude }),
-        (error) => console.error(error)
+        (error) => console.warn("Geolocation denied or error:", error)
       );
     }
+    
+    // Reset form on open
     if (isOpen) {
       setShippingInfo({ fullName: "", streetAddress: "", city: "", phone: "" });
       setSelectedProvince("");
@@ -66,7 +90,6 @@ const QuickOrder = ({ isOpen, onClose, productData, selectedSize, selectedColor,
     }
   }, [isOpen]);
 
-  // Handle province selection
   const handleProvinceChange = (e) => {
     const provinceId = e.target.value;
     setSelectedProvince(provinceId);
@@ -74,7 +97,7 @@ const QuickOrder = ({ isOpen, onClose, productData, selectedSize, selectedColor,
     setSelectedMunicipality("");
     setAvailableMunicipalities([]);
     
-    if (provinceId) {
+    if (provinceId && addressData) {
       const province = addressData.find(p => p.id.toString() === provinceId);
       if (province && province.districts) {
         setAvailableDistricts(Array.isArray(province.districts) ? province.districts : Object.values(province.districts));
@@ -84,7 +107,6 @@ const QuickOrder = ({ isOpen, onClose, productData, selectedSize, selectedColor,
     }
   };
 
-  // Handle district selection
   const handleDistrictChange = (e) => {
     const districtId = e.target.value;
     setSelectedDistrict(districtId);
@@ -100,12 +122,12 @@ const QuickOrder = ({ isOpen, onClose, productData, selectedSize, selectedColor,
     }
   };
 
-  // Handle municipality selection
   const handleMunicipalityChange = (e) => {
     setSelectedMunicipality(e.target.value);
   };
 
-  const subtotal = productData ? productData.price * quantity : 0;
+  // Safe Calculation
+  const subtotal = finalProduct ? (finalProduct.price || 0) * (quantity || 1) : 0;
   const total = subtotal + delivery_fee;
 
   const handleInputChange = (e) => {
@@ -121,9 +143,15 @@ const QuickOrder = ({ isOpen, onClose, productData, selectedSize, selectedColor,
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!token) { toast.error("Please login first"); onClose(); navigate('/login'); return; }
+    
+    if (!token) { 
+      toast.error("Please login first"); 
+      onClose(); 
+      navigate('/login'); 
+      return; 
+    }
 
-    // Validate all fields
+    // Validation
     for (const value of Object.values(shippingInfo)) {
       if (!value.trim()) return toast.error("Fill all shipping information fields");
     }
@@ -132,12 +160,12 @@ const QuickOrder = ({ isOpen, onClose, productData, selectedSize, selectedColor,
     if (!selectedDistrict) return toast.error("Please select a district");
     if (!selectedMunicipality) return toast.error("Please select a municipality");
     if (!locationSelected) return toast.error("Select location on map");
-    if (!productData || !selectedSize) return toast.error("Select size");
+    if (!finalProduct) return toast.error("Product data missing");
+    if (!finalSize) return toast.error("Select size");
     
     setIsLoading(true);
     
     try {
-      // Get selected address names
       const province = addressData.find(p => p.id.toString() === selectedProvince);
       const district = availableDistricts.find(d => d.id.toString() === selectedDistrict);
       const municipality = availableMunicipalities.find(m => m.id.toString() === selectedMunicipality);
@@ -145,21 +173,22 @@ const QuickOrder = ({ isOpen, onClose, productData, selectedSize, selectedColor,
       const formattedAddress = `${shippingInfo.fullName}, ${shippingInfo.streetAddress}, ${shippingInfo.city}, ${municipality?.name || ''}, ${district?.name || ''}, ${province?.name || ''}, ${shippingInfo.phone}`;
       
       const orderData = {
-        productId: productData._id,
+        productId: finalProduct._id,
         quantity: quantity,
         address: formattedAddress,
         location: location,
         paymentMethod: paymentMethod,
-        color: selectedColor || "White",
-        size: selectedSize
+        color: finalColor || "White",
+        size: finalSize
       };
       
-      const response = await axios.post(`${backend_url}/v1/place`, orderData, { headers: { Authorization: `Bearer ${token}` } });
+      // ✅ API Call using configured instance
+      const response = await api.post('/v1/place', orderData);
       
       if (response.data.khaltiUrl) {
         window.location.href = response.data.khaltiUrl;
       } else if (response.data.approvalUrl) {
-        localStorage.setItem('paypal_pending_product_ids', productData._id);
+        localStorage.setItem('paypal_pending_product_ids', finalProduct._id);
         openPayPalPopup(response.data.approvalUrl);
       } else {
         fetchCartData();
@@ -169,8 +198,8 @@ const QuickOrder = ({ isOpen, onClose, productData, selectedSize, selectedColor,
       }
     } catch (error) {
       console.error(error);
-      if (error.response?.status === 401) { toast.error("Session expired"); navigate('/login'); }
-      else { toast.error(error.response?.data?.error || "Order failed"); }
+      const errorMsg = error.response?.data?.error || error.response?.data?.message || "Order failed";
+      toast.error(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -180,7 +209,7 @@ const QuickOrder = ({ isOpen, onClose, productData, selectedSize, selectedColor,
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-xl shadow-xl w-[70%] max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-xl w-[95%] md:w-[70%] max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white p-4 border-b flex justify-between items-center z-10">
           <h2 className="text-xl font-bold">Quick Checkout</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700"><X size={24} /></button>
@@ -222,7 +251,7 @@ const QuickOrder = ({ isOpen, onClose, productData, selectedSize, selectedColor,
                     required
                   >
                     <option value="">Select Province *</option>
-                    {addressData.map(province => (
+                    {addressData && addressData.map(province => (
                       <option key={province.id} value={province.id}>
                         {province.name}
                       </option>
@@ -284,7 +313,7 @@ const QuickOrder = ({ isOpen, onClose, productData, selectedSize, selectedColor,
                 </div>
                 
                 <h3 className="text-lg font-semibold mb-3 mt-6">Select Delivery Location</h3>
-                <div className="mb-6 h-64 border rounded-lg overflow-hidden">
+                <div className="mb-6 h-64 border rounded-lg overflow-hidden relative z-0">
                   <MapContainer center={[location.lat, location.lng]} zoom={13} style={{ height: "100%", width: "100%" }}>
                     <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                     <LocationPicker onLocationSelected={handleLocationSelected} />
@@ -321,11 +350,13 @@ const QuickOrder = ({ isOpen, onClose, productData, selectedSize, selectedColor,
             
             <div className="md:col-span-1 sticky top-4">
               <h2 className="text-xl font-semibold mb-4"><Package className="inline mr-2" />Order Summary</h2>
-              {productData && (
+              
+              {/* ✅ Uses finalProduct to prevent crashes */}
+              {finalProduct && (
                 <div className="mb-4 text-sm space-y-2">
-                  <p className="font-medium">{productData.productName}</p>
-                  <p className="text-gray-600">Size: {selectedSize}</p>
-                  <p className="text-gray-600">Color: {selectedColor || "White"}</p>
+                  <p className="font-medium text-lg">{finalProduct.productName}</p>
+                  <p className="text-gray-600">Size: {finalSize}</p>
+                  <p className="text-gray-600">Color: {finalColor || "White"}</p>
                   <p className="text-gray-600">Quantity: {quantity}</p>
                   <div className="pt-2 border-t">
                     <p className="flex justify-between"><span>Subtotal:</span><span>Rs. {subtotal.toLocaleString()}</span></p>
@@ -333,6 +364,7 @@ const QuickOrder = ({ isOpen, onClose, productData, selectedSize, selectedColor,
                   </div>
                 </div>
               )}
+              
               <div className="border-t pt-2 font-bold flex justify-between text-lg">
                 <span>Total</span>
                 <span>Rs. {total.toLocaleString()}</span>
@@ -341,7 +373,7 @@ const QuickOrder = ({ isOpen, onClose, productData, selectedSize, selectedColor,
           </div>
         </div>
       </div>
-      <ToastContainer position="bottom-right" />
+      {/* ❌ REMOVED: <ToastContainer /> (It causes errors if not imported, and duplicates App.js container) */}
     </div>
   );
 };

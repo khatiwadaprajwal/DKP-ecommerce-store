@@ -3,9 +3,12 @@ import AOS from 'aos';
 import 'aos/dist/aos.css';
 import Newsletter from '../component/Newsletter';
 import { motion } from 'framer-motion';
-import axios from 'axios';
+import api from '../config/api'; // ✅ Use centralized API
+import { useAuth } from '../context/AuthProvider'; // ✅ Use Auth Context
 
 const Contact = () => {
+  const { token } = useAuth(); // ✅ Get token status from context
+  
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -36,57 +39,41 @@ const Contact = () => {
     e.preventDefault();
     setLoading(true);
     
-    try {
-      // Get token from localStorage
-      const token = localStorage.getItem('token');
-      
-      // Check if token exists
-      if (!token) {
-        setStatus({
-          type: 'error',
-          message: 'Please log in to send a message.'
-        });
-        setLoading(false);
-        return;
-      }
-      
-      // Make API request with Bearer token
-      const response = await axios.post('http://localhost:3001/v1/send', formData, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
+    // ✅ Check Auth using Context
+    if (!token) {
+      setStatus({
+        type: 'error',
+        message: 'Please log in to send a message.'
       });
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // ✅ api.post handles BaseURL and Authorization Headers automatically
+      const response = await api.post('/v1/send', formData);
       
       setStatus({
         type: 'success',
         message: response.data.message || 'Message sent successfully!'
       });
       
-      // Clear form fields after successful submission
+      // Clear form fields
       setFormData({
         name: '',
         email: '',
         msg: ''
       });
     } catch (error) {
-      console.error('Error details:', error.response || error);
+      console.error('Error details:', error);
       
       let errorMessage = 'Failed to send message. Please try again.';
-      
-      // Handle specific error cases
-      if (error.response) {
-        if (error.response.status === 401) {
-          errorMessage = 'Your session has expired. Please log in again.';
-          // Optionally clear the invalid token
-          localStorage.removeItem('token');
-        } else if (error.response.status === 403) {
-          errorMessage = 'You do not have permission to send messages.';
-        } else {
-          errorMessage = error.response.data?.error || errorMessage;
-        }
-      } else if (error.request) {
-        errorMessage = 'Cannot connect to server. Please check your connection.';
+
+      // Handle simplified errors (Interceptor handles redirect on 401)
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
       }
       
       setStatus({
@@ -98,10 +85,7 @@ const Contact = () => {
       
       // Clear status message after 5 seconds
       setTimeout(() => {
-        setStatus({
-          type: '',
-          message: ''
-        });
+        setStatus({ type: '', message: '' });
       }, 5000);
     }
   };

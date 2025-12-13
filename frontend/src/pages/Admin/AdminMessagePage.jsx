@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { EyeIcon, TrashIcon, InboxIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import axios from 'axios';
-import { ShopContext } from '../../context/ShopContext';
+// ✅ Import centralized API configuration
+import api from '../../config/api';
 
 const AdminMessagesPage = () => {
   const [messages, setMessages] = useState([]);
@@ -20,24 +20,13 @@ const AdminMessagesPage = () => {
     subject: '',
     message: ''
   });
-  const token = localStorage.getItem("token");
-  const { backend_url} = useContext(ShopContext);  
-  // API base URL
-  const API_BASE_URL = backend_url;
-  
-  // Setup axios instance with default headers
-  const api = axios.create({
-    baseURL: API_BASE_URL,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`
-    }
-  });
-  
+
+  // ✅ 1. Fetch All Messages
   const fetchAllMessages = async () => {
     try {
       setLoading(true);
-      const response = await api.get("v1/all");
+      // api.get uses the base URL and adds Auth headers automatically
+      const response = await api.get("/v1/all");
       setMessages(response.data);
       setErrorMessage('');
     } catch (error) {
@@ -48,6 +37,7 @@ const AdminMessagesPage = () => {
     }
   };
   
+  // ✅ 2. Fetch Messages by Email
   const fetchMessagesByEmail = async (email) => {
     if (!email) {
       fetchAllMessages();
@@ -56,7 +46,7 @@ const AdminMessagesPage = () => {
     
     try {
       setLoading(true);
-      const response = await api.get(`v1/msg/${email}`);
+      const response = await api.get(`/v1/msg/${email}`);
       setMessages(response.data);
       setErrorMessage('');
     } catch (error) {
@@ -114,11 +104,12 @@ const AdminMessagesPage = () => {
     setReplyData(prev => ({ ...prev, [name]: value }));
   };
 
+  // ✅ 3. Send Reply
   const sendReply = async (e) => {
     e.preventDefault();
     
     try {
-      await api.post('v1/reply', {
+      await api.post('/v1/reply', {
         email: replyData.email,
         subject: replyData.subject,
         reply: replyData.message
@@ -178,6 +169,7 @@ const AdminMessagesPage = () => {
     };
     return new Date(dateTimeString).toLocaleString(undefined, options);
   };
+
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">

@@ -4,15 +4,16 @@ import { jwtDecode } from 'jwt-decode';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { ShopContext } from '../context/ShopContext'; // Needed for backend_url
+import api from '../config/api'; // Updated import to use api.js
 
 const AuthContext = createContext();
 
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-  const { backend_url } = useContext(ShopContext); // Get URL from your existing context
+  // We don't need backend_url here anymore because api.js handles the baseURL
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [token, setToken] = useState(localStorage.getItem('accessToken')); // Changed 'token' to 'accessToken' to match api.js
   const [loading, setLoading] = useState(true);
 
   // Helper to decode
@@ -20,70 +21,60 @@ export const AuthProvider = ({ children }) => {
     try { return jwtDecode(t); } catch (e) { return null; }
   };
 
-  // 1. Initialize
+  // 1. Initialize App (Check LocalStorage)
   useEffect(() => {
-    axios.defaults.withCredentials = true;
-    const storedToken = localStorage.getItem('token');
+    const storedToken = localStorage.getItem('accessToken');
+    
     if (storedToken) {
       const decoded = decodeUser(storedToken);
       if (decoded) {
         setUser(decoded);
         setToken(storedToken);
-        axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+        // ✅ CHANGE 2: Set header on your 'api' instance, not global axios
+        api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
       } else {
-        localStorage.removeItem('token');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('user');
       }
     }
     setLoading(false);
   }, []);
 
-  // 2. Interceptors (Already correct, but ensure this is here)
-  useEffect(() => {
-    const resInterceptor = axios.interceptors.response.use(
-      (response) => {
-        const newToken = response.headers['x-new-access-token'];
-        if (newToken) {
-          localStorage.setItem('token', newToken);
-          setToken(newToken);
-          setUser(decodeUser(newToken));
-          axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
-        }
-        return response;
-      },
-      (error) => {
-        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-          // Only force logout if it's strictly an auth error, not a permission error
-           if (error.response.data.message === "Session expired. Please login again.") {
-               handleLogout(); 
-           }
-        }
-        return Promise.reject(error);
-      }
-    );
-    return () => axios.interceptors.response.eject(resInterceptor);
-  }, []);
+  // ❌ REMOVED: The generic axios interceptor logic. 
+  // Why? Because 'api.js' now handles the 401/403 refresh logic automatically.
 
+  // 2. Login Function
   const login = (newToken, userData) => {
-    localStorage.setItem('token', newToken);
+    localStorage.setItem('accessToken', newToken);
+    localStorage.setItem('user', JSON.stringify(userData));
+    
     setToken(newToken);
     setUser(userData);
-    axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+    
+    // ✅ CHANGE 3: Update 'api' instance headers
+    api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
   };
 
-  // 🔴 UPDATED LOGOUT FUNCTION
+  // 3. Logout Function
   const handleLogout = async () => {
     try {
-      // 1. Call Backend to clear Cookie
-      await axios.post(`${backend_url}/v1/auth/logout`); 
+      // ✅ CHANGE 4: Use 'api.post' to utilize the baseURL and credentials
+      await api.post(`/auth/logout`); 
     } catch (error) {
       console.error("Logout error", error);
     } finally {
-      // 2. Clear Frontend State regardless of backend success
-      localStorage.removeItem('token');
+      // Clear State
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('user');
       setToken(null);
       setUser(null);
-      delete axios.defaults.headers.common['Authorization'];
+      
+      // Clear Header
+      delete api.defaults.headers.common['Authorization'];
+      
       toast.success("Logged out successfully");
+      // Optional: Force redirect to ensure clean state
+      // window.location.href = '/login'; 
     }
   };
 
@@ -92,8 +83,7 @@ export const AuthProvider = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
-};
-
+}
 // ----- UPDATED ROUTES -----
 
 export const AdminRoute = () => {

@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { EyeIcon, MapPinIcon, Download } from 'lucide-react';
-import axios from "axios";
-import { ShopContext } from "../../context/ShopContext";
 import { QRCodeSVG } from "qrcode.react";
 import { motion } from "framer-motion";
-  
+
+// ✅ Import centralized API and Auth
+import api from "../../config/api";
+import { useAuth } from "../../context/AuthProvider";
+
 const ListOrders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -13,10 +15,12 @@ const ListOrders = () => {
   const [showOrderDetails, setShowOrderDetails] = useState(null);
   const [error, setError] = useState(null);
   const [qrOrder, setQrOrder] = useState(null);
-  const qrRef = React.useRef(null);
+  
+  // ✅ Use useRef hook directly
+  const qrRef = useRef(null);
 
-  const token = localStorage.getItem("token");
-  const {backend_url}= useContext(ShopContext);
+  // ✅ Get token from AuthContext (for dependency array)
+  const { token } = useAuth();
   
   const statusOptions = ['All', 'Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
   const paymentMethods = ['Cash', 'PayPal'];
@@ -27,11 +31,8 @@ const ListOrders = () => {
     const fetchOrders = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`${backend_url}/v1/getallorder`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        // ✅ Use api.get (BaseURL and Headers handled automatically)
+        const response = await api.get("/v1/getallorder");
         
         // Check if response contains orders
         if (response.data && response.data.orders) {
@@ -48,20 +49,14 @@ const ListOrders = () => {
       }
     };
     
+    // Only fetch if token exists (handled by api.js mostly, but good for safety)
     fetchOrders();
   }, [token]);
   
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
-      const response = await axios.put(`${backend_url}/v1/change-status/${orderId}`, 
-        { status: newStatus },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
-          }
-        }
-      );
+      // ✅ Use api.put
+      const response = await api.put(`/v1/change-status/${orderId}`, { status: newStatus });
       
       if (response.data && response.data.order) {
         // Update local state with the updated order
@@ -172,6 +167,7 @@ const ListOrders = () => {
       img.src = 'data:image/svg+xml;base64,' + window.btoa(svgData);
     }
   };
+
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">

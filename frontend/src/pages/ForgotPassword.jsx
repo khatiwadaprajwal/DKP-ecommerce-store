@@ -1,348 +1,215 @@
-import React, { useContext, useState, useRef } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { assets } from "../assets/assets";
-import { ShopContext } from "../context/ShopContext";
+import api from "../config/api"; 
+import { toast } from "react-toastify";
 
 const ForgotPassword = () => {
-  const { backend_url } = useContext(ShopContext);
+  const navigate = useNavigate();
   
-  // Define states for multi-step process
-  const [step, setStep] = useState(1); // 1: Email entry, 2: OTP verification, 3: New password
+  // Define states
+  const [step, setStep] = useState(1); // 1: Email, 2: OTP & Password, 3: Success
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState(""); // "success" or "error"
   const [isLoading, setIsLoading] = useState(false);
 
-  // Create refs for input elements to maintain focus
+  // Refs for focus management
   const emailInputRef = useRef(null);
   const otpInputRef = useRef(null);
-  const passwordInputRef = useRef(null);
-  const confirmPasswordInputRef = useRef(null);
-  
+
+  // --- HANDLERS ---
+
   // Step 1: Request OTP
   const handleRequestOTP = async (e) => {
     e.preventDefault();
     
-    // Reset any previous messages
-    setMessage("");
+    if (!email) return toast.error("Please enter your email address");
+    
     setIsLoading(true);
-    
-    // Basic validation
-    if (!email) {
-      setMessage("Please enter your email address");
-      setMessageType("error");
-      setIsLoading(false);
-      return;
-    }
-    
     try {
-      // Call the sendotp API endpoint
-      const response = await fetch(`${backend_url}/v1/sendotp`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email }),
-      });
-      
-      const data = await response.json();
-      
-      if (response.status === 201) {
-        setMessage("OTP sent to your email. Please check your inbox.");
-        setMessageType("success");
-        setStep(2); // Move to OTP verification step
-        
-        // Focus on OTP input after state update
-        setTimeout(() => {
-          if (otpInputRef.current) {
-            otpInputRef.current.focus();
-          }
-        }, 0);
-      } else {
-        setMessage(data.error || "Failed to send OTP. Please try again.");
-        setMessageType("error");
+      const response = await api.post("/v1/sendotp", { email });
+      if (response.status === 201 || response.status === 200) {
+        toast.success("OTP sent to your email!");
+        setStep(2); 
+        // Focus OTP field after render
+        setTimeout(() => otpInputRef.current?.focus(), 100);
       }
     } catch (error) {
-      setMessage("Network error. Please try again.");
-      setMessageType("error");
+      console.error(error);
+      toast.error(error.response?.data?.error || "Failed to send OTP.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Step 2: Verify OTP and set new password
+  // Step 2: Verify & Reset
   const handleResetPassword = async (e) => {
     e.preventDefault();
     
-    // Reset any previous messages
-    setMessage("");
+    if (!otp) return toast.error("Enter OTP");
+    if (!password) return toast.error("Enter new password");
+    if (password !== confirmPassword) return toast.error("Passwords do not match");
+    
     setIsLoading(true);
-    
-    // Basic validation
-    if (!otp) {
-      setMessage("Please enter the OTP sent to your email");
-      setMessageType("error");
-      setIsLoading(false);
-      return;
-    }
-    
-    if (!password) {
-      setMessage("Please enter a new password");
-      setMessageType("error");
-      setIsLoading(false);
-      return;
-    }
-    
-    if (password !== confirmPassword) {
-      setMessage("Passwords do not match");
-      setMessageType("error");
-      setIsLoading(false);
-      return;
-    }
-    
     try {
-      // Call the resetpassword API endpoint
-      const response = await fetch(`${backend_url}/v1/resetpassword`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, otp, password }),
-      });
-      
-      const data = await response.json();
+      const response = await api.put("/v1/resetpassword", { email, otp, password });
       
       if (response.status === 200) {
-        setMessage("Password reset successfully. You can now login with your new password.");
-        setMessageType("success");
-        setStep(3); // Move to completion step
-      } else {
-        setMessage(data.message || "Failed to reset password. Please try again.");
-        setMessageType("error");
+        toast.success("Password reset successfully!");
+        setStep(3);
       }
     } catch (error) {
-      setMessage("Network error. Please try again.");
-      setMessageType("error");
+      console.error(error);
+      toast.error(error.response?.data?.message || "Failed to reset password.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Handle input changes without losing focus
-  const handleEmailChange = (e) => {
-    setEmail(e.target.value);
-  };
-
-  const handleOtpChange = (e) => {
-    setOtp(e.target.value);
-  };
-
-  const handlePasswordChange = (e) => {
-    setPassword(e.target.value);
-  };
-
-  const handleConfirmPasswordChange = (e) => {
-    setConfirmPassword(e.target.value);
-  };
-
-  // The Banner Component for Left Side
-  const LeftBanner = () => (
+  // --- RENDER HELPERS ---
+  const LeftBanner = (
     <div className="hidden md:block md:w-1/2 bg-blue-50">
       <img
-        src={assets.loginbanner}
-        alt="Shopping Cart with Smartphone"
+        src={assets.loginbanner || "https://via.placeholder.com/600x800"} // Fallback image
+        alt="Login Banner"
         className="w-full h-full object-cover"
       />
-    </div>
-  );
-
-  // Message Component
-  const MessageAlert = ({ message, type }) => (
-    message && (
-      <div className={`
-        mb-6 p-4 rounded-md text-center
-        ${type === "success" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}
-      `}>
-        {message}
-      </div>
-    )
-  );
-
-  // Step 1: Email Form
-  const EmailForm = () => (
-    <form onSubmit={handleRequestOTP} className="space-y-6">
-      <div>
-        <input
-          type="email"
-          name="email"
-          id="email"
-          value={email}
-          onChange={handleEmailChange}
-          placeholder="Enter your email"
-          required
-          ref={emailInputRef}
-          autoFocus
-          className="w-full px-4 py-3 border-b border-gray-300 focus:border-gray-900 focus:outline-none bg-transparent"
-        />
-      </div>
-      
-      <div className="flex flex-col space-y-4">
-        <button
-          type="submit"
-          disabled={isLoading}
-          className={`px-8 py-3 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors ${
-            isLoading ? "opacity-70 cursor-not-allowed" : ""
-          }`}
-        >
-          {isLoading ? "Sending..." : "Send OTP"}
-        </button>
-        
-        <Link
-          to="/login"
-          className="text-center text-blue-600 hover:underline"
-        >
-          Back to Login
-        </Link>
-      </div>
-    </form>
-  );
-
-  // Step 2: OTP and New Password Form
-  const OtpPasswordForm = () => (
-    <form onSubmit={handleResetPassword} className="space-y-6">
-      <div>
-        <input
-          type="text"
-          name="otp"
-          id="otp"
-          value={otp}
-          onChange={handleOtpChange}
-          placeholder="Enter OTP from email"
-          required
-          ref={otpInputRef}
-          autoFocus
-          className="w-full px-4 py-3 border-b border-gray-300 focus:border-gray-900 focus:outline-none bg-transparent"
-        />
-      </div>
-      
-      <div>
-        <input
-          type="password"
-          name="password"
-          id="password"
-          value={password}
-          onChange={handlePasswordChange}
-          placeholder="Enter new password"
-          required
-          ref={passwordInputRef}
-          className="w-full px-4 py-3 border-b border-gray-300 focus:border-gray-900 focus:outline-none bg-transparent"
-        />
-      </div>
-      
-      <div>
-        <input
-          type="password"
-          name="confirmPassword"
-          id="confirmPassword"
-          value={confirmPassword}
-          onChange={handleConfirmPasswordChange}
-          placeholder="Confirm new password"
-          required
-          ref={confirmPasswordInputRef}
-          className="w-full px-4 py-3 border-b border-gray-300 focus:border-gray-900 focus:outline-none bg-transparent"
-        />
-      </div>
-      
-      <div className="flex flex-col space-y-4">
-        <button
-          type="submit"
-          disabled={isLoading}
-          className={`px-8 py-3 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors ${
-            isLoading ? "opacity-70 cursor-not-allowed" : ""
-          }`}
-        >
-          {isLoading ? "Resetting..." : "Reset Password"}
-        </button>
-        
-        <button
-          type="button"
-          onClick={() => {
-            setStep(1);
-            // Focus on email input after state update
-            setTimeout(() => {
-              if (emailInputRef.current) {
-                emailInputRef.current.focus();
-              }
-            }, 0);
-          }}
-          className="text-center text-blue-600 hover:underline"
-        >
-          Back to Email Entry
-        </button>
-      </div>
-    </form>
-  );
-
-  // Step 3: Success and Login Link
-  const SuccessView = () => (
-    <div className="space-y-6">
-      <div className="text-center">
-        <svg 
-          className="mx-auto h-16 w-16 text-green-500" 
-          fill="none" 
-          viewBox="0 0 24 24" 
-          stroke="currentColor"
-        >
-          <path 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
-            strokeWidth={2} 
-            d="M5 13l4 4L19 7" 
-          />
-        </svg>
-        <p className="mt-4 text-lg">Password has been reset successfully!</p>
-      </div>
-      
-      <div className="flex flex-col space-y-4">
-        <Link
-          to="/login"
-          className="px-8 py-3 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors text-center"
-        >
-          Go to Login
-        </Link>
-      </div>
     </div>
   );
 
   return (
     <div className="min-h-screen flex flex-col">
       <div className="flex flex-1 flex-col md:flex-row">
-        {/* Left Side - Image */}
-        <LeftBanner />
+        {LeftBanner}
         
-        {/* Right Side - Forms */}
+        {/* Right Side */}
         <div className="w-full md:w-1/2 flex items-center justify-center px-6 py-12">
           <div className="w-full max-w-md">
+            
+            {/* Headers based on step */}
             <h2 className="text-3xl font-bold mb-2">
               {step === 1 && "Forgot Password"}
               {step === 2 && "Verify & Reset"}
-              {step === 3 && "Password Reset Complete"}
+              {step === 3 && "All Done!"}
             </h2>
             
             <p className="text-gray-600 mb-8">
-              {step === 1 && "Enter the email address associated with your account"}
-              {step === 2 && "Enter the OTP sent to your email and set a new password"}
-              {step === 3 && "Your password has been updated successfully"}
+              {step === 1 && "Enter your email to receive a verification code."}
+              {step === 2 && "Check your email for the OTP code."}
+              {step === 3 && "Your password has been updated."}
             </p>
             
-            <MessageAlert message={message} type={messageType} />
-            
-            {step === 1 && <EmailForm />}
-            {step === 2 && <OtpPasswordForm />}
-            {step === 3 && <SuccessView />}
+            {/* --- STEP 1: EMAIL FORM --- */}
+            {step === 1 && (
+              <form onSubmit={handleRequestOTP} className="space-y-6">
+                <div>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter your email"
+                    required
+                    ref={emailInputRef}
+                    autoFocus
+                    className="w-full px-4 py-3 border-b border-gray-300 focus:border-gray-900 focus:outline-none bg-transparent"
+                  />
+                </div>
+                <div className="flex flex-col space-y-4">
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="px-8 py-3 bg-black text-white rounded-md hover:bg-gray-800 transition-colors disabled:bg-gray-400"
+                  >
+                    {isLoading ? "Sending..." : "Send OTP"}
+                  </button>
+                  <Link to="/login" className="text-center text-sm text-gray-600 hover:text-black">
+                    Back to Login
+                  </Link>
+                </div>
+              </form>
+            )}
+
+            {/* --- STEP 2: OTP & PASSWORD FORM --- */}
+            {step === 2 && (
+              <form onSubmit={handleResetPassword} className="space-y-6">
+                {/* OTP Input */}
+                <div>
+                  <input
+                    type="text"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    placeholder="Enter OTP Code"
+                    required
+                    ref={otpInputRef}
+                    className="w-full px-4 py-3 border-b border-gray-300 focus:border-gray-900 focus:outline-none bg-transparent tracking-widest"
+                  />
+                </div>
+
+                {/* Password Input */}
+                <div>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="New Password"
+                    required
+                    className="w-full px-4 py-3 border-b border-gray-300 focus:border-gray-900 focus:outline-none bg-transparent"
+                  />
+                </div>
+
+                {/* Confirm Password Input */}
+                <div>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm New Password"
+                    required
+                    className="w-full px-4 py-3 border-b border-gray-300 focus:border-gray-900 focus:outline-none bg-transparent"
+                  />
+                </div>
+
+                <div className="flex flex-col space-y-4">
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="px-8 py-3 bg-black text-white rounded-md hover:bg-gray-800 transition-colors disabled:bg-gray-400"
+                  >
+                    {isLoading ? "Updating..." : "Reset Password"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    className="text-center text-sm text-gray-600 hover:text-black"
+                  >
+                    Change Email
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* --- STEP 3: SUCCESS --- */}
+            {step === 3 && (
+              <div className="space-y-6">
+                <div className="flex justify-center">
+                  <div className="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center">
+                    <svg className="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="flex flex-col space-y-4">
+                  <Link 
+                    to="/login" 
+                    className="px-8 py-3 bg-black text-white rounded-md hover:bg-gray-800 transition-colors text-center block"
+                  >
+                    Go to Login
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

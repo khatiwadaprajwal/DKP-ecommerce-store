@@ -1,10 +1,15 @@
-import { useState, useEffect, useContext } from 'react';
-import axios from 'axios';
-import { ShopContext } from '../context/ShopContext';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { Eye, EyeOff, User, Mail, Shield, LogOut } from 'lucide-react';
+
+import api from '../config/api';
+import { useAuth } from '../context/AuthProvider';
 
 export default function Profile() {
   const [user, setUser] = useState(null);
+  
+  // Password Form States
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [passwordData, setPasswordData] = useState({
     oldPassword: '',
@@ -14,18 +19,23 @@ export default function Profile() {
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // Status States
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { logout, navigate, backend_url } = useContext(ShopContext);
+  // Hooks
+  const navigate = useNavigate();
+  const { user: authUser, logout } = useAuth();
 
   useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      setUser(JSON.parse(userData));
+    if (authUser) {
+      setUser(authUser);
+    } else {
+        // Optional: Redirect if not logged in, though ProtectedRoute usually handles this
+        // navigate('/login');
     }
-  }, []);
+  }, [authUser]);
 
   const togglePasswordForm = () => {
     setShowPasswordForm(!showPasswordForm);
@@ -36,7 +46,6 @@ export default function Profile() {
         confirmPassword: ''
       });
       setError('');
-      setSuccess('');
     }
   };
 
@@ -50,7 +59,6 @@ export default function Profile() {
   const submitPasswordChange = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
     
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       setError('New passwords do not match');
@@ -64,41 +72,33 @@ export default function Profile() {
 
     setLoading(true);
     try {
-      const axiosInstance = axios.create({
-        baseURL: `${backend_url}`,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const response = await axiosInstance.put('/v1/changepassword', {
+      // ✅ api.put handles BaseURL and Auth Headers
+      const response = await api.put('/v1/changepassword', {
         oldPassword: passwordData.oldPassword,
         newPassword: passwordData.newPassword
       });
       
-      setSuccess(response.data.msg || 'Password changed successfully');
+      toast.success(response.data.msg || 'Password changed successfully');
+      
+      // Reset Form
       setPasswordData({
         oldPassword: '',
         newPassword: '',
         confirmPassword: ''
       });
-      
-      setTimeout(() => {
-        setShowPasswordForm(false);
-        setSuccess('');
-      }, 3000);
+      setShowPasswordForm(false);
       
     } catch (error) {
       const errorMessage = error.response?.data?.msg || error.message || 'Failed to change password';
       setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate("/login");
   };
 
@@ -164,18 +164,12 @@ export default function Profile() {
           </div>
           
           {showPasswordForm && (
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+            <div className="mt-6 p-4 bg-gray-50 rounded-lg animate-fade-in">
               <h2 className="text-lg font-medium mb-4">Change Password</h2>
               
               {error && (
                 <div className="mb-4 p-2 bg-red-100 text-red-700 rounded-md text-sm">
                   {error}
-                </div>
-              )}
-              
-              {success && (
-                <div className="mb-4 p-2 bg-green-100 text-green-700 rounded-md text-sm">
-                  {success}
                 </div>
               )}
               
@@ -253,7 +247,7 @@ export default function Profile() {
                   type="submit"
                   disabled={loading}
                   className={`w-full py-2 rounded-md text-white ${
-                    loading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'
+                    loading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
                   } transition duration-300`}
                 >
                   {loading ? 'Processing...' : 'Update Password'}

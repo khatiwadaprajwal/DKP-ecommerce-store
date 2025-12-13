@@ -1,60 +1,65 @@
 import React, { useContext, useEffect, useState } from "react";
 import { ShopContext } from "../context/ShopContext";
-import { motion } from "framer-motion";
 
 const Filter = ({ showFilter, setShowFilter }) => {
+  // ✅ FIX: Safe Destructuring with Default Values
+  // This prevents crashes (e.g., "Cannot read property 'length' of undefined") 
+  // if the Context data hasn't loaded yet.
   const {
-    gender,
-    category,
-    sizes,
-    colors,
-    priceRange,
-    toggleGender,
-    toggleCategory,
-    toggleSizes,
-    toggleColor,
-    setPriceRange,
-    resetGenderFilter,
-    resetCategoryFilter,
-    resetSizeFilter,
-    resetColorFilter,
-    resetPriceFilter,
-    resetAllFilters,
-    applyFilter
+    gender = [], 
+    category = [],
+    sizes = [],
+    colors = [],
+    priceRange = [0, 5000], // Default price range
+    toggleGender = () => {},
+    toggleCategory = () => {},
+    toggleSizes = () => {},
+    toggleColor = () => {},
+    setPriceRange = () => {},
+    resetGenderFilter = () => {},
+    resetCategoryFilter = () => {},
+    resetSizeFilter = () => {},
+    resetColorFilter = () => {},
+    resetPriceFilter = () => {},
+    resetAllFilters = () => {},
+    applyFilter = () => {}
   } = useContext(ShopContext);
+
+  // Helper to safely check array inclusion
+  const safeIncludes = (arr, item) => Array.isArray(arr) && arr.includes(item);
 
   // State to track gender checkbox status
   const [checkedGenders, setCheckedGenders] = useState({
-    All: gender.length === 0,
-    Men: gender.includes("Men"),
-    Women: gender.includes("Women"),
-    Kids: gender.includes("Kids"),
+    All: Array.isArray(gender) && gender.length === 0,
+    Men: safeIncludes(gender, "Men"),
+    Women: safeIncludes(gender, "Women"),
+    Kids: safeIncludes(gender, "Kids"),
   });
 
   // State to track category checkbox status
   const [checkedCategories, setCheckedCategories] = useState({
-    All: category.length === 0,
-    Formal: category.includes("Formal"),
-    Casual: category.includes("Casual"),
-    Ethnic: category.includes("Ethnic"),
+    All: Array.isArray(category) && category.length === 0,
+    Formal: safeIncludes(category, "Formal"),
+    Casual: safeIncludes(category, "Casual"),
+    Ethnic: safeIncludes(category, "Ethnic"),
   });
 
   // State to track size checkbox status
   const [checkedSizes, setCheckedSizes] = useState({
-    S: sizes.includes("S"),
-    M: sizes.includes("M"),
-    L: sizes.includes("L"),
-    XL: sizes.includes("XL"),
-    XXL: sizes.includes("XXL"),
+    S: safeIncludes(sizes, "S"),
+    M: safeIncludes(sizes, "M"),
+    L: safeIncludes(sizes, "L"),
+    XL: safeIncludes(sizes, "XL"),
+    XXL: safeIncludes(sizes, "XXL"),
   });
 
   // State to track color selection
   const [checkedColors, setCheckedColors] = useState({
-    Black: colors.includes("Black"),
-    White: colors.includes("White"),
-    Blue: colors.includes("Blue"),
-    Red: colors.includes("Red"),
-    Green: colors.includes("Green"),
+    Black: safeIncludes(colors, "Black"),
+    White: safeIncludes(colors, "White"),
+    Blue: safeIncludes(colors, "Blue"),
+    Red: safeIncludes(colors, "Red"),
+    Green: safeIncludes(colors, "Green"),
   });
 
   // Color options array
@@ -63,7 +68,6 @@ const Filter = ({ showFilter, setShowFilter }) => {
   // Handle gender checkbox change
   const handleGenderChange = (genderValue) => {
     if (genderValue === "All") {
-      // If "All" is selected, uncheck all other genders
       setCheckedGenders({
         All: true,
         Men: false,
@@ -72,36 +76,24 @@ const Filter = ({ showFilter, setShowFilter }) => {
       });
       resetGenderFilter();
     } else {
-      // If a specific gender is selected, handle it accordingly
       const newCheckedState = !checkedGenders[genderValue];
-
-      // Update the checked state for this gender
       setCheckedGenders((prev) => ({
         ...prev,
         [genderValue]: newCheckedState,
-        // If we're checking a specific gender, uncheck "All"
         All: false,
       }));
 
-      // Update the gender array for filtering
       toggleGender(genderValue);
 
-      // If no genders are selected, check "All"
+      // Logic to re-check "All" if nothing is selected
       const updatedChecked = {
         ...checkedGenders,
         [genderValue]: newCheckedState,
         All: false,
       };
 
-      if (
-        !updatedChecked.Men &&
-        !updatedChecked.Women &&
-        !updatedChecked.Kids 
-      ) {
-        setCheckedGenders((prev) => ({
-          ...prev,
-          All: true,
-        }));
+      if (!updatedChecked.Men && !updatedChecked.Women && !updatedChecked.Kids) {
+        setCheckedGenders((prev) => ({ ...prev, All: true }));
         resetGenderFilter();
       }
     }
@@ -110,7 +102,6 @@ const Filter = ({ showFilter, setShowFilter }) => {
   // Handle category checkbox change
   const handleCategoryChange = (categoryValue) => {
     if (categoryValue === "All") {
-      // If "All" is selected, uncheck all other categories
       setCheckedCategories({
         All: true,
         Formal: false,
@@ -119,72 +110,52 @@ const Filter = ({ showFilter, setShowFilter }) => {
       });
       resetCategoryFilter();
     } else {
-      // If a specific category is selected, handle it accordingly
       const newCheckedState = !checkedCategories[categoryValue];
-
-      // Update the checked state for this category
       setCheckedCategories((prev) => ({
         ...prev,
         [categoryValue]: newCheckedState,
-        // If we're checking a specific category, uncheck "All"
         All: false,
       }));
 
-      // Update the category array for filtering
       toggleCategory(categoryValue);
 
-      // If no categories are selected, check "All"
       const updatedChecked = {
         ...checkedCategories,
         [categoryValue]: newCheckedState,
         All: false,
       };
 
-      if (
-        !updatedChecked.Formal &&
-        !updatedChecked.Casual &&
-        !updatedChecked.Ethnic
-      ) {
-        setCheckedCategories((prev) => ({
-          ...prev,
-          All: true,
-        }));
+      if (!updatedChecked.Formal && !updatedChecked.Casual && !updatedChecked.Ethnic) {
+        setCheckedCategories((prev) => ({ ...prev, All: true }));
         resetCategoryFilter();
       }
     }
   };
 
-  // Handle size checkbox change
   const handleSizeChange = (size) => {
-    setCheckedSizes((prev) => ({
-      ...prev,
-      [size]: !prev[size],
-    }));
-
+    setCheckedSizes((prev) => ({ ...prev, [size]: !prev[size] }));
     toggleSizes(size);
   };
 
-  // Handle color toggle
   const handleColorToggle = (color) => {
-    setCheckedColors((prev) => ({
-      ...prev,
-      [color]: !prev[color],
-    }));
+    setCheckedColors((prev) => ({ ...prev, [color]: !prev[color] }));
     toggleColor(color);
   };
 
-  // Handle price range change
   const handlePriceChange = (e, index) => {
-    const newValue = parseInt(e.target.value);
+    const newValue = parseInt(e.target.value) || 0; // Guard against NaN
     setPriceRange((prev) => {
-      const newRange = [...prev];
+      // Guard if prev is undefined
+      const safePrev = Array.isArray(prev) ? prev : [0, 5000];
+      const newRange = [...safePrev];
       newRange[index] = newValue;
       return newRange;
     });
   };
 
-  // Update checkbox states when filter states change
+  // ✅ Update effects with safety checks
   useEffect(() => {
+    if (!Array.isArray(gender)) return;
     setCheckedGenders({
       All: gender.length === 0,
       Men: gender.includes("Men"),
@@ -194,6 +165,7 @@ const Filter = ({ showFilter, setShowFilter }) => {
   }, [gender]);
 
   useEffect(() => {
+    if (!Array.isArray(category)) return;
     setCheckedCategories({
       All: category.length === 0,
       Formal: category.includes("Formal"),
@@ -203,6 +175,7 @@ const Filter = ({ showFilter, setShowFilter }) => {
   }, [category]);
 
   useEffect(() => {
+    if (!Array.isArray(sizes)) return;
     setCheckedSizes({
       S: sizes.includes("S"),
       M: sizes.includes("M"),
@@ -213,6 +186,7 @@ const Filter = ({ showFilter, setShowFilter }) => {
   }, [sizes]);
 
   useEffect(() => {
+    if (!Array.isArray(colors)) return;
     setCheckedColors({
       Black: colors.includes("Black"),
       White: colors.includes("White"),
@@ -223,31 +197,13 @@ const Filter = ({ showFilter, setShowFilter }) => {
   }, [colors]);
 
   return (
-    <div
-      className={`${
-        showFilter ? "block" : "hidden"
-      } lg:block lg:w-64 space-y-6`}
-    >
+    <div className={`${showFilter ? "block" : "hidden"} lg:block lg:w-64 space-y-6`}>
       {/* Mobile close button */}
       <div className="lg:hidden flex justify-between items-center bg-white p-4 rounded-xl shadow-sm">
         <h2 className="font-bold text-lg">Filters</h2>
-        <button
-          onClick={() => setShowFilter(false)}
-          className="p-1 rounded-full hover:bg-gray-100"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
+        <button onClick={() => setShowFilter(false)} className="p-1 rounded-full hover:bg-gray-100">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
@@ -259,17 +215,14 @@ const Filter = ({ showFilter, setShowFilter }) => {
           <button
             onClick={resetGenderFilter}
             className="text-sm text-blue-600 hover:text-blue-800"
-            disabled={gender.length === 0}
+            disabled={!Array.isArray(gender) || gender.length === 0}
           >
             Reset
           </button>
         </div>
         <div className="space-y-1">
           {["All", "Men", "Women", "Kids"].map((item) => (
-            <label
-              key={item}
-              className="flex items-center  text-lg gap-2 cursor-pointer group"
-            >
+            <label key={item} className="flex items-center text-lg gap-2 cursor-pointer group">
               <input
                 className="form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out"
                 type="checkbox"
@@ -291,19 +244,16 @@ const Filter = ({ showFilter, setShowFilter }) => {
           <button
             onClick={resetCategoryFilter}
             className="text-sm text-blue-600 hover:text-blue-800"
-            disabled={category.length === 0}
+            disabled={!Array.isArray(category) || category.length === 0}
           >
             Reset
           </button>
         </div>
         <div className="space-y-1">
           {["All", "Formal", "Casual", "Ethnic"].map((item) => (
-            <label
-              key={item}
-              className="flex items-center text-lg gap-2 cursor-pointer group"
-            >
+            <label key={item} className="flex items-center text-lg gap-2 cursor-pointer group">
               <input
-                className="form-checkbox h-4 w-4 text-blue-600  transition duration-150 ease-in-out"
+                className="form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out"
                 type="checkbox"
                 checked={checkedCategories[item] || false}
                 onChange={() => handleCategoryChange(item)}
@@ -323,7 +273,7 @@ const Filter = ({ showFilter, setShowFilter }) => {
           <button
             onClick={resetSizeFilter}
             className="text-sm text-blue-600 hover:text-blue-800"
-            disabled={sizes.length === 0}
+            disabled={!Array.isArray(sizes) || sizes.length === 0}
           >
             Reset
           </button>
@@ -332,7 +282,7 @@ const Filter = ({ showFilter, setShowFilter }) => {
           {["S", "M", "L", "XL", "XXL"].map((size) => (
             <label
               key={size}
-              className={`flex items-center  text-sm justify-center h-10 rounded-lg cursor-pointer transition-all ${
+              className={`flex items-center text-sm justify-center h-10 rounded-lg cursor-pointer transition-all ${
                 checkedSizes[size]
                   ? "bg-blue-600 text-white"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -357,7 +307,7 @@ const Filter = ({ showFilter, setShowFilter }) => {
           <button
             onClick={resetColorFilter}
             className="text-sm text-blue-600 hover:text-blue-800"
-            disabled={colors.length === 0}
+            disabled={!Array.isArray(colors) || colors.length === 0}
           >
             Reset
           </button>
@@ -368,16 +318,11 @@ const Filter = ({ showFilter, setShowFilter }) => {
               key={color}
               onClick={() => handleColorToggle(color)}
               className={`w-8 h-8 rounded-full border-2 ${
-                checkedColors[color]
-                  ? "ring-2 ring-blue-500 ring-offset-2"
-                  : ""
+                checkedColors[color] ? "ring-2 ring-blue-500 ring-offset-2" : ""
               }`}
               style={{
                 backgroundColor: color.toLowerCase(),
-                borderColor:
-                  color.toLowerCase() === "white"
-                    ? "#e5e7eb"
-                    : color.toLowerCase(),
+                borderColor: color.toLowerCase() === "white" ? "#e5e7eb" : color.toLowerCase(),
               }}
               aria-label={color}
             />
@@ -392,15 +337,17 @@ const Filter = ({ showFilter, setShowFilter }) => {
           <button
             onClick={resetPriceFilter}
             className="text-sm text-blue-600 hover:text-blue-800"
-            disabled={priceRange[0] === 0 && priceRange[1] === 5000}
+            disabled={
+              Array.isArray(priceRange) && priceRange[0] === 0 && priceRange[1] === 5000
+            }
           >
             Reset
           </button>
         </div>
         <div className="px-2">
-          <div className="flex justify-between  text-lg mb-2">
-            <span>₹{priceRange[0]}</span>
-            <span>₹{priceRange[1]}</span>
+          <div className="flex justify-between text-lg mb-2">
+            <span>₹{Array.isArray(priceRange) ? priceRange[0] : 0}</span>
+            <span>₹{Array.isArray(priceRange) ? priceRange[1] : 5000}</span>
           </div>
           <div className="flex flex-col gap-4">
             <input
@@ -408,7 +355,7 @@ const Filter = ({ showFilter, setShowFilter }) => {
               min="0"
               max="5000"
               step="100"
-              value={priceRange[0]}
+              value={Array.isArray(priceRange) ? priceRange[0] : 0}
               onChange={(e) => handlePriceChange(e, 0)}
               className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
             />
@@ -417,7 +364,7 @@ const Filter = ({ showFilter, setShowFilter }) => {
               min="0"
               max="5000"
               step="100"
-              value={priceRange[1]}
+              value={Array.isArray(priceRange) ? priceRange[1] : 5000}
               onChange={(e) => handlePriceChange(e, 1)}
               className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
             />

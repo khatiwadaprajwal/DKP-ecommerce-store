@@ -1,9 +1,12 @@
-import React, { useContext, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
 import { toast } from "react-toastify";
-import { assets } from "../assets/assets";
-import { ShopContext } from "../context/ShopContext";
+
+// Import the image directly
+import loginBannerImg from "../assets/loginBanner.png"; 
+
+import api from "../config/api"; 
+import { useAuth } from "../context/AuthProvider"; 
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -16,19 +19,16 @@ const Login = () => {
   const [accountLocked, setAccountLocked] = useState(false);
 
   const navigate = useNavigate();
+  const { login, token } = useAuth(); 
 
-  // ✅ Get setUser from context to update it immediately
-  const { backend_url, setToken, setUser, token } = useContext(ShopContext);
-
-  // If already logged in, redirect
+  // Redirect if already logged in
   useEffect(() => {
     if (token) {
-      // Optional: Add logic here if you want to redirect logged-in users away from login page
-      // navigate('/'); 
+       navigate('/'); 
     }
   }, [token, navigate]);
 
-  // Countdown timer logic (Unchanged)
+  // Timer Logic
   useEffect(() => {
     let timer;
     if (lockTimeRemaining && lockTimeRemaining > 0) {
@@ -59,34 +59,19 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      // ✅ Check your endpoint. In previous steps it was /v1/login. 
-      // If your backend uses /v1/auth/login, keep this. If not, remove /auth.
-      const response = await axios.post(`${backend_url}/v1/auth/login`, {
+      const response = await api.post(`/v1/auth/login`, {
         email,
         password,
       });
 
       if (response.status === 200) {
-        const { token, user } = response.data;
-
-        // ✅ 1. Save Token
-        localStorage.setItem("token", token);
-        if (setToken) setToken(token);
-
-        // ✅ 2. Set User Immediately (Fixes the Race Condition)
-        // This ensures AdminRoute has the user data BEFORE it loads.
-        if (setUser && user) {
-          localStorage.setItem("user", JSON.stringify(user)); // Save user for persistence
-          setUser(user);
-        }
-
+        const { accessToken, user } = response.data;
+        login(accessToken, user);
         setAccountLocked(false);
         setLockTimeRemaining(null);
         toast.success("Login successful");
 
-        // ✅ 3. Robust Role Check (Case Insensitive)
         const role = user?.role?.toLowerCase() || "";
-        
         if (role === "admin" || role === "superadmin") {
           navigate("/admin");
         } else {
@@ -98,13 +83,22 @@ const Login = () => {
       const statusCode = err.response?.status;
       const errorMessage = err.response?.data?.message || "Login failed.";
 
+      // 🟢 FIX HERE: Prevent double error boxes
       if (statusCode === 403 && errorMessage.toLowerCase().includes("locked")) {
         setAccountLocked(true);
-        setError(errorMessage);
+        setError(""); // ✅ Clear generic error so top box doesn't show
+
+        // Logic to extract time or default to 60
         const minutesMatch = errorMessage.match(/(\d+) minute/);
-        setLockTimeRemaining(minutesMatch ? parseInt(minutesMatch[1]) : 5);
+        if (minutesMatch) {
+          setLockTimeRemaining(parseInt(minutesMatch[1]));
+        } else {
+          setLockTimeRemaining(60); 
+        }
       } else {
-        setError(errorMessage);
+        // Normal error (wrong password, etc.)
+        setAccountLocked(false);
+        setError(errorMessage); // Show top box only
         if (statusCode !== 401) toast.error(errorMessage);
       }
     } finally {
@@ -115,27 +109,36 @@ const Login = () => {
   return (
     <div className="min-h-screen flex flex-col text-lg">
       <div className="flex flex-1 flex-col md:flex-row">
-        {/* Banner */}
+        
+        {/* IMAGE SECTION */}
         <div className="hidden md:block md:w-1/2 bg-blue-50">
-          <img src={assets.loginbanner} alt="Login" className="w-full h-full object-cover" />
+          <img 
+            src={loginBannerImg} 
+            alt="Login Banner" 
+            className="w-full h-full object-cover" 
+          />
         </div>
 
-        {/* Form */}
+        {/* FORM SECTION */}
         <div className="w-full md:w-1/2 flex items-center justify-center px-6 py-12">
           <div className="w-full max-w-md">
             <h2 className="text-3xl font-bold mb-2">Log in to Dkp</h2>
             <p className="text-gray-600 mb-8">Enter your details below</p>
 
-            {error && (
+            {/* Box 1: Generic Error (Wrong password, User not found) */}
+            {error && !accountLocked && (
               <div className="text-red-500 mb-4 p-3 bg-red-50 rounded text-sm font-medium">
                 {error}
               </div>
             )}
 
+            {/* Box 2: Account Locked Specific */}
             {accountLocked && (
               <div className="text-red-500 mb-4 p-3 bg-red-50 rounded border border-red-200">
                 <p className="font-bold">Account Locked</p>
-                <p className="text-sm">Try again in {lockTimeRemaining ? formatLockTime(lockTimeRemaining) : 'a few minutes'}.</p>
+                <p className="text-sm">
+                   Try again in {lockTimeRemaining ? formatLockTime(lockTimeRemaining) : '1 hour'}.
+                </p>
               </div>
             )}
 
@@ -161,7 +164,7 @@ const Login = () => {
               />
 
               <div className="flex justify-between items-center">
-                <button type="submit" disabled={isLoading || accountLocked} className="px-8 py-3 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors">
+                <button type="submit" disabled={isLoading || accountLocked} className="px-8 py-3 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors disabled:opacity-50">
                   {isLoading ? "Logging in..." : accountLocked ? "Locked" : "Log in"}
                 </button>
                 <Link to="/forgot-password" className="text-red-500 hover:underline text-sm">Forgot Password?</Link>

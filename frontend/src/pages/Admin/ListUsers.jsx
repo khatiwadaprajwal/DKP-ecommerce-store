@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect } from "react";
 import { PencilIcon, TrashIcon, EyeIcon } from "@heroicons/react/24/outline";
-import axios from "axios";
-import { ShopContext } from "../../context/ShopContext";
+import api from "../../config/api"; // ✅ Use centralized API
 
 const ListUsers = () => {
   const [users, setUsers] = useState([]);
@@ -10,32 +9,21 @@ const ListUsers = () => {
   const [roleFilter, setRoleFilter] = useState("");
   const [sortField, setSortField] = useState("name");
   const [sortDirection, setSortDirection] = useState("asc");
+  
+  // UI States
   const [showUserDetails, setShowUserDetails] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const token = localStorage.getItem("token");
-  const {backend_url}= useContext(ShopContext);
 
-  // Updated to match the mongoose model roles
   const roleOptions = ["All", "SuperAdmin", "Admin", "Customer"];
-
-  // API base URL
-  const API_BASE_URL = `${backend_url}/v1`;
-
-  // Setup axios instance with default headers
-  const api = axios.create({
-    baseURL: API_BASE_URL,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  });
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/customers");
+      // ✅ api.get handles headers automatically
+      // ✅ Added /v1 prefix since base URL is root
+      const response = await api.get("/v1/customers");
       setUsers(response.data);
       setErrorMessage("");
     } catch (error) {
@@ -64,13 +52,9 @@ const ListUsers = () => {
       const userToUpdate = users.find((user) => user._id === userId);
       if (!userToUpdate) return;
 
-      // Find user by email first since the update endpoint uses email
-      const updatedUser = { ...userToUpdate, status: newStatus };
+      // ✅ Use api.put with simplified path
+      await api.put(`/v1/user/${userToUpdate.email}`, { status: newStatus });
 
-      // Make API call to update the user
-      await api.put(`/user/${userToUpdate.email}`, { status: newStatus });
-
-      // Update local state
       setUsers(
         users.map((user) =>
           user._id === userId ? { ...user, status: newStatus } : user
@@ -90,19 +74,15 @@ const ListUsers = () => {
       const userToUpdate = users.find((user) => user._id === userId);
       if (!userToUpdate) return;
 
-      // Different endpoints based on the role change
+      // ✅ Use api.post/put with simplified paths
       if (newRole === "Admin" && userToUpdate.role === "Customer") {
-        // Promote Customer to Admin
-        await api.post("/make-admin", { email: userToUpdate.email });
+        await api.post("/v1/make-admin", { email: userToUpdate.email });
       } else if (newRole === "Customer" && userToUpdate.role === "Admin") {
-        // Demote Admin to Customer
-        await api.post("/demote-admin", { email: userToUpdate.email });
+        await api.post("/v1/demote-admin", { email: userToUpdate.email });
       } else {
-        // Use the normal update endpoint for other role changes
-        await api.put(`/user/${userToUpdate.email}`, { role: newRole });
+        await api.put(`/v1/user/${userToUpdate.email}`, { role: newRole });
       }
 
-      // Update local state
       setUsers(
         users.map((user) =>
           user._id === userId ? { ...user, role: newRole } : user
@@ -116,17 +96,16 @@ const ListUsers = () => {
       setTimeout(() => setErrorMessage(""), 3000);
     }
   };
+
   const deleteUser = async (userId) => {
     if (window.confirm("Are you sure you want to delete this user?")) {
       try {
         const userToDelete = users.find((user) => user._id === userId);
         if (!userToDelete) return;
 
-        // Since there's no delete endpoint in your API, you might want to implement
-        // a soft delete by updating the user status to "Inactive" or similar
-        await api.put(`/user/${userToDelete.email}`, { status: "Inactive" });
+        // Soft delete implementation
+        await api.put(`/v1/user/${userToDelete.email}`, { status: "Inactive" });
 
-        // Update local state (either remove or mark as inactive)
         setUsers(users.filter((user) => user._id !== userId));
         setSuccessMessage("User successfully deleted");
         setTimeout(() => setSuccessMessage(""), 3000);
@@ -143,18 +122,13 @@ const ListUsers = () => {
       try {
         const { _id, ...userDataToUpdate } = editingUser;
 
-        // If password field is empty, remove it from the update data
         if (!userDataToUpdate.password) {
           delete userDataToUpdate.password;
-        } else {
-          // Note: The backend should handle password hashing
-          // This is just sending the plain password to the backend
         }
 
-        // Make API call to update the user
-        await api.put(`/user/${editingUser.email}`, userDataToUpdate);
+        // ✅ Use api.put
+        await api.put(`/v1/user/${editingUser.email}`, userDataToUpdate);
 
-        // Update local state
         setUsers(
           users.map((user) =>
             user._id === editingUser._id ? { ...editingUser } : user
@@ -171,27 +145,21 @@ const ListUsers = () => {
     }
   };
 
+  // Helper functions
   const getRoleBadgeClass = (role) => {
     switch (role) {
-      case "SuperAdmin":
-        return "bg-red-100 text-red-800";
-      case "Admin":
-        return "bg-purple-100 text-purple-800";
-      case "Customer":
-        return "bg-green-100 text-green-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+      case "SuperAdmin": return "bg-red-100 text-red-800";
+      case "Admin": return "bg-purple-100 text-purple-800";
+      case "Customer": return "bg-green-100 text-green-800";
+      default: return "bg-gray-100 text-gray-800";
     }
   };
 
   const getStatusBadgeClass = (status) => {
     switch (status) {
-      case "Active":
-        return "bg-green-100 text-green-800";
-      case "Inactive":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+      case "Active": return "bg-green-100 text-green-800";
+      case "Inactive": return "bg-red-100 text-red-800";
+      default: return "bg-gray-100 text-gray-800";
     }
   };
 

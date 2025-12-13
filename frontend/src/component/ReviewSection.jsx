@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useContext } from "react";
-import axios from "axios";
 import { format } from "date-fns";
 import { ShopContext } from "../context/ShopContext";
+import { useAuth } from "../context/AuthProvider"; // ✅ Use Auth Context
+import api from "../config/api"; // ✅ Use centralized API
 
 const ReviewSection = ({ productId }) => {
   const [reviews, setReviews] = useState([]);
@@ -11,46 +12,28 @@ const ReviewSection = ({ productId }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [userReview, setUserReview] = useState(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const { averageRating, setAverageRating, totalReviews, setTotalReviews, backend_url } = useContext(ShopContext);
-  const [currentUserId, setCurrentUserId] = useState(null);
 
-  // Check if user is logged in and get user ID
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      setIsLoggedIn(true);
-      
-      // Extract user ID from stored user data
-      const userData = localStorage.getItem("user");
-      if (userData) {
-        try {
-          const parsedUserData = JSON.parse(userData);
-          // FIX: Try multiple possible ID properties
-          const userId = parsedUserData._id || parsedUserData.userId || parsedUserData.id;
-          setCurrentUserId(userId);
-          console.log("Current User ID:", userId); // Debug log
-        } catch (error) {
-          console.error("Error parsing user data:", error);
-        }
-      }
-    }
-  }, []);
+  // Contexts
+  const { averageRating, setAverageRating, totalReviews, setTotalReviews } = useContext(ShopContext);
+  const { user, token } = useAuth(); // ✅ Get user and token directly from AuthProvider
 
-  // Fetch reviews for the product and check if the user has already reviewed
+  const currentUserId = user?._id || user?.userId || user?.id;
+
+  // Fetch reviews for the product
   const fetchReviews = async () => {
     if (!productId) return;
     
     setIsLoading(true);
     try {
-      const response = await axios.get(`${backend_url}/v1/review/${productId}`);
+      // ✅ api.get handles BaseURL automatically
+      const response = await api.get(`/v1/review/${productId}`);
 
       if (response.status === 200) {
         const reviewsArray = response.data.reviews || response.data;
         setReviews(reviewsArray);
         
-        // Calculate average rating and total reviews
+        // Calculate average rating
         if (reviewsArray.length > 0) {
           const total = reviewsArray.reduce((sum, review) => sum + review.rating, 0);
           setAverageRating((total / reviewsArray.length).toFixed(1));
@@ -60,8 +43,23 @@ const ReviewSection = ({ productId }) => {
           setTotalReviews(0);
         }
         
-        // Check if current user has already reviewed
-        checkForExistingUserReview(reviewsArray);
+        // Check for existing user review
+        if (currentUserId) {
+          const found = reviewsArray.find(review => {
+            const rUid = (review.userId && typeof review.userId === 'object') ? review.userId._id : review.userId;
+            return rUid === currentUserId;
+          });
+          
+          if (found) {
+            setUserReview(found);
+            setNewReview(found.reviewText || "");
+            setRating(found.rating || 0);
+          } else {
+            setUserReview(null);
+            setNewReview("");
+            setRating(0);
+          }
+        }
       }
     } catch (err) {
       console.error("Error fetching reviews:", err);
@@ -71,114 +69,52 @@ const ReviewSection = ({ productId }) => {
     }
   };
 
-  // Check if the current user has already reviewed this product
-  const checkForExistingUserReview = (reviewsArray) => {
-    if (!reviewsArray) return;
-    
-    const userData = localStorage.getItem("user");
-    if (userData) {
-      try {
-        const parsedUserData = JSON.parse(userData);
-        // FIX: Use consistent ID property
-        const userId = parsedUserData._id || parsedUserData.userId || parsedUserData.id;
-        
-        // Look for reviews by this user
-        const userReviewFound = reviewsArray.find(review => {
-          // Get the review's user ID
-          const reviewUserId = (review.userId && typeof review.userId === 'object') 
-            ? review.userId._id 
-            : review.userId;
-          
-          console.log("Checking review userId:", reviewUserId, "against current userId:", userId); // Debug log
-          return reviewUserId === userId;
-        });
-        
-        if (userReviewFound) {
-          setUserReview(userReviewFound);
-          setNewReview(userReviewFound.reviewText || "");
-          setRating(userReviewFound.rating || 0);
-        } else {
-          // Reset if no user review found
-          setUserReview(null);
-          setNewReview("");
-          setRating(0);
-        }
-      } catch (error) {
-        console.error("Error checking for existing user review:", error);
-      }
-    }
-  };
-
   useEffect(() => {
-    // Fetch reviews when component mounts or productId changes
-    if (productId) {
-      fetchReviews();
-    }
-  }, [productId]);
+    if (productId) fetchReviews();
+  }, [productId, currentUserId]); // Re-fetch if user changes (login/logout)
 
   const handleAddReview = async () => {
+    if (!token) return setError("Please login to review");
+    
     if (newReview.trim() && rating > 0) {
       try {
         setIsSubmitting(true);
         setError(null);
         
-        // Check if user already has a review
         if (userReview) {
           // Update existing review
-          await axios.put(`${backend_url}/v1/updatereview/${userReview._id}`, {
+          // ✅ api.put handles headers and BaseURL
+          await api.put(`/v1/updatereview/${userReview._id}`, {
             rating,
             reviewText: newReview
-          }, {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`
-            }
           });
           
-          // Refresh reviews after update
           fetchReviews();
           setShowReviewForm(false);
         } else {
           // Add new review
           try {
-            await axios.post(`${backend_url}/v1/addreview`, {
+            await api.post(`/v1/addreview`, {
               productId,
               rating,
               reviewText: newReview
-            }, {
-              headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`
-              }
             });
             
-            // Refresh reviews after submission
             fetchReviews();
             setShowReviewForm(false);
           } catch (err) {
-            // If error is due to duplicate review
-            if (err.response?.status === 500 && 
-                (err.response?.data?.error?.includes("duplicate key error") || 
-                 err.response?.data?.error?.includes("E11000"))) {
-              
-              // Fetch reviews again to get the user's existing review
-              await fetchReviews();
-              
-              // If user review was found, update it
+            // Duplicate Key Error Handling (Retry as Update)
+            if (err.response?.data?.error?.includes("duplicate") || err.response?.data?.error?.includes("E11000")) {
+              await fetchReviews(); // Refresh to find the existing review
               if (userReview) {
-                await axios.put(`${backend_url}/v1/updatereview/${userReview._id}`, {
+                await api.put(`/v1/updatereview/${userReview._id}`, {
                   rating,
                   reviewText: newReview
-                }, {
-                  headers: {
-                    Authorization: `Bearer ${localStorage.getItem("token")}`
-                  }
                 });
-                
-                // Refresh reviews again after update
                 fetchReviews();
                 setShowReviewForm(false);
               }
             } else {
-              // Other error
               throw err;
             }
           }
@@ -194,26 +130,13 @@ const ReviewSection = ({ productId }) => {
     }
   };
 
-  const handleEditReview = (review) => {
-    setUserReview(review);
-    setNewReview(review.reviewText || "");
-    setRating(review.rating || 0);
-    setShowReviewForm(true);
-    // Scroll to the form
-    window.scrollTo({ top: 550, behavior: 'smooth' });
-  };
-
   const handleDeleteReview = async (reviewId) => {
     if (window.confirm("Are you sure you want to delete your review?")) {
       try {
         setIsSubmitting(true);
-        await axios.delete(`${backend_url}/v1/delete/${reviewId}`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`
-          }
-        });
+        // ✅ api.delete handles headers
+        await api.delete(`/v1/delete/${reviewId}`);
         
-        // Clear user review data if it matches the deleted review
         if (userReview && userReview._id === reviewId) {
           setUserReview(null);
           setNewReview("");
@@ -221,7 +144,6 @@ const ReviewSection = ({ productId }) => {
           setShowReviewForm(false);
         }
         
-        // Refresh reviews after deletion
         fetchReviews();
       } catch (err) {
         console.error("Error deleting review:", err);
@@ -233,34 +155,29 @@ const ReviewSection = ({ productId }) => {
   };
 
   const handleReviewButtonClick = () => {
+    if (!token) {
+      // You might want to redirect to login here or show a toast
+      alert("Please login to write a review");
+      return;
+    }
+    
     if (userReview) {
-      // User already has a review, open form to edit
       setNewReview(userReview.reviewText);
       setRating(userReview.rating);
-      setShowReviewForm(!showReviewForm);
     } else {
-      // New review
       setNewReview("");
       setRating(0);
-      setShowReviewForm(!showReviewForm);
     }
+    setShowReviewForm(!showReviewForm);
   };
 
-  // Check if a review belongs to the current user
+  // Helper to check ownership
   const isUserReview = (review) => {
-    if (!currentUserId) {
-      console.log("No current user ID"); // Debug log
-      return false;
-    }
-    
-    // Get the review's user ID
-    const reviewUserId = (review.userId && typeof review.userId === 'object') 
-      ? review.userId._id 
-      : review.userId;
-    
-    console.log("Comparing review userId:", reviewUserId, "with current userId:", currentUserId); // Debug log
-    return reviewUserId === currentUserId;
+    if (!currentUserId) return false;
+    const rUid = (review.userId && typeof review.userId === 'object') ? review.userId._id : review.userId;
+    return rUid === currentUserId;
   };
+
 
   return (
     <div className="space-y-6 text-lg">

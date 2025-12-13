@@ -1,10 +1,10 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react"; // ✅ Added useEffect here
 import { Link, useNavigate } from "react-router-dom";
 import { assets } from "../assets/assets";
-import axios from "axios";
-import { toast, Toaster } from "react-hot-toast";
-import { ShopContext } from "../context/ShopContext";
+import { toast } from "react-toastify"; // Switched back to toastify based on your previous files
 import { Eye, EyeOff } from "lucide-react";
+import api from "../config/api";
+import { useAuth } from "../context/AuthProvider";
 
 const Register = () => {
   const [name, setName] = useState("");
@@ -13,163 +13,124 @@ const Register = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // OTP States
   const [showOTP, setShowOTP] = useState(false);
   const [otp, setOtp] = useState("");
-  const [timeLeft, setTimeLeft] = useState(600); // 10 minutes in seconds
+  const [timeLeft, setTimeLeft] = useState(600); // 10 minutes
   const [loading, setLoading] = useState(false);
 
-  const { setToken, token, backend_url } = useContext(ShopContext);
+  // ✅ Use useAuth instead of ShopContext
+  const { login, token } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (token) {
+      navigate("/");
+    }
+  }, [token, navigate]);
+
+  // Timer Logic for OTP
+  useEffect(() => {
+    let timer;
+    if (showOTP && timeLeft > 0) {
+      timer = setInterval(() => {
+        setTimeLeft((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [showOTP, timeLeft]);
 
   // Password validation function
   const validatePassword = (password) => {
     const errors = [];
-    
-    if (password.length < 6) {
-      errors.push("Password must be at least 6 characters long");
-    }
-    
-    if (!/[A-Z]/.test(password)) {
-      errors.push("Password must contain at least one capital letter");
-    }
-    
-    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
-      errors.push("Password must contain at least one special character");
-    }
-    
+    if (password.length < 6) errors.push("Password must be at least 6 characters long");
+    if (!/[A-Z]/.test(password)) errors.push("Password must contain at least one capital letter");
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) errors.push("Password must contain at least one special character");
     return errors;
   };
 
-  // Handle registration submission
-
-const handleRegister = async (e) => {
-  e.preventDefault();
-  console.log("=== FORM SUBMISSION STARTED ===");
-  console.log("Name:", name);
-  console.log("Email:", email);
-  console.log("Password length:", password.length);
-  console.log("Backend URL:", backend_url);
-  
-  // Validate password
-  const passwordErrors = validatePassword(password);
-  console.log("Password validation errors:", passwordErrors);
-  
-  if (passwordErrors.length > 0) {
-    console.log("Password validation failed");
-    passwordErrors.forEach(error => toast.error(error));
-    return;
-  }
-  
-  // Check if passwords match
-  if (password !== confirmPassword) {
-    console.log("Passwords don't match");
-    toast.error("Passwords do not match");
-    return;
-  }
-  
-  console.log("Validation passed, starting API call...");
-  setLoading(true);
-
-  try {
-    console.log("Making POST request to:", `${backend_url}/v1/auth/signup`);
-    
-    const response = await axios.post(
-      `${backend_url}/v1/auth/signup`,
-      {
-        name,
-        email,
-        password,
-      }
-    );
-    
-    // console.log("API Response:", response);
-
-    if (response.status === 201) {
-      console.log("Registration successful!");
-      setShowOTP(true);
-      toast.success(
-        "Registration successful! Please verify your email with OTP"
-      );
-    } else {
-      console.log("Registration failed with status:", response.status);
-      toast.error(response.data.message || "Registration failed");
-    }
-  } catch (error) {
-    console.error("=== REGISTRATION ERROR ===");
-    console.error("Error object:", error);
-    console.error("Error response:", error.response);
-    console.error("Error message:", error.message);
-    
-    toast.error(
-      error.response?.data?.message || "An error occurred during registration"
-    );
-  } finally {
-    console.log("Setting loading to false");
-    setLoading(false);
-  }
-};
-
-  // Handle OTP verification
-  const handleVerifyOTP = async (e) => {
+  // 1. Handle Registration (Send OTP)
+  const handleRegister = async (e) => {
     e.preventDefault();
+    
+    const passwordErrors = validatePassword(password);
+    if (passwordErrors.length > 0) {
+      passwordErrors.forEach(error => toast.error(error));
+      return;
+    }
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const response = await axios.post(
-        `${backend_url}/v1/auth/verify-otp`,
-        {
-          email,
-          otp,
-        }
-      );
-      
-      if (response.status === 200) {
-        navigate("/");
-        setToken(response.data.token);
-        localStorage.setItem("token", response.data.token);
-        toast.success("Email verified successfully!");
-      } else {
-        toast.error(response.data.message || "OTP verification failed");
-      }
+      const response = await api.post("/v1/auth/signup", {
+        name,
+        email,
+        password,
+      });
+
+      if (response.status === 201) {
+        setShowOTP(true);
+        toast.success("Registration successful! Please verify your email with OTP");
+      } 
     } catch (error) {
-      console.error("OTP verification error:", error);
-      toast.error(
-        error.response?.data?.message ||
-          "An error occurred during OTP verification"
-      );
+      console.error("Registration Error:", error);
+      toast.error(error.response?.data?.message || "Registration failed");
     } finally {
       setLoading(false);
     }
   };
 
-  // Format time as MM:SS
+  // 2. Handle OTP Verification
+  const handleVerifyOTP = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const response = await api.post("/v1/auth/verify-otp", {
+        email,
+        otp,
+      });
+      
+      if (response.status === 200) {
+        const { accessToken, user } = response.data;
+
+        // Login via AuthContext
+        login(accessToken, user);
+        
+        toast.success("Email verified successfully!");
+        navigate("/");
+      } 
+    } catch (error) {
+      console.error("OTP Verification Error:", error);
+      toast.error(error.response?.data?.message || "OTP verification failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${minutes.toString().padStart(2, "0")}:${secs
-      .toString()
-      .padStart(2, "0")}`;
+    return `${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // Toggle password visibility
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-
-  // Toggle confirm password visibility
-  const toggleConfirmPasswordVisibility = () => {
-    setShowConfirmPassword(!showConfirmPassword);
-  };
+  const togglePasswordVisibility = () => setShowPassword(!showPassword);
+  const toggleConfirmPasswordVisibility = () => setShowConfirmPassword(!showConfirmPassword);
 
   return (
     <div className="min-h-screen flex flex-col text-lg">
-      {/* Registration Section */}
       <div className="flex flex-1 flex-col md:flex-row">
         {/* Left Side - Image */}
         <div className="hidden md:block md:w-1/2 bg-blue-50">
           <img
             src={assets.side}
-            alt="Shopping Cart with Smartphone"
+            alt="Register Side"
             className="w-full h-full object-cover"
           />
         </div>
@@ -187,7 +148,6 @@ const handleRegister = async (e) => {
                     <input
                       type="text"
                       name="name"
-                      id="name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Full Name"
@@ -200,7 +160,6 @@ const handleRegister = async (e) => {
                     <input
                       type="email"
                       name="email"
-                      id="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="Email"
@@ -213,7 +172,6 @@ const handleRegister = async (e) => {
                     <input
                       type={showPassword ? "text" : "password"}
                       name="password"
-                      id="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Password"
@@ -225,11 +183,7 @@ const handleRegister = async (e) => {
                       onClick={togglePasswordVisibility}
                       className="absolute right-2 top-3 text-gray-500"
                     >
-                      {showPassword ? (
-                        <EyeOff size={20} />
-                      ) : (
-                        <Eye size={20} />
-                      )}
+                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                     </button>
                   </div>
                   
@@ -241,7 +195,6 @@ const handleRegister = async (e) => {
                     <input
                       type={showConfirmPassword ? "text" : "password"}
                       name="confirmPassword"
-                      id="confirmPassword"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Confirm Password"
@@ -253,25 +206,20 @@ const handleRegister = async (e) => {
                       onClick={toggleConfirmPasswordVisibility}
                       className="absolute right-2 top-3 text-gray-500"
                     >
-                      {showConfirmPassword ? (
-                        <EyeOff size={20} />
-                      ) : (
-                        <Eye size={20} />
-                      )}
+                      {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                     </button>
                   </div>
 
                   <div>
                     <button
-  type="submit"
-  onClick={() => console.log("Button clicked!")}
-  disabled={loading}
-  className={`w-full px-8 py-3 ${
-    loading ? "bg-gray-400" : "bg-red-500 hover:bg-red-600"
-  } text-white rounded-md transition-colors`}
->
-  {loading ? "Processing..." : "Create Account"}
-</button>
+                      type="submit"
+                      disabled={loading}
+                      className={`w-full px-8 py-3 ${
+                        loading ? "bg-gray-400" : "bg-red-500 hover:bg-red-600"
+                      } text-white rounded-md transition-colors`}
+                    >
+                      {loading ? "Processing..." : "Create Account"}
+                    </button>
                   </div>
                 </form>
               </>
@@ -321,7 +269,6 @@ const handleRegister = async (e) => {
                       <button
                         type="button"
                         onClick={() => {
-                          // Add resend OTP logic here
                           setTimeLeft(600);
                           toast.info("OTP resent to your email");
                         }}
@@ -346,7 +293,6 @@ const handleRegister = async (e) => {
           </div>
         </div>
       </div>
-      {/* <Toaster position="top-right" reverseOrder={false} /> */}
     </div>
   );
 };

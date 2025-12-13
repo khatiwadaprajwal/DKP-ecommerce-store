@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useContext } from "react";
-import axios from "axios";
-import { Link, useNavigate } from "react-router-dom";
-import { EyeIcon, ArrowRightIcon, ClockIcon, Download } from "lucide-react";
-import { ShopContext } from "../../context/ShopContext";
+import React, { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
+import { EyeIcon, ArrowRightIcon, ClockIcon, Download, Calendar } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import api from "../../config/api"; 
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -12,28 +11,26 @@ const Dashboard = () => {
     revenue: 0,
     pendingOrders: 0,
   });
+  
   const [recentOrders, setRecentOrders] = useState([]);
   const [topProducts, setTopProducts] = useState([]);
   const [lowStockProducts, setLowStockProducts] = useState([]);
   const [newProducts, setNewProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
   const [qrOrder, setQrOrder] = useState(null);
-  const qrRef = React.useRef(null);
-  const { backend_url } = useContext(ShopContext);
-  const token = localStorage.getItem("token");
+  const qrRef = useRef(null);
 
-  const navigate = useNavigate();
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
 
-  // ✅ SMART IMAGE HELPER FUNCTION
   const getImageUrl = (imgPath) => {
-    if (!imgPath) return "";
-    
+    if (!imgPath) return "https://via.placeholder.com/150";
     if (imgPath.startsWith("http") || imgPath.startsWith("https")) {
       return imgPath;
     }
-    
-    return `${backend_url}/public/${imgPath}`;
+    const cleanPath = imgPath.startsWith("/") ? imgPath.slice(1) : imgPath;
+    return `${BACKEND_URL}/public/${cleanPath}`;
   };
 
   useEffect(() => {
@@ -41,43 +38,27 @@ const Dashboard = () => {
       try {
         setLoading(true);
 
-        // Fetch all products
-        const productsResponse = await axios.get(`${backend_url}/v1/products`);
+        const productsResponse = await api.get("/v1/products");
         const products = productsResponse.data.products || [];
 
-        // Fetch all orders
-        const ordersResponse = await axios.get(
-          `${backend_url}/v1/getallorder`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const ordersResponse = await api.get("/v1/getallorder");
         const orders = ordersResponse.data.orders || [];
 
-        // Calculate dashboard statistics
         calculateDashboardStats(products, orders);
-
-        // Get recent orders (most recent 5)
+        
         const sortedOrders = [...orders].sort(
           (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
         );
         setRecentOrders(sortedOrders.slice(0, 5));
 
-        // Calculate top selling products
         calculateTopSellingProducts(products);
-
-        // Find low stock products
         identifyLowStockProducts(products);
-
-        // Get new products
         getNewProducts(products);
 
         setLoading(false);
       } catch (err) {
         console.error("Error fetching dashboard data:", err);
-        setError("Failed to load dashboard data. Please try again later.");
+        setError("Failed to load dashboard data.");
         setLoading(false);
       }
     };
@@ -86,88 +67,67 @@ const Dashboard = () => {
   }, []);
 
   const calculateDashboardStats = (products, orders) => {
-    // Calculate total products
-    const totalProducts = products.length;
-
-    // Calculate total orders
-    const totalOrders = orders.length;
-
-    // Calculate pending orders
     const pendingOrders = orders.filter(
       (order) => order.status === "Pending" || order.status === "Processing"
     ).length;
 
-    // Calculate total revenue (from paid orders)
     const revenue = orders
       .filter((order) => order.paymentStatus === "Paid")
-      .reduce((total, order) => total + order.totalAmount, 0);
+      .reduce((total, order) => total + (order.totalAmount || 0), 0);
 
     setStats({
-      totalOrders,
-      totalProducts,
+      totalOrders: orders.length,
+      totalProducts: products.length,
       revenue,
       pendingOrders,
     });
   };
 
   const calculateTopSellingProducts = (products) => {
-    // Sort products by totalSold in descending order
-    const sortedProducts = [...products]
-      .sort((a, b) => b.totalSold - a.totalSold)
-      .slice(0, 5) // Get top 5 products
+    const sorted = [...products]
+      .sort((a, b) => (b.totalSold || 0) - (a.totalSold || 0))
+      .slice(0, 5)
       .map((product) => ({
         id: product._id,
         name: product.productName,
-        sold: product.totalSold,
+        sold: product.totalSold || 0,
         price: product.price,
-        images: product.images,
+        images: product.images || product.image,
       }));
-
-    setTopProducts(sortedProducts);
+    setTopProducts(sorted);
   };
 
   const identifyLowStockProducts = (products) => {
-    // Define low stock threshold as less than 10 units
     const lowStockThreshold = 10;
-
-    // Filter products with low stock
-    const productsWithLowStock = products
-      .filter(
-        (product) =>
-          product.totalQuantity > 0 && product.totalQuantity < lowStockThreshold
-      )
-      .sort((a, b) => a.totalQuantity - b.totalQuantity) // Sort by lowest stock first
-      .slice(0, 5) // Get top 5 low stock products
-      .map((product) => ({
-        id: product._id,
-        name: product.productName,
-        quantity: product.totalQuantity,
-        category: product.category,
-        images: product.images,
-        variants: product.variants || [],
+    const lowStock = products
+      .filter((p) => p.totalQuantity !== undefined && p.totalQuantity < lowStockThreshold)
+      .sort((a, b) => a.totalQuantity - b.totalQuantity)
+      .slice(0, 5)
+      .map((p) => ({
+        id: p._id,
+        name: p.productName,
+        quantity: p.totalQuantity,
+        category: p.category,
+        images: p.images || p.image,
       }));
-
-    setLowStockProducts(productsWithLowStock);
+    setLowStockProducts(lowStock);
   };
 
   const getNewProducts = (products) => {
-    // Sort products by createdAt in descending order (newest first)
-    const recentlyAddedProducts = [...products]
+    const recent = [...products]
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 5) // Get 5 newest products
-      .map((product) => ({
-        id: product._id,
-        name: product.productName,
-        price: product.price,
-        category: product.category,
-        images: product.images,
-        createdAt: new Date(product.createdAt),
+      .slice(0, 5)
+      .map((p) => ({
+        id: p._id,
+        name: p.productName,
+        price: p.price,
+        category: p.category,
+        images: p.images || p.image,
+        createdAt: new Date(p.createdAt),
       }));
-
-    setNewProducts(recentlyAddedProducts);
+    setNewProducts(recent);
   };
 
-  // Helper function to download QR code as PNG
   const downloadQRCode = () => {
     if (qrRef.current) {
       const svg = qrRef.current.querySelector('svg');
@@ -178,501 +138,249 @@ const Dashboard = () => {
       img.onload = () => {
         canvas.width = img.width;
         canvas.height = img.height;
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0);
         const pngFile = canvas.toDataURL('image/png');
-        const downloadLink = document.createElement('a');
-        downloadLink.download = `order-qr-${qrOrder._id}.png`;
-        downloadLink.href = pngFile;
-        downloadLink.click();
+        const link = document.createElement('a');
+        link.download = `qr-${qrOrder._id}.png`;
+        link.href = pngFile;
+        link.click();
       };
       img.src = 'data:image/svg+xml;base64,' + window.btoa(svgData);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center text-red-600 p-4">
-        <p>{error}</p>
-      </div>
-    );
-  }
-
-  const statCards = [
-    {
-      title: "Total Orders",
-      value: stats.totalOrders,
-      color: "bg-blue-500",
-      path: "/admin/ordersList",
-    },
-    {
-      title: "Total Products",
-      value: stats.totalProducts,
-      color: "bg-green-500",
-      path: "/admin/listProducts",
-    },
-    {
-      title: "Total Revenue",
-      value: `Rs.${stats.revenue.toLocaleString("en-US", {
-        minimumFractionDigits: 2,
-      })}`,
-      color: "bg-yellow-500",
-      path: "/admin",
-    },
-    {
-      title: "Pending Orders",
-      value: stats.pendingOrders,
-      color: "bg-red-500",
-      path: "/admin/ordersList",
-    },
-  ];
-
-  // Helper function to get appropriate badge color based on order status
   const getStatusBadgeClass = (status) => {
     switch (status) {
-      case "Delivered":
-        return "bg-green-100 text-green-800";
+      case "Delivered": return "bg-green-100 text-green-800";
       case "Processing":
-      case "Pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "Shipped":
-        return "bg-blue-100 text-blue-800";
-      case "Cancelled":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+      case "Pending": return "bg-yellow-100 text-yellow-800";
+      case "Shipped": return "bg-blue-100 text-blue-800";
+      case "Cancelled": return "bg-red-100 text-red-800";
+      default: return "bg-gray-100 text-gray-800";
     }
   };
 
-  // Helper function to get appropriate badge color based on stock level
-  const getStockBadgeClass = (quantity) => {
-    if (quantity <= 3) return "bg-red-100 text-red-800";
-    if (quantity <= 7) return "bg-orange-100 text-orange-800";
+  const getStockBadgeClass = (qty) => {
+    if (qty <= 3) return "bg-red-100 text-red-800";
+    if (qty <= 7) return "bg-orange-100 text-orange-800";
     return "bg-yellow-100 text-yellow-800";
   };
 
-  const getCategoryBadgeClass = (category) => {
-    switch (category) {
-      case "Formal":
-        return "bg-blue-100 text-blue-800";
-      case "Casual":
-        return "bg-green-100 text-green-800";
-      case "Ethnic":
-        return "bg-yellow-100 text-yellow-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
+  const getCategoryBadgeClass = (cat) => {
+    if (cat === "Formal") return "bg-blue-100 text-blue-800";
+    if (cat === "Casual") return "bg-green-100 text-green-800";
+    return "bg-gray-100 text-gray-800";
   };
 
-  // Format date for display
-  const formatDate = (date) => {
-    return new Date(date).toLocaleDateString("en-US", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  };
-
-  // Calculate how many days ago a product was added
+  // ✅ FIX 1: Corrected Logic (Uses Math.floor)
   const getDaysAgo = (date) => {
-    const now = new Date();
-    const diffTime = Math.abs(now - new Date(date));
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const today = new Date();
+    const created = new Date(date);
+    const diffTime = Math.abs(today - created);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
 
     if (diffDays === 0) return "Today";
     if (diffDays === 1) return "Yesterday";
     return `${diffDays} days ago`;
   };
 
+  // ✅ FIX 2: Helper for Fixed Date format (e.g., "12 Oct 2024")
+  const getFixedDate = (date) => {
+    return new Date(date).toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "short",
+      year: "numeric"
+    });
+  };
+
+  if (loading) return <div className="flex h-screen items-center justify-center"><div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-blue-500"></div></div>;
+  if (error) return <div className="p-4 text-center text-red-600">{error}</div>;
+
   return (
     <div>
-      <h2 className="text-2xl font-semibold mb-6">Dashboard</h2>
+      <h2 className="mb-6 text-2xl font-semibold">Dashboard</h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {statCards.map((card, index) => (
-          <Link
-            to={`${card.path}`}
-            key={index}
-            className={`
-      ${card.color} 
-      rounded-lg 
-      shadow-md 
-      p-6 
-      text-white 
-      transform 
-      transition-all 
-      duration-300 
-      hover:scale-105 
-      hover:shadow-lg 
-      hover:brightness-110
-    `}
-          >
-            <h3 className="text-lg font-medium mb-2">{card.title}</h3>
+      {/* STAT CARDS */}
+      <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {[
+          { title: "Total Orders", value: stats.totalOrders, color: "bg-blue-500", path: "/admin/ordersList" },
+          { title: "Total Products", value: stats.totalProducts, color: "bg-green-500", path: "/admin/listProducts" },
+          { title: "Total Revenue", value: `Rs.${stats.revenue.toLocaleString()}`, color: "bg-yellow-500", path: "/admin" },
+          { title: "Pending Orders", value: stats.pendingOrders, color: "bg-red-500", path: "/admin/ordersList" },
+        ].map((card, idx) => (
+          <Link key={idx} to={card.path} className={`${card.color} transform rounded-lg p-6 text-white shadow-md transition-all duration-300 hover:scale-105 hover:shadow-lg`}>
+            <h3 className="mb-2 text-lg font-medium">{card.title}</h3>
             <p className="text-3xl font-bold">{card.value}</p>
           </Link>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Recent Orders Section */}
-        <div className="bg-white rounded-lg shadow-md p-6 ">
-          <div className="flex justify-between items-center mb-4">
+      <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Recent Orders */}
+        <div className="rounded-lg bg-white p-6 shadow-md">
+          <div className="mb-4 flex items-center justify-between">
             <h3 className="text-xl font-semibold">Recent Orders</h3>
-            <Link
-              to="/admin/ordersList"
-              className="text-blue-600 hover:text-blue-800 flex items-center text-sm"
-            >
-              View All Orders
-              <ArrowRightIcon className="h-4 w-4 ml-1" />
+            <Link to="/admin/ordersList" className="flex items-center text-sm text-blue-600 hover:text-blue-800">
+              View All <ArrowRightIcon className="ml-1 h-4 w-4" />
             </Link>
           </div>
-
-          {recentOrders.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead>
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Order ID
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Customer
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Amount
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead>
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order ID</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">QR</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {recentOrders.map((order) => (
+                  <tr key={order._id}>
+                    <td className="px-4 py-3 text-sm">#{order._id.slice(-5).toUpperCase()}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className={`rounded-full px-2 py-1 text-xs ${getStatusBadgeClass(order.status)}`}>{order.status}</span>
+                    </td>
+                    <td className="px-4 py-3 text-sm">Rs.{order.totalAmount}</td>
+                    <td className="px-4 py-3"><button onClick={() => setQrOrder(order)} className="text-blue-600"><EyeIcon size={18} /></button></td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {recentOrders.map((order) => (
-                    <tr key={order._id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        #{order._id.slice(-5).toUpperCase()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {order.userId?.name || "Anonymous"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 py-1 ${getStatusBadgeClass(
-                            order.status
-                          )} rounded-full text-xs`}
-                        >
-                          {order.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        Rs.{order.totalAmount.toFixed(2)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <button
-                          onClick={() => setQrOrder(order)}
-                          className="text-green-600 hover:text-green-900 p-1"
-                          title="Generate QR Code"
-                          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24">
-                            <rect x="3" y="3" width="7" height="7" rx="2" fill="currentColor"/>
-                            <rect x="3" y="14" width="7" height="7" rx="2" fill="currentColor"/>
-                            <rect x="14" y="3" width="7" height="7" rx="2" fill="currentColor"/>
-                            <rect x="14" y="14" width="3" height="3" rx="1" fill="currentColor"/>
-                            <rect x="19" y="19" width="2" height="2" rx="1" fill="currentColor"/>
-                            <rect x="14" y="19" width="2" height="2" rx="1" fill="currentColor"/>
-                            <rect x="19" y="14" width="2" height="2" rx="1" fill="currentColor"/>
-                          </svg>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-gray-500 italic">No recent orders found</p>
-          )}
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        {/* Top Selling Products Section */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-semibold">Top Selling Products</h3>
-            <Link
-              to="/admin/listproducts"
-              className="text-blue-600 hover:text-blue-800 flex items-center text-sm"
-            >
-              View All Products
-              <ArrowRightIcon className="h-4 w-4 ml-1" />
+        {/* Top Selling */}
+        <div className="rounded-lg bg-white p-6 shadow-md">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-xl font-semibold">Top Selling</h3>
+            <Link to="/admin/listproducts" className="flex items-center text-sm text-blue-600 hover:text-blue-800">
+              View All <ArrowRightIcon className="ml-1 h-4 w-4" />
             </Link>
           </div>
-
-          {topProducts.length > 0 ? (
-            <div className="space-y-4">
-              {topProducts.map((product) => (
-                <div key={product.id} className="flex items-center">
-                  <div className="w-16 h-16 bg-gray-200 rounded-md mr-4 flex items-center justify-center text-xs text-gray-500">
-                    {product.images && (
-                      <img
-                        src={getImageUrl(product.images[0])}
-                        alt={product.name}
-                        className="h-14 w-14 object-cover rounded-md"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = "/images/placeholder.jpg";
-                        }}
-                      />
-                    )}
+          <div className="space-y-4">
+            {topProducts.map((p) => {
+              const img = Array.isArray(p.images) ? p.images[0] : p.images;
+              return (
+                <div key={p.id} className="flex items-center">
+                  <div className="mr-4 h-14 w-14 flex-shrink-0 overflow-hidden rounded-md bg-gray-100">
+                    <img src={getImageUrl(img)} alt={p.name} className="h-full w-full object-cover" onError={(e) => e.target.src="https://via.placeholder.com/150"} />
                   </div>
-                  <div className="flex-1">
-                    <h4 className="font-medium">{product.name}</h4>
-                    <p className="text-gray-500 text-sm">{product.sold} sold</p>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="truncate font-medium">{p.name}</h4>
+                    <p className="text-sm text-gray-500">{p.sold} sold</p>
                   </div>
-                  <div className="text-lg font-semibold">
-                    Rs.{product.price.toFixed(2)}
-                  </div>
+                  <div className="font-semibold">Rs.{p.price}</div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500 italic">No products found</p>
-          )}
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Low Stock Alert Section */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex justify-between items-center mb-4">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Low Stock */}
+        <div className="rounded-lg bg-white p-6 shadow-md">
+          <div className="mb-4 flex items-center justify-between">
             <h3 className="text-xl font-semibold">Low Stock Alert</h3>
-            <Link
-              to="/admin/listproducts"
-              className="text-blue-600 hover:text-blue-800 flex items-center text-sm"
-            >
-              Manage Inventory
-              <ArrowRightIcon className="h-4 w-4 ml-1" />
+            <Link to="/admin/listproducts" className="flex items-center text-sm text-blue-600 hover:text-blue-800">
+              Manage <ArrowRightIcon className="ml-1 h-4 w-4" />
             </Link>
           </div>
-
-          {lowStockProducts.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead>
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Product
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Category
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Stock
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Action
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {lowStockProducts.map((product) => (
-                    <tr key={product.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead>
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {lowStockProducts.map((p) => {
+                  const img = Array.isArray(p.images) ? p.images[0] : p.images;
+                  return (
+                    <tr key={p.id}>
+                      <td className="px-4 py-3">
                         <div className="flex items-center">
-                          <div className="h-10 w-10 bg-gray-200 rounded-md mr-3">
-                            {product.images && product.images.length > 0 && (
-                              <img
-                                src={getImageUrl(product.images[0])}
-                                alt={product.name}
-                                className="h-10 w-10 object-cover rounded-md"
-                                onError={(e) => {
-                                  e.target.onerror = null;
-                                  e.target.src = "/images/placeholder.jpg";
-                                }}
-                              />
-                            )}
-                          </div>
-                          <div className="truncate max-w-xs">
-                            <div className="font-medium text-gray-900 truncate">
-                              {product.name}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              ID: #{product.id.substring(product.id.length - 6)}
-                            </div>
-                          </div>
+                          <img src={getImageUrl(img)} alt={p.name} className="mr-3 h-8 w-8 rounded object-cover" onError={(e)=>e.target.src="https://via.placeholder.com/150"} />
+                          <span className="truncate text-sm font-medium max-w-[150px] block">{p.name}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs ${getCategoryBadgeClass(
-                            product.category
-                          )}`}
-                        >
-                          {product.category}
-                        </span>
+                      <td className="px-4 py-3">
+                        <span className={`rounded-full px-2 py-1 text-xs ${getStockBadgeClass(p.quantity)}`}>{p.quantity} left</span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs ${getStockBadgeClass(
-                            product.quantity
-                          )}`}
-                        >
-                          {product.quantity} units left
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Link
-                          to={`/admin/products?id=${product.id}`}
-                          className="text-indigo-600 hover:text-indigo-900"
-                          title="View Details"
-                        >
-                          <EyeIcon className="h-5 w-5" />
-                        </Link>
+                      <td className="px-4 py-3">
+                        <Link to={`/admin/products?id=${p.id}`} className="text-indigo-600 hover:text-indigo-900"><EyeIcon size={18} /></Link>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="py-8 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-500 mb-4">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-8 w-8"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-              </div>
-              <p className="text-gray-600">All products are well-stocked!</p>
-            </div>
-          )}
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        {/* New Products Section */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-semibold">Recently Added Products</h3>
-            <Link
-              to="/admin/addproduct"
-              className="text-blue-600 hover:text-blue-800 flex items-center text-sm"
-            >
-              Add New Product
-              <ArrowRightIcon className="h-4 w-4 ml-1" />
+        {/* Recently Added Products */}
+        <div className="rounded-lg bg-white p-6 shadow-md">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-xl font-semibold">Recently Added</h3>
+            <Link to="/admin/addproduct" className="flex items-center text-sm text-blue-600 hover:text-blue-800">
+              Add New <ArrowRightIcon className="ml-1 h-4 w-4" />
             </Link>
           </div>
-
-          {newProducts.length > 0 ? (
-            <div className="space-y-4">
-              {newProducts.map((product) => (
-                <div key={product.id} className="flex items-center">
-                  <div className="w-16 h-16 bg-gray-200 rounded-md mr-4 flex items-center justify-center text-xs text-gray-500">
-                    {product.images && product.images.length > 0 && (
-                      <img
-                        src={getImageUrl(product.images[0])}
-                        alt={product.name}
-                        className="h-14 w-14 object-cover rounded-md"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = "/images/placeholder.jpg";
-                        }}
-                      />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-medium">{product.name}</h4>
-                    <div className="flex items-center text-gray-500 text-sm mt-1">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs mr-2 ${getCategoryBadgeClass(
-                          product.category
-                        )}`}
-                      >
-                        {product.category}
-                      </span>
-                      <ClockIcon className="h-3 w-3 mr-1" />
-                      <span>{getDaysAgo(product.createdAt)}</span>
+          <div className="space-y-4">
+            {newProducts.length > 0 ? (
+              newProducts.map((p) => {
+                const img = Array.isArray(p.images) ? p.images[0] : p.images;
+                return (
+                  <div key={p.id} className="flex items-center">
+                    <div className="mr-4 h-14 w-14 flex-shrink-0 overflow-hidden rounded-md bg-gray-100">
+                      <img src={getImageUrl(img)} alt={p.name} className="h-full w-full object-cover" onError={(e)=>e.target.src="https://via.placeholder.com/150"} />
                     </div>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="truncate font-medium">{p.name}</h4>
+                      <div className="mt-1 flex flex-col gap-1 text-sm text-gray-500">
+                        <div className="flex items-center">
+                          <span className={`mr-2 rounded-full px-2 py-1 text-xs ${getCategoryBadgeClass(p.category)}`}>{p.category}</span>
+                        </div>
+                        {/* Display "Today" / "Yesterday" */}
+                        <div className="flex items-center">
+                          <ClockIcon className="mr-1 h-3 w-3" />
+                          <span>{getDaysAgo(p.createdAt)}</span>
+                        </div>
+                        {/* OPTIONAL: Display Exact Date. Uncomment below if you want fixed data like "Dec 12" */}
+                        {/* <div className="flex items-center text-xs text-gray-400">
+                          <Calendar className="mr-1 h-3 w-3" />
+                          <span>{getFixedDate(p.createdAt)}</span>
+                        </div> */}
+                      </div>
+                    </div>
+                    <div className="font-semibold">Rs.{p.price}</div>
                   </div>
-                  <div className="text-lg font-semibold">
-                    Rs.{product.price.toFixed(2)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500 italic">
-              No new products added recently
-            </p>
-          )}
+                );
+              })
+            ) : (
+              <p className="text-center text-gray-500">No new products.</p>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* QR Code Modal */}
+      {/* QR MODAL */}
       {qrOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 w-full" style={{ minWidth: 350, maxWidth: 500 }}>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">Order QR Code</h2>
-              <button 
-                onClick={() => setQrOrder(null)}
-                className="text-gray-500 hover:text-gray-700 text-4xl"
-              >
-                ×
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="relative w-full max-w-sm rounded-lg bg-white p-6">
+            <button onClick={() => setQrOrder(null)} className="absolute right-2 top-2 text-xl font-bold text-gray-500 hover:text-black">&times;</button>
+            <h3 className="mb-4 text-center text-xl font-bold">Order #{qrOrder._id.slice(-5).toUpperCase()}</h3>
+            <div ref={qrRef} className="flex justify-center bg-white p-2">
+              <QRCodeSVG value={JSON.stringify({ id: qrOrder._id, amt: qrOrder.totalAmount, status: qrOrder.status })} size={200} level="H" />
             </div>
-            <div ref={qrRef} className="flex flex-col items-center">
-              <QRCodeSVG
-                value={JSON.stringify({
-                  orderId: qrOrder._id,
-                  user: qrOrder.userId?.name || '',
-                  products: Array.isArray(qrOrder.orderItems)
-                    ? qrOrder.orderItems.map(item => ({
-                        name: item.productId?.productName || '',
-                        quantity: item.quantity,
-                        size: item.size,
-                        color: item.color
-                      }))
-                    : [],
-                  total: `Rs. ${qrOrder.totalAmount?.toFixed(2) || '0.00'}`,
-                  address: qrOrder.address || '',
-                  orderStatus: qrOrder.status || '',
-                  paymentStatus: qrOrder.paymentStatus || ''
-                })}
-                size={300}
-                style={{ width: 300, height: 300, maxWidth: '100%' }}
-                className="mx-auto"
-                level="H"
-                includeMargin={true}
-              />
-              <button
-                onClick={downloadQRCode}
-                className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center gap-2"
-              >
-                <Download size={20} />
-                Download QR Code
-              </button>
-            </div>
-            <p className="text-sm text-gray-500 mt-4 text-center">
-              Scan this QR code to view order details
-            </p>
+            <button onClick={downloadQRCode} className="mt-6 flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 py-2 text-white hover:bg-blue-700">
+              <Download size={18} /> Download QR
+            </button>
           </div>
         </div>
       )}

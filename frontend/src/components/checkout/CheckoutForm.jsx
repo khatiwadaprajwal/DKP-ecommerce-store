@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { toast } from 'react-toastify';
+import api from '../../config/api'; 
 
 const CheckoutForm = ({ cartItems, totalAmount }) => {
     const navigate = useNavigate();
@@ -9,7 +10,7 @@ const CheckoutForm = ({ cartItems, totalAmount }) => {
     const [shippingDetails, setShippingDetails] = useState({
         fullName: '',
         address: '',
-        city: '', // This will map to "location"
+        city: '', // Maps to "location" in backend
         phone: '',
         email: ''
     });
@@ -26,46 +27,50 @@ const CheckoutForm = ({ cartItems, totalAmount }) => {
         e.preventDefault();
         
         if (!paymentMethod) {
-            alert('Please select a payment method');
+            toast.error('Please select a payment method');
             return;
         }
 
         if (!cartItems || cartItems.length === 0) {
-            alert('Cart is empty');
+            toast.error('Cart is empty');
             return;
         }
 
         setLoading(true);
 
-        // We assume we are checking out the first item or processing them individually 
-        // to match the specific JSON structure provided in your request.
+        // Note: Currently logic processes the first item (Buy Now flow).
+        // If checking out a full cart, ensure your backend supports an array of items 
+        // or loop through this logic.
         const itemToBuy = cartItems[0]; 
 
         const payload = {
-            productId: itemToBuy.productId || itemToBuy._id, // Adjust based on your actual object
+            productId: itemToBuy.productId || itemToBuy.itemId || itemToBuy._id, // Handle various ID formats
             quantity: itemToBuy.quantity || 1,
-            address: shippingDetails.address, // "Kathmandu, Nepal"
-            location: shippingDetails.city,   // "Lalitpur"
-            paymentMethod: paymentMethod,     // "Khalti"
+            address: shippingDetails.address,
+            location: shippingDetails.city,
+            paymentMethod: paymentMethod,
             color: itemToBuy.color || "White",
             size: itemToBuy.size || "XS"
         };
 
         try {
-            const response = await axios.post('http://localhost:3001/v1/place', payload);
+            // ✅ api.post handles BaseURL and Auth Headers automatically
+            const response = await api.post('/v1/place', payload);
 
             // Handle Khalti Redirect Response
             if (response.data.khaltiUrl) {
-                // Redirects the user immediately to the Khalti payment page
                 window.location.href = response.data.khaltiUrl;
             } else {
-                // Handle standard success (e.g., for COD)
-                navigate('/order-success');
+                toast.success("Order placed successfully!");
+                navigate('/order-success'); // Or /payment-success based on your routes
             }
 
         } catch (error) {
             console.error('Order creation failed:', error);
-            alert('Failed to place order. Please try again.');
+            
+            // Safe error message handling
+            const errorMsg = error.response?.data?.message || 'Failed to place order. Please try again.';
+            toast.error(errorMsg);
         } finally {
             setLoading(false);
         }

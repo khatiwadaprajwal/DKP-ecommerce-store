@@ -1,5 +1,6 @@
 import React, { useContext, useState, useEffect } from "react";
 import { ShopContext } from "../context/ShopContext";
+import { useAuth } from "../context/AuthProvider";
 import { Link } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { 
@@ -12,17 +13,17 @@ import {
   Palette,
   Ruler
 } from "lucide-react";
-import axios from "axios";
+import api from "../config/api";
 
 const Cart = () => {
   const {
     cartData,
     fetchCartData,
     delivery_fee,
-    navigate,
-    token, 
-    backend_url
+    navigate
   } = useContext(ShopContext);
+  
+  const { token } = useAuth();
 
   const [selectedItems, setSelectedItems] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -74,10 +75,9 @@ const Cart = () => {
     
     setIsLoading(true);
     try {
-      const response = await axios.put(
-        `${backend_url}/v1/updatecart`,
-        { cartItemId, quantity: newQuantity },
-        { headers: { Authorization: `Bearer ${token}` } }
+      const response = await api.put(
+        `/v1/updatecart`,
+        { cartItemId, quantity: newQuantity }
       );
       
       // Refresh cart data
@@ -112,9 +112,8 @@ const Cart = () => {
   const removeItem = async (cartItemId, productId) => {
     setIsLoading(true);
     try {
-      await axios.delete(
-        `${backend_url}/v1/remove/${cartItemId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+      await api.delete(
+        `/v1/remove/${cartItemId}`
       );
       
       // Remove from selected items if selected
@@ -159,7 +158,9 @@ const Cart = () => {
   const getImageUrl = (img) => {
     if (!img) return "";
     if (img.startsWith("http")) return img; // Cloudinary
-    return `${backend_url}/public/${img}`;  // Local
+    // For local images, use relative path or full backend URL from env
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
+    return `${BACKEND_URL}/public/${img}`;
   };
 
   return (

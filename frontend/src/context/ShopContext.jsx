@@ -1,22 +1,24 @@
 import React, { useState, createContext, useEffect, useMemo } from "react";
 import { toast } from "react-toastify";
 import { useNavigate, useLocation } from "react-router-dom";
-import axios from "axios";
-import { jwtDecode } from "jwt-decode";
+import api from "../config/api"; 
+import { useAuth } from "./AuthProvider"; 
 
 export const ShopContext = createContext();
 
-const ShopcontextProvider = ({ children }) => {
+const ShopContextProvider = ({ children }) => {
   const currency = "Rs";
   const delivery_fee = 0;
-  const backend_url = "http://localhost:3001";
   
-  const [token, setToken] = useState(localStorage.getItem("token") || "");
-  const [user, setUser] = useState(null);
+  // ✅ Get Auth State from AuthContext (Single Source of Truth)
+  const { token, user } = useAuth();
+  
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(true);
   const [cartData, setCartData] = useState([]);
   const [products, setProducts] = useState([]);
+  
+  // Reviews & Ratings
   const [averageRating, setAverageRating] = useState(0);
   const [totalReviews, setTotalReviews] = useState(0);
 
@@ -32,35 +34,124 @@ const ShopcontextProvider = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const logout = () => {
-    setToken("");
-    setCartData([]);
-    setUser(null);
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
-    toast.success("Logged out successfully");
-    navigate("/login");
+  // ✅ 1. Fetch Products (No Token Needed)
+  const getProductsData = async () => {
+    try {
+      const response = await api.get("/v1/products");
+      if (response.status === 200) {
+        setProducts(response.data.products);
+        setFilterProducts(response.data.products);
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to fetch products");
+    }
   };
 
   useEffect(() => {
-    if (token) {
-      try {
-        const decoded = jwtDecode(token);
-        const currentTime = Date.now() / 1000;
-        if (decoded.exp && decoded.exp < currentTime) {
-          throw new Error("Token expired");
-        }
-        localStorage.setItem("user", JSON.stringify(decoded));
-        setUser(decoded);
-      } catch (error) {
-        console.error("Invalid or expired token:", error);
-        logout(); 
+    getProductsData();
+  }, []);
+
+  // ✅ 2. Fetch Cart Data (Depends on Token from AuthContext)
+  const fetchCartData = async () => {
+    if (!token) {
+      setCartData([]);
+      return;
+    }
+  
+    try {
+      // ✅ api.get handles headers automatically
+      const response = await api.get("/v1/getcart");
+  
+      if (response.status === 200 && response.data.cart) {
+          const formattedCart = response.data.cart.cartItems.map((item) => ({
+            cartItemId: item._id,
+            itemId: item.product._id,
+            name: item.product.productName,
+            price: item.product.price,
+            image: item.product.images,
+            quantity: item.quantity,
+            color: item.color,
+            size: item.size
+          }));
+          setCartData(formattedCart);
+      } else {
+          setCartData([]);
       }
+    } catch (error) {
+      console.error("Error fetching cart:", error);
+      // We don't clear cart here because API interceptor handles 401 logout
+    }
+  };
+
+  // Re-fetch cart whenever token changes (Login/Logout)
+  useEffect(() => {
+    if (token) {
+      fetchCartData();
     } else {
-      setUser(null);
+      setCartData([]);
     }
   }, [token]);
 
+  // ✅ 3. Add to Cart
+  const addToCart = async (productId, color, size, quantity = 1) => {
+    if (!token) {
+      toast.error("Login to add items to cart");
+      navigate("/login");
+      return;
+    }
+
+    try {
+      const response = await api.post("/v1/add", { productId, color, size, quantity });
+
+      if (response.status === 201 || response.status === 200) {
+        toast.success("Product added to cart");
+        // Optimistically update or fetch
+        await fetchCartData();
+      }
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      if (error.response?.status === 400) {
+        toast.error(error.response.data.msg || "Missing required info");
+      } else {
+        toast.error(error.response?.data?.message || "Failed to add to cart");
+      }
+    }
+  };
+
+  const getCartCount = () => {
+    return cartData.reduce((total, item) => total + item.quantity, 0);
+  };
+
+  // ✅ 4. PayPal Popup
+  const openPayPalPopup = (approvalUrl) => {
+    const width = 600;
+    const height = 700;
+    const left = (window.innerWidth - width) / 2;
+    const top = (window.innerHeight - height) / 2;
+  
+    const paypalWindow = window.open(
+      approvalUrl,
+      "PayPal Payment",
+      `width=${width},height=${height},top=${top},left=${left},scrollbars=yes`
+    );
+  
+    if (!paypalWindow) {
+      toast.error("Popup blocked! Please allow popups.");
+      return;
+    }
+  
+    const interval = setInterval(() => {
+      if (paypalWindow.closed) {
+        clearInterval(interval);
+        fetchCartData();
+        localStorage.removeItem("selectedCartItems");
+        navigate("/order");
+      }
+    }, 1000);
+  };
+
+  // ✅ 5. Filtering Logic (Unchanged mostly)
   useEffect(() => {
     if (location.pathname === "/") {
       resetAllFilters();
@@ -75,117 +166,6 @@ const ShopcontextProvider = ({ children }) => {
     setPriceRange([0, 100000]);
     setSearchQuery("");
     setFilterProducts(products); 
-  };
-
-  const fetchCartData = async () => {
-    if (!token) {
-      setCartData([]);
-      return;
-    }
-  
-    try {
-      const response = await axios.get(`${backend_url}/v1/getcart`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-  
-      if (response.status === 200) {
-        if (response.data.cart && response.data.cart.cartItems) {
-          const formattedCart = response.data.cart.cartItems.map((item) => ({
-            cartItemId: item._id,
-            itemId: item.product._id,
-            name: item.product.productName,
-            price: item.product.price,
-            image: item.product.images,
-            quantity: item.quantity,
-            color: item.color,
-            size: item.size
-          }));
-          setCartData(formattedCart);
-        } else {
-          setCartData([]);
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching cart:", error);
-      if (error.response && error.response.status === 401) {
-        setCartData([]);
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (token) {
-      fetchCartData();
-    }
-  }, [token]);
-
-  const addToCart = async (productId, color, size, quantity = 1) => {
-    if (!token) {
-      toast.error("Login to add items to cart");
-      navigate("/login");
-      return;
-    }
-
-    try {
-      const response = await axios.post(
-        `${backend_url}/v1/add`,
-        { productId, color, size, quantity },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (response.status === 201 || response.status === 200) {
-        toast.success("Product added to cart");
-        await fetchCartData();
-      }
-    } catch (error) {
-      console.error("Error adding to cart:", error);
-      if (error.response?.status === 400) {
-        toast.error(error.response.data.msg || "Missing required product information");
-      } else if (error.response?.status === 404) {
-        toast.error("Product not found");
-      } else {
-        toast.error("Failed to add product to cart");
-      }
-    }
-  };
-
-  const getCartCount = () => {
-    return cartData.reduce((total, item) => total + item.quantity, 0);
-  };
-
-  // ✅ FIXED: PayPal Popup with proper cart refresh on closure
-  const openPayPalPopup = (approvalUrl) => {
-    const width = 600;
-    const height = 700;
-    const left = (window.innerWidth - width) / 2;
-    const top = (window.innerHeight - height) / 2;
-  
-    const paypalWindow = window.open(
-      approvalUrl,
-      "PayPal Payment",
-      `width=${width},height=${height},top=${top},left=${left},scrollbars=yes`
-    );
-  
-    if (!paypalWindow) {
-      toast.error("Popup blocked! Please allow popups and try again.");
-      return;
-    }
-  
-    // ✅ Monitor popup closure and refresh cart
-    const interval = setInterval(() => {
-      if (paypalWindow.closed) {
-        clearInterval(interval);
-        
-        // ✅ Refresh cart data after popup closes
-        fetchCartData();
-        
-        // ✅ Clear selected items from localStorage
-        localStorage.removeItem("selectedCartItems");
-        
-        // Navigate to orders page
-        navigate("/order");
-      }
-    }, 1000);
   };
 
   const toggleFilter = (value, state, setter) => {
@@ -226,7 +206,7 @@ const ShopcontextProvider = ({ children }) => {
 
     setFilterProducts(productsCopy);
   };
-
+  
   const resetGenderFilter = () => setGender([]);
   const resetCategoryFilter = () => setCategory([]);
   const resetSizeFilter = () => setSizes([]);
@@ -234,50 +214,49 @@ const ShopcontextProvider = ({ children }) => {
   const resetPriceFilter = () => setPriceRange([0, 100000]);
   const resetSearchQuery = () => setSearchQuery("");
 
-  const getProductsData = async () => {
-    try {
-      const response = await axios.get(`${backend_url}/v1/products`);
-      if (response.status === 200) {
-        setProducts(response.data.products);
-        setFilterProducts(response.data.products);
-      }
-    } catch (error) {
-      console.log(error);
-      toast.error("Failed to fetch products");
-    }
-  };
-
   const handleSearchFunction = (query) => {
     setSearchQuery(query);
     if (location.pathname !== "/collection") navigate("/collection");
   };
 
   useEffect(() => {
-    getProductsData();
-  }, []);
-
-  useEffect(() => {
     applyFilter();
   }, [gender, category, sizes, colors, priceRange, searchQuery, products]);
 
+  // ✅ Memoize Value
   const value = useMemo(() => ({
-    products, currency, delivery_fee, backend_url, token, setToken,
-    search, setSearch, showSearch, setShowSearch, addToCart,
-    cartData, setCartData, fetchCartData, getCartCount, navigate,
-    gender, setGender, toggleGender, category, sizes, setCategory, setSizes,
-    toggleCategory, toggleSizes, colors, setColors, toggleColor,
-    priceRange, setPriceRange, applyFilter, filterProducts, setFilterProducts,
-    resetGenderFilter, resetCategoryFilter, resetSizeFilter, resetColorFilter,
-    resetPriceFilter, resetAllFilters, logout, user, setUser,
-    averageRating, setAverageRating, totalReviews, setTotalReviews,
-    openPayPalPopup,
+    // Auth State (Pass-through from AuthContext)
+    token, user, 
+    
+    // Product Data
+    products, filterProducts, currency, delivery_fee,
+    
+    // Cart Actions
+    cartData, setCartData, fetchCartData, addToCart, getCartCount, openPayPalPopup,
+
+    // Search & Navigation
+    search, setSearch, showSearch, setShowSearch, 
     searchQuery, setSearchQuery, handleSearchFunction, resetSearchQuery,
+    navigate,
+    
+    // Filters
+    gender, setGender, toggleGender, resetGenderFilter,
+    category, setCategory, toggleCategory, resetCategoryFilter,
+    sizes, setSizes, toggleSizes, resetSizeFilter,
+    colors, setColors, toggleColor, resetColorFilter,
+    priceRange, setPriceRange, resetPriceFilter,
+    resetAllFilters,
+    
+    // Reviews
+    averageRating, setAverageRating, totalReviews, setTotalReviews,
   }), [
-    products, token, search, showSearch, cartData, gender, category, sizes, colors, 
-    priceRange, filterProducts, searchQuery, user, averageRating, totalReviews
+    products, filterProducts, cartData, token, user, 
+    search, showSearch, searchQuery, 
+    gender, category, sizes, colors, priceRange, 
+    averageRating, totalReviews
   ]);
 
   return <ShopContext.Provider value={value}>{children}</ShopContext.Provider>;
 };
 
-export default ShopcontextProvider;
+export default ShopContextProvider;

@@ -11,7 +11,7 @@ import {
 const CategoriesSection = () => {
   const {
     setCategory,
-    applyFilter,
+    // applyFilter, // ❌ REMOVED: This function doesn't exist/isn't needed anymore
     resetAllFilters,
   } = useContext(ShopContext);
   
@@ -41,13 +41,20 @@ const CategoriesSection = () => {
     }
   ];
   
-  const handleCategoryClick = (category) => {
-    resetAllFilters();
-    if (category.categoryValue) {
-      setCategory([category.categoryValue]);
+  const handleCategoryClick = (categoryItem) => {
+    // 1. Reset existing filters first (clears search, price, gender, etc.)
+    resetAllFilters(); 
+
+    // 2. Set the new category immediately
+    // We pass it as an array because your filter logic expects an array
+    if (categoryItem.categoryValue) {
+      setCategory([categoryItem.categoryValue]);
     }
-    applyFilter();
+
+    // 3. Navigate to collection
+    // The ShopContext useEffect will detect the change in 'category' and filter automatically
     navigate("/collection");
+    window.scrollTo(0, 0); // Optional: Scroll to top of new page
   };
   
   return (
@@ -70,11 +77,9 @@ const CategoriesSection = () => {
               <div 
                 key={index}
                 onClick={() => handleCategoryClick(category)}
-                // Reduced height to h-[380px] for a more compact look
                 className="group relative h-[380px] w-full cursor-pointer overflow-hidden rounded-2xl bg-gray-50 hover:bg-[#111] transition-all duration-700 ease-out"
               >
-                {/* 1. BACKGROUND WATERMARK ICON (Larger Size) */}
-                {/* Increased size to 500 and adjusted position to dominate the background */}
+                {/* 1. BACKGROUND WATERMARK ICON */}
                 <div className="absolute right-[-25%] bottom-[-25%] opacity-[0.05] group-hover:opacity-[0.1] group-hover:scale-105 transition-all duration-700">
                   <CategoryIcon size={500} strokeWidth={0.5} className="text-black group-hover:text-white" />
                 </div>

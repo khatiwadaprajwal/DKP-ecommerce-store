@@ -1,14 +1,16 @@
 import React, { useState, useContext, useEffect } from "react";
 import { ShopContext } from "../context/ShopContext";
+import { useAuth } from "../context/AuthProvider";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { Package, MapPin, CreditCard, DollarSign, ArrowLeft, MapIcon } from "lucide-react";
-import axios from "axios";
+import { ArrowLeft } from "lucide-react";
+import api from "../config/api.js";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { address as addressData } from "../assets/address.js";
 
+// Fix for Leaflet Icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
@@ -18,115 +20,112 @@ L.Icon.Default.mergeOptions({
 
 const LocationPicker = ({ onLocationSelected }) => {
   const [position, setPosition] = useState(null);
-  const map = useMapEvents({ click(e) { setPosition(e.latlng); onLocationSelected(e.latlng); } });
+  const map = useMapEvents({ 
+      click(e) { 
+          setPosition(e.latlng); 
+          onLocationSelected(e.latlng); 
+      } 
+  });
   return position === null ? null : <Marker position={position} />;
 };
 
 const PlaceOrder = () => {
-  const { cartData, token, delivery_fee, fetchCartData, backend_url, openPayPalPopup } = useContext(ShopContext);
+  const { cartData, delivery_fee, fetchCartData } = useContext(ShopContext);
+  const { token } = useAuth();
   const navigate = useNavigate();
+  
   const [isLoading, setIsLoading] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState("Cash");
+  
+  // Shipping & Address State
   const [shippingInfo, setShippingInfo] = useState({ 
     fullName: "", 
     streetAddress: "", 
     city: "", 
     phone: "" 
   });
-  
-  // Nepal address state
   const [selectedProvince, setSelectedProvince] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [selectedMunicipality, setSelectedMunicipality] = useState("");
   const [availableDistricts, setAvailableDistricts] = useState([]);
   const [availableMunicipalities, setAvailableMunicipalities] = useState([]);
-  
   const [location, setLocation] = useState({ lat: 27.7172, lng: 85.324 });
   const [locationSelected, setLocationSelected] = useState(false);
 
+  // Initialize
   useEffect(() => {
-    if (navigator.geolocation) navigator.geolocation.getCurrentPosition(p => setLocation({ lat: p.coords.latitude, lng: p.coords.longitude }));
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(p => setLocation({ lat: p.coords.latitude, lng: p.coords.longitude }));
+    }
     loadSelectedItems();
   }, []);
+
+  // Filter Cart Data based on selection
+  useEffect(() => {
+    if (cartData.length && selectedItems.length) {
+      const matched = cartData.filter(c => 
+        selectedItems.some(s => s.productId === c.itemId && s.color === (c.color || "default") && s.size === (c.size || "default"))
+      );
+      if (matched.length) setSelectedProducts(matched);
+    }
+  }, [cartData, selectedItems]);
 
   const loadSelectedItems = () => {
     const stored = localStorage.getItem("selectedCartItems");
     if (!stored) { navigate("/cart"); return; }
     try {
-      const parsed = JSON.parse(stored);
-      setSelectedItems(parsed);
-      const matched = cartData.filter(c => parsed.some(s => s.productId === c.itemId && s.color === (c.color || "default") && s.size === (c.size || "default")));
-      if (matched.length > 0) setSelectedProducts(matched);
-    } catch(e) {}
+      setSelectedItems(JSON.parse(stored));
+    } catch(e) { console.error(e); }
   };
 
-  useEffect(() => {
-    if (cartData.length && selectedItems.length) {
-      const matched = cartData.filter(c => selectedItems.some(s => s.productId === c.itemId && s.color === (c.color || "default") && s.size === (c.size || "default")));
-      if (matched.length) setSelectedProducts(matched);
-    }
-  }, [cartData, selectedItems]);
-
-  // Handle province selection
+  // Address Handlers
   const handleProvinceChange = (e) => {
     const provinceId = e.target.value;
     setSelectedProvince(provinceId);
     setSelectedDistrict("");
     setSelectedMunicipality("");
     setAvailableMunicipalities([]);
-    
     if (provinceId) {
       const province = addressData.find(p => p.id.toString() === provinceId);
-      if (province && province.districts) {
-        setAvailableDistricts(Array.isArray(province.districts) ? province.districts : Object.values(province.districts));
-      }
+      if (province?.districts) setAvailableDistricts(Object.values(province.districts));
     } else {
       setAvailableDistricts([]);
     }
   };
 
-  // Handle district selection
   const handleDistrictChange = (e) => {
     const districtId = e.target.value;
     setSelectedDistrict(districtId);
     setSelectedMunicipality("");
-    
     if (districtId) {
       const district = availableDistricts.find(d => d.id.toString() === districtId);
-      if (district && district.municipalities) {
-        setAvailableMunicipalities(Array.isArray(district.municipalities) ? district.municipalities : Object.values(district.municipalities));
-      }
+      if (district?.municipalities) setAvailableMunicipalities(Object.values(district.municipalities));
     } else {
       setAvailableMunicipalities([]);
     }
   };
 
-  // Handle municipality selection
-  const handleMunicipalityChange = (e) => {
-    setSelectedMunicipality(e.target.value);
-  };
+  const handleInputChange = (e) => setShippingInfo(p => ({ ...p, [e.target.name]: e.target.value }));
+  const handleLocationSelected = (l) => { setLocation({ lat: l.lat, lng: l.lng }); setLocationSelected(true); toast.info("Location pinned!"); };
 
   const total = selectedProducts.reduce((sum, i) => sum + i.price * i.quantity, 0) + delivery_fee;
-  const handleInputChange = (e) => setShippingInfo(p => ({ ...p, [e.target.name]: e.target.value }));
-  const handleLocationSelected = (l) => { setLocation({ lat: l.lat, lng: l.lng }); setLocationSelected(true); toast.success("Location selected!"); };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validate all fields
+    // 1. Validation
     for (const v of Object.values(shippingInfo)) {
-      if (!v.trim()) return toast.error("Fill all shipping information fields");
+      if (!v.trim()) return toast.error("Please fill all shipping fields");
     }
-    
-    if (!selectedProvince) return toast.error("Please select a province");
-    if (!selectedDistrict) return toast.error("Please select a district");
-    if (!selectedMunicipality) return toast.error("Please select a municipality");
-    if (!locationSelected) return toast.error("Select location on map");
+    if (!selectedProvince || !selectedDistrict || !selectedMunicipality) return toast.error("Please select complete address details");
+    if (!locationSelected) return toast.error("Please pin your location on the map");
 
     setIsLoading(true);
+
     try {
+      // 2. Prepare Data
       const productsForAPI = selectedProducts.map(item => ({ 
         productId: item.itemId, 
         quantity: item.quantity, 
@@ -134,192 +133,174 @@ const PlaceOrder = () => {
         size: item.size || "default" 
       }));
       
-      // Get selected address names
       const province = addressData.find(p => p.id.toString() === selectedProvince);
       const district = availableDistricts.find(d => d.id.toString() === selectedDistrict);
       const municipality = availableMunicipalities.find(m => m.id.toString() === selectedMunicipality);
       
-      const fullAddress = `${shippingInfo.fullName}, ${shippingInfo.streetAddress}, ${shippingInfo.city}, ${municipality?.name || ''}, ${district?.name || ''}, ${province?.name || ''}, ${shippingInfo.phone}`;
+      const fullAddress = `${shippingInfo.streetAddress}, ${municipality?.name}, ${district?.name}, ${province?.name}`;
       
-      const orderData = {
+      const payload = {
         selectedProducts: productsForAPI,
-        address: fullAddress,
+        address: fullAddress, // Formatted address
+        city: shippingInfo.city,
+        phone: shippingInfo.phone,
+        fullName: shippingInfo.fullName,
         location, 
-        paymentMethod
+        paymentMethod,
+        // Send return URL to backend so it knows where to redirect after payment
+        returnUrl: `${window.location.origin}/payment/verify`,
+        cancelUrl: `${window.location.origin}/payment/verify?status=cancelled`
       };
 
-      const response = await axios.post(`${backend_url}/v1/placeorder`, orderData, { headers: { Authorization: `Bearer ${token}` } });
-      localStorage.removeItem("selectedCartItems");
+      // 3. API Call
+      const response = await api.post(`/v1/placeorder`, payload);
 
+      // 4. Handle Response
       if (response.data.khaltiUrl) {
-        window.location.href = response.data.khaltiUrl;
-      } else if (response.data.approvalUrl) {
-        const ids = selectedProducts.map(item => item.itemId).join(',');
-        localStorage.setItem('paypal_pending_product_ids', ids);
-        openPayPalPopup(response.data.approvalUrl);
-      } else {
-        fetchCartData();
-        toast.success("Order successful!");
-        navigate("/order", { state: { order: response.data.order } });
+          // Khalti Redirect
+          window.location.href = response.data.khaltiUrl;
+      } 
+      else if (response.data.approvalUrl) {
+          // PayPal Redirect
+          window.location.href = response.data.approvalUrl;
+      } 
+      else {
+          // COD or Direct Success
+          localStorage.removeItem("selectedCartItems");
+          await fetchCartData(); // Refresh cart
+          toast.success("Order placed successfully!");
+          navigate("/order");
       }
+
     } catch (error) {
       console.error(error);
-      toast.error(error.response?.data?.error || "Failed");
-    } finally { setIsLoading(false); }
+      const msg = error.response?.data?.message || error.response?.data?.error || "Order placement failed";
+      toast.error(msg);
+    } finally { 
+      setIsLoading(false); 
+    }
   };
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <button onClick={() => navigate("/cart")} className="flex items-center text-blue-600 mb-4">
-        <ArrowLeft size={16} />Back to Cart
+      <button onClick={() => navigate("/cart")} className="flex items-center text-blue-600 mb-4 hover:underline">
+        <ArrowLeft size={16} className="mr-1" />Back to Cart
       </button>
-      <h2 className="text-2xl font-bold mb-6">Checkout</h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 bg-white p-6 shadow-md rounded-xl">
-           <form onSubmit={handleSubmit}>
-             <h3 className="font-bold mb-3 text-lg">Shipping Information</h3>
+      
+      <h2 className="text-3xl font-bold mb-6 text-gray-800">Checkout</h2>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* Left Column: Form */}
+        <div className="md:col-span-2 space-y-6">
+           <form id="checkout-form" onSubmit={handleSubmit} className="bg-white p-6 shadow-md rounded-xl space-y-6">
              
-             {/* Personal Information */}
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-               <input 
-                 name="fullName" 
-                 placeholder="Full Name *" 
-                 value={shippingInfo.fullName} 
-                 onChange={handleInputChange} 
-                 className="border p-2 rounded" 
-                 required 
-               />
-               <input 
-                 name="phone" 
-                 placeholder="Phone Number *" 
-                 value={shippingInfo.phone} 
-                 onChange={handleInputChange} 
-                 className="border p-2 rounded" 
-                 required 
-               />
+             {/* Section: Personal Info */}
+             <div>
+               <h3 className="font-semibold text-lg mb-3 border-b pb-2">Contact Information</h3>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <input name="fullName" placeholder="Full Name *" value={shippingInfo.fullName} onChange={handleInputChange} className="input-field border p-3 rounded w-full" required />
+                 <input name="phone" placeholder="Phone Number *" value={shippingInfo.phone} onChange={handleInputChange} className="input-field border p-3 rounded w-full" required />
+               </div>
              </div>
              
-             {/* Nepal Address Dropdowns */}
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-               <select 
-                 value={selectedProvince} 
-                 onChange={handleProvinceChange} 
-                 className="border p-2 rounded" 
-                 required
-               >
-                 <option value="">Select Province *</option>
-                 {addressData.map(province => (
-                   <option key={province.id} value={province.id}>
-                     {province.name}
-                   </option>
-                 ))}
-               </select>
-               
-               <select 
-                 value={selectedDistrict} 
-                 onChange={handleDistrictChange} 
-                 className="border p-2 rounded" 
-                 required
-                 disabled={!selectedProvince}
-               >
-                 <option value="">Select District *</option>
-                 {availableDistricts.map(district => (
-                   <option key={district.id} value={district.id}>
-                     {district.name}
-                   </option>
-                 ))}
-               </select>
-               
-               <select 
-                 value={selectedMunicipality} 
-                 onChange={handleMunicipalityChange} 
-                 className="border p-2 rounded" 
-                 required
-                 disabled={!selectedDistrict}
-               >
-                 <option value="">Select Municipality *</option>
-                 {availableMunicipalities.map(municipality => (
-                   <option key={municipality.id} value={municipality.id}>
-                     {municipality.name}
-                   </option>
-                 ))}
-               </select>
-               
-               <input 
-                 name="city" 
-                 placeholder="City/Area *" 
-                 value={shippingInfo.city} 
-                 onChange={handleInputChange} 
-                 className="border p-2 rounded" 
-                 required 
-               />
-             </div>
-             
-             {/* Street Address */}
-             <div className="mb-4">
-               <input 
-                 name="streetAddress" 
-                 placeholder="Street Address / House Number *" 
-                 value={shippingInfo.streetAddress} 
-                 onChange={handleInputChange} 
-                 className="border p-2 rounded w-full" 
-                 required 
-               />
-             </div>
-             
-             <h3 className="font-bold mb-3 text-lg mt-6">Select Delivery Location</h3>
-             <div className="h-64 mb-6 border rounded overflow-hidden">
-                <MapContainer center={[location.lat, location.lng]} zoom={13} style={{ height: "100%", width: "100%" }}>
-                  <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                  <LocationPicker onLocationSelected={handleLocationSelected} />
-                  {locationSelected && <Marker position={location} />}
-                </MapContainer>
+             {/* Section: Address */}
+             <div>
+               <h3 className="font-semibold text-lg mb-3 border-b pb-2">Delivery Address</h3>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                 <select value={selectedProvince} onChange={handleProvinceChange} className="border p-3 rounded w-full" required>
+                   <option value="">Select Province *</option>
+                   {addressData.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                 </select>
+                 
+                 <select value={selectedDistrict} onChange={handleDistrictChange} className="border p-3 rounded w-full" required disabled={!selectedProvince}>
+                   <option value="">Select District *</option>
+                   {availableDistricts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                 </select>
+                 
+                 <select value={selectedMunicipality} onChange={(e) => setSelectedMunicipality(e.target.value)} className="border p-3 rounded w-full" required disabled={!selectedDistrict}>
+                   <option value="">Select Municipality *</option>
+                   {availableMunicipalities.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                 </select>
+                 
+                 <input name="city" placeholder="City / Area *" value={shippingInfo.city} onChange={handleInputChange} className="border p-3 rounded w-full" required />
+               </div>
+               <input name="streetAddress" placeholder="Street Address / House No. *" value={shippingInfo.streetAddress} onChange={handleInputChange} className="border p-3 rounded w-full" required />
              </div>
 
-             <h3 className="font-bold mb-3 text-lg">Payment Method</h3>
-             <div className="space-y-3 mb-6">
-                <label className="block p-3 border rounded cursor-pointer hover:bg-gray-50">
-                  <input type="radio" value="Cash" checked={paymentMethod==="Cash"} onChange={()=>setPaymentMethod("Cash")} className="mr-2"/>
-                  Cash on Delivery
-                </label>
-                <label className="block p-3 border rounded cursor-pointer hover:bg-gray-50">
-                  <input type="radio" value="Khalti" checked={paymentMethod==="Khalti"} onChange={()=>setPaymentMethod("Khalti")} className="mr-2"/>
-                  Pay with Khalti
-                </label>
-                <label className="block p-3 border rounded cursor-pointer hover:bg-gray-50">
-                  <input type="radio" value="PayPal" checked={paymentMethod==="PayPal"} onChange={()=>setPaymentMethod("PayPal")} className="mr-2"/>
-                  Pay with PayPal
-                </label>
+             {/* Section: Map */}
+             <div>
+                <h3 className="font-semibold text-lg mb-3 border-b pb-2">Pin Location on Map</h3>
+                <div className="h-64 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden relative">
+                    <MapContainer center={[location.lat, location.lng]} zoom={13} style={{ height: "100%", width: "100%" }}>
+                    <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                    <LocationPicker onLocationSelected={handleLocationSelected} />
+                    {locationSelected && <Marker position={location} />}
+                    </MapContainer>
+                    {!locationSelected && (
+                        <div className="absolute top-0 left-0 w-full h-full bg-black/10 flex items-center justify-center pointer-events-none">
+                            <span className="bg-white px-3 py-1 rounded shadow text-sm">Tap map to pin location</span>
+                        </div>
+                    )}
+                </div>
              </div>
-             
-             <button 
-               type="submit" 
-               disabled={isLoading} 
-               className="w-full bg-blue-600 text-white py-3 rounded hover:bg-blue-700 disabled:bg-gray-400 transition"
-             >
-               {isLoading ? "Processing..." : "Place Order"}
-             </button>
+
+             {/* Section: Payment */}
+             <div>
+                <h3 className="font-semibold text-lg mb-3 border-b pb-2">Payment Method</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {['Cash', 'Khalti', 'PayPal'].map((method) => (
+                        <label key={method} className={`flex items-center justify-center p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === method ? 'border-blue-600 bg-blue-50 ring-2 ring-blue-200' : 'hover:bg-gray-50'}`}>
+                            <input type="radio" value={method} checked={paymentMethod === method} onChange={() => setPaymentMethod(method)} className="mr-2 accent-blue-600" />
+                            <span className="font-medium">{method}</span>
+                        </label>
+                    ))}
+                </div>
+             </div>
            </form>
         </div>
         
-        <div className="md:col-span-1 bg-white p-6 shadow-md rounded-xl h-fit">
-           <h3 className="font-bold mb-4">Order Summary</h3>
-           <div className="space-y-2 mb-4">
-             {selectedProducts.map((item, index) => (
-               <div key={index} className="flex justify-between text-sm">
-                 <span>{item.name || 'Product'} x {item.quantity}</span>
-                 <span>Rs. {(item.price * item.quantity).toFixed(2)}</span>
-               </div>
-             ))}
-           </div>
-           <div className="flex justify-between text-sm mb-2">
-             <span>Delivery Fee</span>
-             <span>Rs. {delivery_fee.toFixed(2)}</span>
-           </div>
-           <div className="flex justify-between font-bold border-t pt-2 text-lg">
-             <span>Total</span>
-             <span>Rs. {total.toFixed(2)}</span>
-           </div>
+        {/* Right Column: Summary */}
+        <div className="md:col-span-1">
+            <div className="bg-white p-6 shadow-md rounded-xl sticky top-4">
+                <h3 className="font-bold text-xl mb-4 text-gray-800">Order Summary</h3>
+                <div className="space-y-3 mb-4 max-h-60 overflow-y-auto custom-scrollbar">
+                    {selectedProducts.map((item, index) => (
+                    <div key={index} className="flex justify-between text-sm items-center border-b pb-2">
+                        <div className="flex flex-col">
+                            <span className="font-medium">{item.name || 'Product'}</span>
+                            <span className="text-gray-500 text-xs">Qty: {item.quantity} | {item.size}</span>
+                        </div>
+                        <span className="font-medium">Rs. {(item.price * item.quantity).toFixed(2)}</span>
+                    </div>
+                    ))}
+                </div>
+                
+                <div className="space-y-2 pt-2 text-sm text-gray-600">
+                    <div className="flex justify-between">
+                        <span>Subtotal</span>
+                        <span>Rs. {(total - delivery_fee).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span>Delivery Fee</span>
+                        <span>Rs. {delivery_fee.toFixed(2)}</span>
+                    </div>
+                </div>
+
+                <div className="flex justify-between font-bold border-t pt-4 mt-4 text-xl text-gray-900">
+                    <span>Total</span>
+                    <span>Rs. {total.toFixed(2)}</span>
+                </div>
+
+                <button 
+                form="checkout-form"
+                type="submit" 
+                disabled={isLoading} 
+                className={`w-full mt-6 py-3 px-4 rounded-lg text-white font-bold text-lg shadow-md transition-all transform active:scale-95
+                    ${isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 hover:shadow-lg'}`}
+                >
+                {isLoading ? "Processing..." : `Place Order (Rs. ${total.toFixed(0)})`}
+                </button>
+            </div>
         </div>
       </div>
     </div>

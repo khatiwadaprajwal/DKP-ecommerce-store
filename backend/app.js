@@ -2,7 +2,7 @@ const express = require('express');
 const app = express();
 require('./config/mongoconfig');
 const cors = require("cors");
-
+const cookieParser = require("cookie-parser");
 
 
 const path = require('path');
@@ -10,6 +10,7 @@ require("./utils/cleanupjob");
 
 // Express setup
 app.use(express.json());
+app.use(cookieParser());
 app.use(cors({
     origin: ["http://localhost:5173", "http://localhost:5174"], // Allow both ports
     methods: ["GET", "POST", "PUT", "DELETE"],

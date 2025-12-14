@@ -9,7 +9,7 @@ require("dotenv").config();  // Load env variables
   return jwt.sign(
     { id: userId, role }, // Payload: consistent 'id' and 'role'
     process.env.JWT_SECRET,
-    { expiresIn: "15m" } 
+    { expiresIn: "10s" } 
   );
 };
 

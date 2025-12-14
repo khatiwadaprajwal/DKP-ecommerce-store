@@ -196,30 +196,31 @@ exports.createOrder = async (req, res) => {
   }
 };
 exports.completeKhaltiPayment = async (req, res) => {
-  // 1. Extract 'status' and 'message' along with pidx/orderId
   const { pidx, orderId, userId, status, message } = req.query;
 
   try {
-    // ---------------------------------------------------------
-    // 🆕 UPDATED LOGIC: Handle Explicit Cancellation/Failure
-    // ---------------------------------------------------------
+    // 1. Handle Cancellation/Failure from Khalti
     if (status === "UserCanceled" || status === "Expired" || message === "User canceled" || !pidx) {
-      
       console.log(`⚠️ Payment Cancelled for Order: ${orderId}`);
-
-      // Immediately mark as Failed in Database
-      await Order.findByIdAndUpdate(orderId, {
-        paymentStatus: "Failed",
-        status: "Failed"
-      });
-
-      // Redirect to your frontend Failure Page
+      await Order.findByIdAndUpdate(orderId, { paymentStatus: "Failed", status: "Failed" });
       return res.redirect(`http://localhost:5173/payment-failed?orderId=${orderId}`);
     }
 
-    // ... ORIGINAL SUCCESS LOGIC ...
-    const KHALTI_SECRET_KEY = process.env.KHALTI_SECRET_KEY;
+    // 2. Fetch Order and Check if Already Paid (Prevent Double Stock Deduction)
+    // We populate orderItems to get access to productId, color, size, and quantity
+    const order = await Order.findById(orderId).populate("orderItems");
+    
+    if (!order) {
+        return res.status(404).send("Order not found");
+    }
 
+    if (order.paymentStatus === "Paid") {
+        console.log("ℹ️ Order already processed");
+        return res.redirect(`http://localhost:5173/payment-success?orderId=${orderId}`);
+    }
+
+    // 3. Verify Payment with Khalti API
+    const KHALTI_SECRET_KEY = process.env.KHALTI_SECRET_KEY;
     const headers = {
       Authorization: `Key ${KHALTI_SECRET_KEY}`,
       "Content-Type": "application/json"
@@ -231,39 +232,71 @@ exports.completeKhaltiPayment = async (req, res) => {
       { headers }
     );
 
-    const paymentInfo = response.data;
-
-    // Double check verification status
-    if (paymentInfo.status !== "Completed") {
-      await Order.findByIdAndUpdate(orderId, {
-        paymentStatus: "Failed",
-        status: "Failed"
-      });
-
+    if (response.data.status !== "Completed") {
+      await Order.findByIdAndUpdate(orderId, { paymentStatus: "Failed", status: "Failed" });
       return res.redirect(`http://localhost:5173/payment-failed?orderId=${orderId}`);
     }
 
-    // Success Case
-    await Order.findByIdAndUpdate(orderId, {
-      paymentStatus: "Paid",
-      status: "Pending", // Or 'Confirmed'
-      transactionId: pidx
-    });
+    // 4. Mark Order as Paid
+    order.paymentStatus = "Paid";
+    order.status = "Pending";
+    order.transactionId = pidx;
+    await order.save();
 
+    // =========================================================
+    // 🟢 STOCK DEDUCTION LOGIC (Crucial for Cart Orders)
+    // =========================================================
+    for (const item of order.orderItems) {
+      const product = await Product.findById(item.productId);
+      
+      if (product) {
+        // Find the specific variant (Color/Size)
+        const variantIndex = product.variants.findIndex(
+          (v) => v.color === item.color && v.size === item.size
+        );
+
+        if (variantIndex !== -1) {
+          // Deduct quantity
+          product.variants[variantIndex].quantity -= item.quantity;
+          
+          // Safety check: ensure quantity doesn't go below 0
+          if (product.variants[variantIndex].quantity < 0) {
+             product.variants[variantIndex].quantity = 0;
+          }
+
+          // Recalculate total quantity for the product
+          product.totalQuantity = product.variants.reduce((sum, v) => sum + v.quantity, 0);
+          product.totalSold += item.quantity;
+
+          await product.save();
+          console.log(`✅ Stock updated for ${product.productName}`);
+        }
+      }
+    }
+
+    // =========================================================
+    // 🟢 CLEAR CART LOGIC
+    // =========================================================
+    const cart = await Cart.findOne({ userId });
+    if (cart) {
+      const orderedProductIds = order.orderItems.map(item => item.productId);
+      
+      await CartItem.deleteMany({ 
+        cartId: cart._id, 
+        productId: { $in: orderedProductIds }
+      });
+      console.log("✅ Cart items cleared successfully");
+    }
+
+    // 5. Redirect to Success Page
     return res.redirect(`http://localhost:5173/payment-success?orderId=${orderId}`);
 
   } catch (error) {
     console.error("❌ Error verifying Khalti payment:", error.message);
-    
-    // Fallback: If code crashes, still mark as failed so it doesn't stay Pending
     if (orderId) {
-        await Order.findByIdAndUpdate(orderId, {
-            paymentStatus: "Failed",
-            status: "Failed"
-        });
-        return res.redirect(`http://localhost:5173/payment-failed?orderId=${orderId}`);
+       await Order.findByIdAndUpdate(orderId, { paymentStatus: "Failed", status: "Failed" });
+       return res.redirect(`http://localhost:5173/payment-failed?orderId=${orderId}`);
     }
-    
     return res.status(500).send("Payment verification failed");
   }
 };

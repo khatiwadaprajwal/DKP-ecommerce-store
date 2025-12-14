@@ -12,12 +12,17 @@ require("./utils/cleanupjob");
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-    origin: ["http://localhost:5173", "http://localhost:5174"], // Allow both ports
+    // Allow your specific frontend IP and Port explicitly
+    origin: [
+        "http://localhost:5173",
+        "http://192.168.1.64:5173", // Your Laptop IP + Frontend Port
+        "http://192.168.1.64:3000"  // In case you use port 3000
+    ], 
     methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true 
+    credentials: true // Crucial for cookies
 }));
-app.use("/public", express.static(path.join(__dirname, "public")));
 
+app.use("/public", express.static(path.join(__dirname, "public")));
 
 //routes connected
 const routes = require("./routes/index")
@@ -25,7 +30,7 @@ app.use("/v1", routes);
 
 
 
-app.listen(3001, "localhost", (err) => {
+app.listen(3001, "0.0.0.0", (err) => {
     if (err) {
         console.log("Server Error:", err);
     } else {

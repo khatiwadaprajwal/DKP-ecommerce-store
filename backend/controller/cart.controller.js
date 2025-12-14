@@ -359,7 +359,7 @@ exports.placeOrderFromCart = async (req, res) => {
     let productDetails = [];
     let stockUpdates = [];
 
-    // First validate stock for all products
+    // 1. Validate stock for all products
     for (let item of selectedProducts) {
       const { productId, quantity, color, size } = item;
       console.log(`🔎 Processing Product ID: ${productId} (Quantity: ${quantity}, Color: ${color}, Size: ${size})`);
@@ -408,22 +408,26 @@ exports.placeOrderFromCart = async (req, res) => {
       });
     }
 
-    // Create order with initial status
+    // 2. Set Initial Status
+    // Khalti & PayPal start as 'Failed' until callback confirms payment
+    const initialStatus = (paymentMethod === "Khalti" || paymentMethod === "PayPal") ? "Failed" : "Pending";
+
+    // 3. Create order
     const order = new Order({
       userId,
-      orderItems,
+      orderItems, // Will be populated shortly
       totalAmount,
       address,
       location,
       paymentMethod,
-      status: paymentMethod === "PayPal" ? "Failed" : "Pending",
-      paymentStatus: paymentMethod === "PayPal" ? "Failed" : "Pending",
+      status: initialStatus,
+      paymentStatus: initialStatus,
       currency: "NPR"
     });
 
     await order.save();
 
-    // Create order items
+    // 4. Create order items
     for (const update of stockUpdates) {
       const orderItem = new OrderItem({
         productId: update.productId,
@@ -443,7 +447,7 @@ exports.placeOrderFromCart = async (req, res) => {
     order.orderItems = orderItems;
     await order.save();
 
-    // If payment method is Cash, update stock quantities immediately
+    // 5. Handle Cash Payment (Immediate Stock Update)
     if (paymentMethod === "Cash") {
       for (const update of stockUpdates) {
         const { product, variantIndex, quantity } = update;
@@ -454,6 +458,51 @@ exports.placeOrderFromCart = async (req, res) => {
       }
     }
 
+    // 6. Handle Khalti Payment
+    if (paymentMethod === "Khalti") {
+      try {
+        const KHALTI_SECRET_KEY = process.env.KHALTI_SECRET_KEY;
+        const amountInPaisa = totalAmount * 100; // Khalti requires paisa
+
+        const paymentData = {
+          return_url: `http://localhost:3001/v1/payments/complete-khalti-payment?orderId=${order._id}&userId=${userId}`,
+          website_url: `http://localhost:5173`,
+          amount: amountInPaisa,
+          purchase_order_id: order._id.toString(),
+          purchase_order_name: `Order Payment`,
+          customer_info: {
+            name: req.user.fullName || "Customer",
+            email: req.user.email
+          }
+        };
+
+        const headers = {
+          Authorization: `Key ${KHALTI_SECRET_KEY}`,
+          "Content-Type": "application/json"
+        };
+
+        const khaltiResponse = await axios.post(
+          `https://a.khalti.com/api/v2/epayment/initiate/`,
+          paymentData,
+          { headers }
+        );
+
+        const khaltiUrl = khaltiResponse.data.payment_url;
+
+        // Return immediately so frontend can redirect. 
+        // Stock reduction and Cart clearing should happen in the completeKhaltiPayment callback.
+        return res.status(200).json({
+          message: "Redirect to Khalti",
+          khaltiUrl
+        });
+
+      } catch (khaltiError) {
+        console.error("❌ Khalti Payment Error:", khaltiError.response?.data || khaltiError.message);
+        return res.status(500).json({ error: "Khalti payment initialization failed" });
+      }
+    }
+
+    // 7. Handle PayPal Payment
     if (paymentMethod === "PayPal") {
       try {
         const accessToken = await generateAccessToken();
@@ -464,7 +513,7 @@ exports.placeOrderFromCart = async (req, res) => {
           payer: { payment_method: "paypal" },
           redirect_urls: {
             return_url: `http://localhost:5173/paypal/success?orderId=${order._id}&userId=${userId}&productIds=${selectedProducts.map(p => p.productId).join(',')}`,
-          cancel_url: "http://localhost:3001/v1/paypal/cancel",
+            cancel_url: "http://localhost:3001/v1/paypal/cancel",
           },
           transactions: [
             {
@@ -493,7 +542,8 @@ exports.placeOrderFromCart = async (req, res) => {
       }
     }
 
-    // Remove items from cart
+    // 8. Finalize (For Cash on Delivery)
+    // Remove items from cart ONLY if not redirecting to Payment Gateway
     const orderedProductIds = selectedProducts.map(p => p.productId);
     await CartItem.deleteMany({ cartId: cart._id, productId: { $in: orderedProductIds } });
 
@@ -514,5 +564,4 @@ exports.placeOrderFromCart = async (req, res) => {
     return res.status(500).json({ error: "Order placement failed, please try again" });
   }
 };
-
 

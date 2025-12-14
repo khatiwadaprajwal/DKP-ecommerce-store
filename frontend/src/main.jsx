@@ -9,7 +9,7 @@ import { AuthProvider } from './context/AuthProvider.jsx';
 
 createRoot(document.getElementById('root')).render(
   <BrowserRouter>
-    {/* ✅ AuthProvider MUST be the outer layer so ShopContext can use it */}
+   
     <AuthProvider>
       <ShopContextProvider>
         <App />

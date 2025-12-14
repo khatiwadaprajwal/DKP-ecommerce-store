@@ -51,6 +51,9 @@ export default defineConfig({
       },
     }),
   ],
-  
+   server: {
+    host: '0.0.0.0', // Allows access from mobile/network
+    port: 5173,      // Ensures consistent port
+  }
 })
 

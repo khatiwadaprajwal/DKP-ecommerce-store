@@ -36,6 +36,7 @@ import AdminMessagesPage from "./pages/Admin/AdminMessagePage";
 import { AdminRoute, CustomerRoute } from "./component/ProtectedRoutes";
 
 const App = () => {
+ 
   return (
     <div className="app-container">
       <ToastContainer position="bottom-right" />
@@ -53,8 +54,8 @@ const App = () => {
           </Route>
         </Route>
 
-        {/* --- 2. AUTH ROUTES (NO HEADER/FOOTER) --- */}
-        {/* ✅ Moved these OUTSIDE of UserLayout so they don't get the Navbar/Footer */}
+        
+ 
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />

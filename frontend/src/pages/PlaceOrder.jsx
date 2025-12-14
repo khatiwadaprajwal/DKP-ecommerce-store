@@ -192,6 +192,7 @@ const PlaceOrder = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Left Column: Form */}
         <div className="md:col-span-2 space-y-6">
+           {/* FORM START - Ensuring all divs are nested inside */}
            <form id="checkout-form" onSubmit={handleSubmit} className="bg-white p-6 shadow-md rounded-xl space-y-6">
              
              {/* Section: Personal Info */}
@@ -244,19 +245,79 @@ const PlaceOrder = () => {
                 </div>
              </div>
 
-             {/* Section: Payment */}
-             <div>
-                <h3 className="font-semibold text-lg mb-3 border-b pb-2">Payment Method</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {['Cash', 'Khalti', 'PayPal'].map((method) => (
-                        <label key={method} className={`flex items-center justify-center p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === method ? 'border-blue-600 bg-blue-50 ring-2 ring-blue-200' : 'hover:bg-gray-50'}`}>
-                            <input type="radio" value={method} checked={paymentMethod === method} onChange={() => setPaymentMethod(method)} className="mr-2 accent-blue-600" />
-                            <span className="font-medium">{method}</span>
-                        </label>
-                    ))}
+             {/* Section: Payment Method (UPDATED DESIGN) */}
+             <div className="mt-6">
+                {/* Header with Icon */}
+                <h3 className="font-semibold text-lg mb-4 border-b pb-2 flex items-center gap-2 text-gray-800">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                  </svg>
+                  Payment Method
+                </h3>
+
+                <div className="flex flex-col gap-3">
+                  {/* 1. Cash on Delivery */}
+                  <label className={`flex items-center p-4 border rounded-lg cursor-pointer transition-all duration-200 ${
+                    paymentMethod === 'Cash' 
+                      ? 'border-blue-600 bg-white ring-1 ring-blue-600 shadow-sm' 
+                      : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'
+                  }`}>
+                    <input 
+                      type="radio" 
+                      name="payment_method"
+                      value="Cash" 
+                      checked={paymentMethod === 'Cash'} 
+                      onChange={() => setPaymentMethod('Cash')} 
+                      className="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500" 
+                    />
+                    
+                    {/* Icon and Text Container */}
+                    <div className="ml-3 flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs">
+                        $
+                      </div>
+                      <span className="font-medium text-gray-700">Cash on Delivery</span>
+                    </div>
+                  </label>
+
+                  {/* 2. Pay with Khalti */}
+                  <label className={`flex items-center p-4 border rounded-lg cursor-pointer transition-all duration-200 ${
+                    paymentMethod === 'Khalti' 
+                      ? 'border-blue-600 bg-white ring-1 ring-blue-600 shadow-sm' 
+                      : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'
+                  }`}>
+                    <input 
+                      type="radio" 
+                      name="payment_method"
+                      value="Khalti" 
+                      checked={paymentMethod === 'Khalti'} 
+                      onChange={() => setPaymentMethod('Khalti')} 
+                      className="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500" 
+                    />
+                    <span className="ml-3 font-medium text-gray-700">Pay with Khalti</span>
+                  </label>
+
+                  {/* 3. PayPal */}
+                  <label className={`flex items-center p-4 border rounded-lg cursor-pointer transition-all duration-200 ${
+                    paymentMethod === 'PayPal' 
+                      ? 'border-blue-600 bg-white ring-1 ring-blue-600 shadow-sm' 
+                      : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'
+                  }`}>
+                    <input 
+                      type="radio" 
+                      name="payment_method"
+                      value="PayPal" 
+                      checked={paymentMethod === 'PayPal'} 
+                      onChange={() => setPaymentMethod('PayPal')} 
+                      className="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500" 
+                    />
+                    <span className="ml-3 font-medium text-gray-700">PayPal</span>
+                  </label>
                 </div>
              </div>
-           </form>
+
+           </form> 
+           {/* FORM END - Correctly closed here */}
         </div>
         
         {/* Right Column: Summary */}

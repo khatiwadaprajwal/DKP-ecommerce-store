@@ -1,6 +1,5 @@
 import axios from "axios";
 
-// Access the environment variable (Vite style)
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
 
 const api = axios.create({
@@ -22,7 +21,6 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("accessToken");
@@ -34,21 +32,19 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// 2. Response Interceptor: Handle 403/401 & Refresh
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // Check if error is 401/403 and we haven't tried refreshing yet
+    // Check 401/403, ensure we haven't retried, and ensure we aren't ALREADY calling login/refresh
     if (
       (error.response?.status === 401 || error.response?.status === 403) &&
       !originalRequest._retry &&
       !originalRequest.url.includes("/login") && 
-      !originalRequest.url.includes("/refresh")  
+      !originalRequest.url.includes("/refresh") 
     ) {
       if (isRefreshing) {
-        
         return new Promise(function (resolve, reject) {
           failedQueue.push({ resolve, reject });
         })
@@ -63,8 +59,12 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        
-        const response = await api.get("/refresh");
+        // FIX 1: Use the correct route prefix (Assuming your auth routes are under /auth)
+        // FIX 2: Explicitly remove Authorization header for this request so backend doesn't reject it
+        // FIX 3: Use _axios_ directly or pass empty headers to avoid the request interceptor attaching the bad token
+        const response = await api.get("/v1/auth/refresh", {
+           headers: { Authorization: "" } 
+        });
 
         const { accessToken } = response.data;
 
@@ -75,17 +75,16 @@ api.interceptors.response.use(
         api.defaults.headers.common["Authorization"] = "Bearer " + accessToken;
         originalRequest.headers["Authorization"] = "Bearer " + accessToken;
 
-        // Retry queued requests
-        processQueue(null, accessToken);
+        // dispatch event to update AuthContext (See Solution 2)
+        window.dispatchEvent(new Event("storage"));
 
-        // Retry original request
+        processQueue(null, accessToken);
         return api(originalRequest);
 
       } catch (err) {
-        // Refresh failed (Session truly expired)
         processQueue(err, null);
         localStorage.removeItem("accessToken");
-        localStorage.removeItem("user"); // Clear user data
+        localStorage.removeItem("user");
         
         // Redirect to login
         window.location.href = "/login";

@@ -1,5 +1,5 @@
 import React from 'react';
-import Newsletter from '../component/Newsletter';
+
 import { assets } from '../assets/assets';
 
 const About = () => {
@@ -205,7 +205,7 @@ const About = () => {
         </div>
       </section>
 
-      <Newsletter/>
+     
     </div>
   );
 };

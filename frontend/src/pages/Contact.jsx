@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
-import Newsletter from '../component/Newsletter';
+
 import { motion } from 'framer-motion';
 import api from '../config/api'; // ✅ Use centralized API
 import { useAuth } from '../context/AuthProvider'; // ✅ Use Auth Context
@@ -215,7 +215,7 @@ const Contact = () => {
         </div>
       </section>
 
-      <Newsletter />
+      
     </div>
   );
 };

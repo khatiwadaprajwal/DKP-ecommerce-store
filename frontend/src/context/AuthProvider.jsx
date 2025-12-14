@@ -1,80 +1,85 @@
 import React, { useEffect, useState, createContext, useContext } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
-import axios from 'axios';
 import { toast } from 'react-toastify';
-import { ShopContext } from '../context/ShopContext'; // Needed for backend_url
-import api from '../config/api'; // Updated import to use api.js
+import api from '../config/api'; 
 
 const AuthContext = createContext();
 
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-  // We don't need backend_url here anymore because api.js handles the baseURL
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('accessToken')); // Changed 'token' to 'accessToken' to match api.js
+  const [token, setToken] = useState(localStorage.getItem('accessToken'));
   const [loading, setLoading] = useState(true);
 
-  // Helper to decode
   const decodeUser = (t) => {
     try { return jwtDecode(t); } catch (e) { return null; }
   };
 
-  // 1. Initialize App (Check LocalStorage)
-  useEffect(() => {
+  // Function to sync state with LocalStorage
+  const checkToken = () => {
     const storedToken = localStorage.getItem('accessToken');
-    
+    const storedUser = localStorage.getItem('user'); // ✅ Get full user data
+
     if (storedToken) {
       const decoded = decodeUser(storedToken);
       if (decoded) {
-        setUser(decoded);
         setToken(storedToken);
-        // ✅ CHANGE 2: Set header on your 'api' instance, not global axios
         api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+        
+        // ✅ FIX: Use storedUser (full details) if available, otherwise fallback to decoded token
+        if (storedUser) {
+            try {
+                setUser(JSON.parse(storedUser));
+            } catch (error) {
+                setUser(decoded);
+            }
+        } else {
+            setUser(decoded);
+        }
+
       } else {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('user');
+        // Token is invalid/expired according to jwtDecode
+        handleLogout();
       }
+    } else {
+        setUser(null);
+        setToken(null);
     }
     setLoading(false);
+  };
+
+  useEffect(() => {
+    checkToken();
+
+    // LISTEN for storage events (Triggered by api.js refreshing token)
+    const handleStorageChange = () => {
+      checkToken();
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  // ❌ REMOVED: The generic axios interceptor logic. 
-  // Why? Because 'api.js' now handles the 401/403 refresh logic automatically.
-
-  // 2. Login Function
   const login = (newToken, userData) => {
     localStorage.setItem('accessToken', newToken);
     localStorage.setItem('user', JSON.stringify(userData));
-    
-    setToken(newToken);
-    setUser(userData);
-    
-    // ✅ CHANGE 3: Update 'api' instance headers
-    api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+    checkToken(); // Update state immediately
   };
 
-  // 3. Logout Function
   const handleLogout = async () => {
     try {
-      // ✅ CHANGE 4: Use 'api.post' to utilize the baseURL and credentials
       await api.post(`/auth/logout`); 
     } catch (error) {
       console.error("Logout error", error);
     } finally {
-      // Clear State
       localStorage.removeItem('accessToken');
       localStorage.removeItem('user');
-      setToken(null);
       setUser(null);
-      
-      // Clear Header
+      setToken(null);
       delete api.defaults.headers.common['Authorization'];
-      
       toast.success("Logged out successfully");
-      // Optional: Force redirect to ensure clean state
-      // window.location.href = '/login'; 
     }
   };
 
@@ -84,6 +89,7 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 }
+
 // ----- UPDATED ROUTES -----
 
 export const AdminRoute = () => {

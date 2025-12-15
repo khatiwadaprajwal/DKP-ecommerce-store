@@ -164,9 +164,11 @@ const Cart = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-4 sm:py-6 md:py-8 min-h-screen">
+    // FIXED: Changed min-h-screen to min-h-[50vh] for mobile to remove the big gap
+    <div className="container mx-auto px-4 py-4 sm:py-6 md:py-8 min-h-[50vh] md:min-h-screen">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6 md:mb-8 mt-8">
+      {/* Adjusted top margin: mt-4 for mobile, mt-8 for desktop */}
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6 md:mb-8 mt-4 sm:mt-8">
         <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 flex items-center mb-2 sm:mb-0">
           <ShoppingCart className="mr-2 sm:mr-4 text-blue-600" size={24} />
           Shopping Cart

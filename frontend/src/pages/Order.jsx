@@ -252,14 +252,15 @@ const Order = () => {
   return (
     <div className="py-8 min-h-screen bg-gray-50 text-lg">
       <div className="container mx-auto px-4">
-        <div className="flex justify-between items-center mb-6">
-          <div>
+        {/* MOBILE FIX: Stacked layout on mobile using flex-col md:flex-row */}
+        <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+          <div className="text-center md:text-left">
             <h1 className="text-3xl font-bold text-gray-900">My Orders</h1>
             <p className="text-gray-600 mt-2">
               Track and manage your purchases
             </p>
           </div>
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 w-full md:w-auto justify-center md:justify-end">
             <button
               onClick={() => navigate("/collection")}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition flex items-center hover:cursor-pointer"
@@ -287,10 +288,8 @@ const Order = () => {
       ? "bg-green-100 text-green-800"
       : order.status === "Cancelled"
       ? "bg-red-100 text-red-800"
-      // 👇 ADD THIS LINE 👇
       : order.status === "Failed"
       ? "bg-red-100 text-red-800" 
-      // 👆 END ADD 👆
       : order.status === "Shipped"
       ? "bg-blue-100 text-blue-800"
       : order.status === "Processing"
@@ -367,7 +366,8 @@ const Order = () => {
                     })}
                 </div>
 
-                <div className="mt-4 flex justify-between items-center">
+                {/* MOBILE FIX: Stacked Footer (Total Amount + Buttons) */}
+                <div className="mt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div>
                     <div className="text-lg font-semibold text-gray-900">
                       Total: {`NPR`} {order.totalAmount?.toFixed(2)}
@@ -391,22 +391,11 @@ const Order = () => {
                       )}
                     </div>
                   </div>
-                  <div className="flex space-x-2">
+                  
+                  {/* Buttons Section */}
+                  <div className="flex space-x-2 w-full sm:w-auto justify-end">
                     
-                    {/* ✅ KHALTI BUTTON ADDED HERE */}
-                    {order.paymentMethod === 'Khalti' && 
-                     order.paymentStatus !== 'Paid' && 
-                     order.status !== 'Cancelled' && (
-                      <button
-                        onClick={() => handleKhaltiPayment(order._id)}
-                        disabled={paymentLoading}
-                        className="px-4 py-2 text-sm bg-purple-600 text-white rounded hover:bg-purple-700 flex items-center"
-                      >
-                        <CreditCardIcon className="h-4 w-4 mr-1" />
-                        {paymentLoading ? "Loading..." : "Pay with Khalti"}
-                      </button>
-                    )}
-                    {/* ✅ END KHALTI BUTTON */}
+                    {/* ❌ REMOVED KHALTI BUTTON FROM HERE */}
 
                     <button
                       onClick={() => handleViewDetails(order)}

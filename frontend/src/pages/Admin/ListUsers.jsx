@@ -211,7 +211,7 @@ const ListUsers = () => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
+    <div className="bg-white rounded-lg shadow-md p-4 md:p-6">
       {/* Notification Messages */}
       {errorMessage && (
         <div className="mb-4 p-3 bg-red-100 text-red-800 rounded">
@@ -225,8 +225,8 @@ const ListUsers = () => {
       )}
 
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-semibold">User Management</h2>
-        <div className="text-sm text-gray-500">Total Users: {users.length}</div>
+        <h2 className="text-xl md:text-2xl font-semibold">User Management</h2>
+        <div className="text-sm text-gray-500">Total: {users.length}</div>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -261,386 +261,178 @@ const ListUsers = () => {
           <p className="text-gray-500">Loading users...</p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead>
-              <tr>
-                <th
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort("_id")}
-                >
-                  ID
-                  {sortField === "_id" && (
-                    <span className="ml-1">
-                      {sortDirection === "asc" ? "↑" : "↓"}
-                    </span>
-                  )}
-                </th>
-                <th
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort("name")}
-                >
-                  Name
-                  {sortField === "name" && (
-                    <span className="ml-1">
-                      {sortDirection === "asc" ? "↑" : "↓"}
-                    </span>
-                  )}
-                </th>
-                <th
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort("email")}
-                >
-                  Email
-                  {sortField === "email" && (
-                    <span className="ml-1">
-                      {sortDirection === "asc" ? "↑" : "↓"}
-                    </span>
-                  )}
-                </th>
-                <th
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort("role")}
-                >
-                  Role
-                  {sortField === "role" && (
-                    <span className="ml-1">
-                      {sortDirection === "asc" ? "↑" : "↓"}
-                    </span>
-                  )}
-                </th>
-                <th
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort("status")}
-                >
-                  Status
-                  {sortField === "status" && (
-                    <span className="ml-1">
-                      {sortDirection === "asc" ? "↑" : "↓"}
-                    </span>
-                  )}
-                </th>
-                <th
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort("joined")}
-                >
-                  Joined
-                  {sortField === "joined" && (
-                    <span className="ml-1">
-                      {sortDirection === "asc" ? "↑" : "↓"}
-                    </span>
-                  )}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {sortedUsers.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan="7"
-                    className="px-6 py-4 text-center text-gray-500"
-                  >
-                    No users found
-                  </td>
-                </tr>
-              ) : (
-                sortedUsers.map((user) => (
-                  <React.Fragment key={user._id}>
-                    <tr>
-                      <td className="px-6 py-4 whitespace-nowrap font-medium">
-                        {user._id.substring(0, 8)}...
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {user.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {user.email}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs ${getRoleBadgeClass(
-                            user.role
-                          )}`}
-                        >
-                          {user.role}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeClass(
-                            user.status
-                          )}`}
-                        >
-                          {user.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {formatDate(user.joined)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-                          onClick={() =>
-                            setShowUserDetails(
-                              showUserDetails === user._id ? null : user._id
-                            )
-                          }
-                          className="text-indigo-600 hover:text-indigo-900 mr-3"
-                          title="View Details"
-                        >
-                          <EyeIcon className="h-5 w-5" />
-                        </button>
-                        <button
-                          onClick={() => setEditingUser(user)}
-                          className="text-blue-600 hover:text-blue-900 mr-3"
-                          title="Edit User"
-                        >
-                          <PencilIcon className="h-5 w-5" />
-                        </button>
-                        <button
-                          onClick={() => deleteUser(user._id)}
-                          className="text-red-600 hover:text-red-900"
-                          title="Delete User"
-                        >
-                          <TrashIcon className="h-5 w-5" />
-                        </button>
-                      </td>
-                    </tr>
+        <>
+          {/* 📱 MOBILE VIEW: Cards */}
+          <div className="md:hidden space-y-4">
+             {sortedUsers.length === 0 ? (
+                <div className="text-center text-gray-500 py-4">No users found</div>
+             ) : (
+                sortedUsers.map(user => (
+                   <div key={user._id} className="border rounded-lg p-4 bg-gray-50 shadow-sm">
+                      <div className="flex justify-between items-start mb-2">
+                         <div>
+                            <div className="font-bold text-gray-900">{user.name}</div>
+                            <div className="text-xs text-gray-500">{user.email}</div>
+                         </div>
+                         <span className={`px-2 py-1 rounded-full text-xs ${getRoleBadgeClass(user.role)}`}>
+                            {user.role}
+                         </span>
+                      </div>
+                      
+                      <div className="flex justify-between items-center text-sm mb-3">
+                         <span className={`px-2 py-0.5 rounded text-xs ${getStatusBadgeClass(user.status)}`}>
+                            {user.status}
+                         </span>
+                         <span className="text-xs text-gray-500">Joined: {formatDate(user.joined)}</span>
+                      </div>
 
-                    {showUserDetails === user._id && (
-                      <tr>
-                        <td colSpan="7" className="px-6 py-4 bg-gray-50">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div>
-                              <h4 className="font-medium text-sm mb-2">
-                                User Information
-                              </h4>
-                              <p className="text-sm">
-                                <span className="font-medium">ID:</span>{" "}
-                                {user._id}
-                              </p>
-                              <p className="text-sm">
-                                <span className="font-medium">Name:</span>{" "}
-                                {user.name}
-                              </p>
-                              <p className="text-sm">
-                                <span className="font-medium">Email:</span>{" "}
-                                {user.email}
-                              </p>
-                            </div>
-                            <div>
-                              <h4 className="font-medium text-sm mb-2">
-                                Account Details
-                              </h4>
-                              <p className="text-sm">
-                                <span className="font-medium">Role:</span>{" "}
-                                {user.role}
-                              </p>
-                              <p className="text-sm">
-                                <span className="font-medium">Status:</span>{" "}
-                                {user.status}
-                              </p>
-                              <p className="text-sm">
-                                <span className="font-medium">Joined:</span>{" "}
-                                {formatDate(user.joined)}
-                              </p>
-                              <p className="text-sm">
-                                <span className="font-medium">Last Login:</span>{" "}
-                                {formatDateTime(user.lastLogin)}
-                              </p>
-                            </div>
-                          </div>
+                      <div className="flex justify-end gap-3 border-t pt-3">
+                        <button onClick={() => setShowUserDetails(showUserDetails === user._id ? null : user._id)} className="text-indigo-600 flex items-center text-xs font-medium bg-indigo-50 px-2 py-1 rounded">
+                           <EyeIcon className="h-4 w-4 mr-1"/> Details
+                        </button>
+                        <button onClick={() => setEditingUser(user)} className="text-blue-600 flex items-center text-xs font-medium bg-blue-50 px-2 py-1 rounded">
+                           <PencilIcon className="h-4 w-4 mr-1"/> Edit
+                        </button>
+                        <button onClick={() => deleteUser(user._id)} className="text-red-600 flex items-center text-xs font-medium bg-red-50 px-2 py-1 rounded">
+                           <TrashIcon className="h-4 w-4 mr-1"/> Delete
+                        </button>
+                      </div>
 
-                          <div>
-                            <h4 className="font-medium text-sm mb-2">
-                              Quick Actions
-                            </h4>
-                            <div className="flex flex-wrap gap-2">
-                              <div>
-                                <span className="text-xs mr-2">Status:</span>
-                                <button
-                                  onClick={() =>
-                                    updateUserStatus(user._id, "Active")
-                                  }
-                                  className={`px-3 py-1 text-xs rounded mr-1 ${
-                                    user.status === "Active"
-                                      ? "bg-green-100 text-green-800"
-                                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                                  }`}
-                                >
-                                  Active
-                                </button>
-                                <button
-                                  onClick={() =>
-                                    updateUserStatus(user._id, "Inactive")
-                                  }
-                                  className={`px-3 py-1 text-xs rounded ${
-                                    user.status === "Inactive"
-                                      ? "bg-red-100 text-red-800"
-                                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                                  }`}
-                                >
-                                  Inactive
-                                </button>
-                              </div>
-
-                              <div className="ml-4">
-                                <span className="text-xs mr-2">Role:</span>
-                                {/* Only show valid role transitions */}
-                                {user.role === "Customer" && (
-                                  <button
-                                    onClick={() =>
-                                      updateUserRole(user._id, "Admin")
-                                    }
-                                    className="px-3 py-1 text-xs rounded mr-1 bg-gray-200 text-gray-700 hover:bg-gray-300"
-                                  >
-                                    Make Admin
+                      {/* Mobile Details Expanded */}
+                      {showUserDetails === user._id && (
+                         <div className="mt-3 pt-3 border-t bg-white p-3 rounded text-sm">
+                            <p><strong>ID:</strong> {user._id}</p>
+                            <p><strong>Last Login:</strong> {formatDateTime(user.lastLogin)}</p>
+                            
+                            <div className="mt-3">
+                               <p className="font-bold mb-1 text-xs uppercase text-gray-500">Quick Actions</p>
+                               <div className="flex flex-wrap gap-2">
+                                  {user.role === "Customer" && (
+                                     <button onClick={() => updateUserRole(user._id, "Admin")} className="bg-gray-200 text-xs px-2 py-1 rounded hover:bg-gray-300">Make Admin</button>
+                                  )}
+                                  {user.role === "Admin" && (
+                                     <button onClick={() => updateUserRole(user._id, "Customer")} className="bg-gray-200 text-xs px-2 py-1 rounded hover:bg-gray-300">Demote</button>
+                                  )}
+                                  <button onClick={() => updateUserStatus(user._id, user.status === 'Active' ? 'Inactive' : 'Active')} className={`text-xs px-2 py-1 rounded text-white ${user.status === 'Active' ? 'bg-red-500' : 'bg-green-500'}`}>
+                                     {user.status === 'Active' ? 'Deactivate' : 'Activate'}
                                   </button>
-                                )}
-                                {user.role === "Admin" && (
-                                  <>
-                                    <button
-                                      onClick={() =>
-                                        updateUserRole(user._id, "Customer")
-                                      }
-                                      className="px-3 py-1 text-xs rounded mr-1 bg-gray-200 text-gray-700 hover:bg-gray-300"
-                                    >
-                                      Demote to Customer
-                                    </button>
-                                    {/* <button
-                                      onClick={() =>
-                                        updateUserRole(user._id, "SuperAdmin")
-                                      }
-                                      className="px-3 py-1 text-xs rounded mr-1 bg-gray-200 text-gray-700 hover:bg-gray-300"
-                                    >
-                                      Make SuperAdmin
-                                    </button> */}
-                                  </>
-                                )}
-                                {/* Display current role */}
-                                <span
-                                  className={`px-3 py-1 text-xs rounded ml-2 ${getRoleBadgeClass(
-                                    user.role
-                                  )}`}
-                                >
-                                  Current: {user.role}
-                                </span>
-                              </div>
+                               </div>
                             </div>
-                          </div>
+                         </div>
+                      )}
+                   </div>
+                ))
+             )}
+          </div>
+
+          {/* 💻 LAPTOP VIEW: Table */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort("_id")}>ID</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort("name")}>Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort("email")}>Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort("role")}>Role</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort("status")}>Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort("joined")}>Joined</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {sortedUsers.length === 0 ? (
+                  <tr><td colSpan="7" className="px-6 py-4 text-center text-gray-500">No users found</td></tr>
+                ) : (
+                  sortedUsers.map((user) => (
+                    <React.Fragment key={user._id}>
+                      <tr>
+                        <td className="px-6 py-4 whitespace-nowrap font-medium">{user._id.substring(0, 8)}...</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{user.name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{user.email}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 rounded-full text-xs ${getRoleBadgeClass(user.role)}`}>{user.role}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeClass(user.status)}`}>{user.status}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">{formatDate(user.joined)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <button onClick={() => setShowUserDetails(showUserDetails === user._id ? null : user._id)} className="text-indigo-600 hover:text-indigo-900 mr-3">
+                            <EyeIcon className="h-5 w-5" />
+                          </button>
+                          <button onClick={() => setEditingUser(user)} className="text-blue-600 hover:text-blue-900 mr-3">
+                            <PencilIcon className="h-5 w-5" />
+                          </button>
+                          <button onClick={() => deleteUser(user._id)} className="text-red-600 hover:text-red-900">
+                            <TrashIcon className="h-5 w-5" />
+                          </button>
                         </td>
                       </tr>
-                    )}
-                  </React.Fragment>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+
+                      {showUserDetails === user._id && (
+                        <tr>
+                          <td colSpan="7" className="px-6 py-4 bg-gray-50">
+                             {/* Desktop Details View */}
+                             <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                   <p><strong>ID:</strong> {user._id}</p>
+                                   <p><strong>Last Login:</strong> {formatDateTime(user.lastLogin)}</p>
+                                </div>
+                                <div>
+                                   <div className="flex gap-2">
+                                      <button onClick={() => updateUserStatus(user._id, user.status === 'Active' ? 'Inactive' : 'Active')} className="bg-gray-200 px-2 py-1 rounded text-xs hover:bg-gray-300">Toggle Status</button>
+                                      {user.role === 'Customer' && <button onClick={() => updateUserRole(user._id, 'Admin')} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs hover:bg-blue-200">Promote to Admin</button>}
+                                      {user.role === 'Admin' && <button onClick={() => updateUserRole(user._id, 'Customer')} className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs hover:bg-orange-200">Demote to Customer</button>}
+                                   </div>
+                                </div>
+                             </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
-      {/* Edit User Modal */}
+      {/* Edit User Modal (Responsive) */}
       {editingUser && (
-        <div className="fixed inset-0  bg-opacity-100 flex items-center justify-center z-50">
-          <div className="bg-gray-100 rounded-lg p-6 w-full max-w-2xl">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-semibold mb-4">Edit User</h3>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  value={editingUser.name || ""}
-                  onChange={(e) =>
-                    setEditingUser({ ...editingUser, name: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input type="text" value={editingUser.name || ""} onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={editingUser.email || ""}
-                  onChange={(e) =>
-                    setEditingUser({ ...editingUser, email: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input type="email" value={editingUser.email || ""} onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Role
-                </label>
-                <select
-                  value={editingUser.role || ""}
-                  onChange={(e) =>
-                    setEditingUser({ ...editingUser, role: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {roleOptions
-                    .filter((role) => role !== "All")
-                    .map((role) => (
-                      <option key={role} value={role}>
-                        {role}
-                      </option>
-                    ))}
+                <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                <select value={editingUser.role || ""} onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md">
+                  {roleOptions.filter((role) => role !== "All").map((role) => <option key={role} value={role}>{role}</option>)}
                 </select>
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status
-                </label>
-                <select
-                  value={editingUser.status || ""}
-                  onChange={(e) =>
-                    setEditingUser({ ...editingUser, status: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select value={editingUser.status || ""} onChange={(e) => setEditingUser({ ...editingUser, status: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md">
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
                 </select>
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  placeholder="Leave blank to keep current password"
-                  onChange={(e) =>
-                    setEditingUser({ ...editingUser, password: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input type="password" placeholder="Leave blank to keep current" onChange={(e) => setEditingUser({ ...editingUser, password: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
               </div>
             </div>
-
             <div className="flex justify-end mt-6 gap-3">
-              <button
-                onClick={() => setEditingUser(null)}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveEditedUser}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Save Changes
-              </button>
+              <button onClick={() => setEditingUser(null)} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancel</button>
+              <button onClick={saveEditedUser} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Save Changes</button>
             </div>
           </div>
         </div>

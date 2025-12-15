@@ -9,7 +9,8 @@ import {
   ShoppingCartIcon, 
   UserGroupIcon, 
   EyeIcon,
-  ArrowRightOnRectangleIcon
+  ArrowRightOnRectangleIcon,
+  ChatBubbleLeftRightIcon // ✅ Added Icon for Messages
 } from '@heroicons/react/24/outline';
 import { useAuth } from "../../context/AuthProvider"; 
 
@@ -25,11 +26,13 @@ const Navbar = () => {
     navigate('/login');
   };
 
+  // ✅ ADDED 'Messages' to this list so it appears in the Mobile Menu
   const menuItems = [
     { path: '/admin', name: 'Dashboard', icon: HomeIcon },
     { path: '/admin/listProducts', name: 'Products', icon: ShoppingBagIcon },
     { path: '/admin/ordersList', name: 'Orders', icon: ShoppingCartIcon },
     { path: '/admin/listUsers', name: 'Users', icon: UserGroupIcon },
+    { path: '/admin/message', name: 'Messages', icon: ChatBubbleLeftRightIcon }, // 👈 Added this line
     { path: '/admin/addProduct', name: 'Add Product', icon: PlusCircleIcon },
   ];
 
@@ -48,13 +51,11 @@ const Navbar = () => {
               <Bars3Icon className="block h-6 w-6" />
             </button>
 
-            {/* ✅ Brand Logo - CHANGED to DKP Clothing */}
+            {/* Brand Logo - Laptop View */}
             <div className="flex items-center gap-3">
-              {/* Logo Box: Changed text to DKP, made width flexible (w-auto px-3) to fit 3 letters */}
               <div className="h-10 w-auto px-3 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-sm">
                 DKP
               </div>
-              {/* Text: Changed to Clothing */}
               <span className="font-bold text-3xl text-gray-800 tracking-tight">ADMIN</span>
             </div>
           </div>
@@ -101,7 +102,7 @@ const Navbar = () => {
       }`}>
         <div className="flex items-center justify-between px-4 h-16 border-b border-gray-100">
           
-          {/* ✅ Mobile Logo - Updated to DKP Clothing */}
+          {/* Mobile Logo */}
           <div className="flex items-center gap-2">
              <div className="h-9 w-auto px-3 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-base">
                DKP
@@ -116,6 +117,7 @@ const Navbar = () => {
 
         <div className="flex flex-col h-full justify-between">
           <div className="px-2 pt-4 pb-3 space-y-1">
+            {/* This map function will now include the Messages link */}
             {menuItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;

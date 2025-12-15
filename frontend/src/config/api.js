@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const BACKEND_URL = "http://192.168.1.64:3001"
+const BACKEND_URL =  "http://192.168.1.64:3001"
 
 const api = axios.create({
   baseURL: BACKEND_URL, 
@@ -37,6 +37,7 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // Check 401/403, ensure we haven't retried, and ensure we aren't ALREADY calling login/refresh
     if (
       (error.response?.status === 401 || error.response?.status === 403) &&
       !originalRequest._retry &&
@@ -58,6 +59,9 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
+        // FIX 1: Use the correct route prefix (Assuming your auth routes are under /auth)
+        // FIX 2: Explicitly remove Authorization header for this request so backend doesn't reject it
+        // FIX 3: Use _axios_ directly or pass empty headers to avoid the request interceptor attaching the bad token
         const response = await api.get("/v1/auth/refresh", {
            headers: { Authorization: "" } 
         });

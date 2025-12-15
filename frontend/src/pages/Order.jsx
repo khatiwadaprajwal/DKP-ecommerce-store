@@ -48,33 +48,7 @@ const Order = () => {
             (o) => o.paymentMethod === "Khalti" && o.status === "Pending" && o.paymentStatus !== "Paid"
           );
 
-          if (pendingKhaltiOrders.length > 0) {
-            // Run checks in parallel
-            const updatedOrders = await Promise.all(
-              fetchedOrders.map(async (order) => {
-                if (order.paymentMethod === "Khalti" && order.status === "Pending" && order.paymentStatus !== "Paid") {
-                  try {
-                    // Call the backend check-status route
-                    const checkRes = await api.post("/v1/check-status", { orderId: order._id });
-                    
-                    // If backend returns updated status, use it
-                    if (checkRes.data) {
-                      return { 
-                        ...order, 
-                        status: checkRes.data.status, 
-                        paymentStatus: checkRes.data.paymentStatus 
-                      };
-                    }
-                  } catch (e) {
-                    // Fail silently and keep original order state
-                    console.error("Status check failed", e);
-                  }
-                }
-                return order;
-              })
-            );
-            fetchedOrders = updatedOrders;
-          }
+          
           // ---------------------------------------------------------------
           // 🔴 END NEW FUNCTIONALITY
           // ---------------------------------------------------------------

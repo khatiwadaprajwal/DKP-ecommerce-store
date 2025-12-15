@@ -206,46 +206,53 @@ const AdminMessagesPage = () => {
         <div className="text-center py-8 text-gray-500">Loading messages...</div>
       ) : (
         <>
-          {/* 📱 MOBILE VIEW: Cards (Visible only on mobile) */}
+          {/* ==========================================================
+              📱 MOBILE VIEW: Cards (Re-designed for visibility)
+             ========================================================== */}
           <div className="md:hidden space-y-4">
             {sortedMessages.length === 0 ? (
                <div className="text-center text-gray-500">No messages found</div>
             ) : (
               sortedMessages.map(message => (
-                <div key={message._id} className="border rounded-lg p-4 bg-gray-50 shadow-sm">
-                   {/* Header */}
-                   <div className="flex justify-between items-start mb-2">
+                <div key={message._id} className="border rounded-lg p-4 bg-gray-50 shadow-sm flex flex-col gap-3">
+                   {/* Header: Name and Date */}
+                   <div className="flex justify-between items-start">
                       <div>
-                         <span className="font-bold text-gray-900 block">{message.name}</span>
+                         <span className="font-bold text-gray-900 text-lg block">{message.name}</span>
                          <span className="text-xs text-gray-500">{formatDateTime(message.createdAt)}</span>
                       </div>
-                      <div className="flex gap-2">
-                         <button 
-                            onClick={() => setShowMessageDetails(showMessageDetails === message._id ? null : message._id)}
-                            className="p-1 text-indigo-600 bg-indigo-50 rounded"
-                         >
-                            <EyeIcon className="h-5 w-5" />
-                         </button>
-                         {/* Trash Icon Removed */}
+                      <button 
+                         onClick={() => setShowMessageDetails(showMessageDetails === message._id ? null : message._id)}
+                         className={`p-2 rounded-full transition-colors ${
+                           showMessageDetails === message._id ? 'bg-indigo-100 text-indigo-700' : 'bg-white text-gray-500 border'
+                         }`}
+                      >
+                         <EyeIcon className="h-5 w-5" />
+                      </button>
+                   </div>
+
+                   {/* Email Info */}
+                   <div className="text-sm">
+                      <span className="text-xs font-semibold text-gray-500 uppercase mr-2">Email:</span>
+                      <span className="text-gray-700">{message.email}</span>
+                   </div>
+
+                   {/* ✅ Message Content (Always Visible) */}
+                   <div className="w-full">
+                      <span className="text-xs font-semibold text-gray-500 uppercase block mb-1">Message:</span>
+                      <div className={`text-sm text-gray-800 bg-white p-3 rounded border border-gray-200 shadow-sm whitespace-pre-wrap break-words ${
+                         showMessageDetails === message._id ? '' : 'line-clamp-3'
+                      }`}>
+                          {message.msg || <span className="text-gray-400 italic">No message content.</span>}
                       </div>
                    </div>
 
-                   {/* Email & Preview */}
-                   <div className="text-sm text-gray-600 mb-2 truncate">{message.email}</div>
-                   <div className="text-sm bg-white p-2 rounded border border-gray-200 mb-2 line-clamp-2">
-                      {message.msg}
-                   </div>
-
-                   {/* Expanded Details on Mobile */}
+                   {/* Expanded Actions */}
                    {showMessageDetails === message._id && (
-                      <div className="mt-3 pt-3 border-t">
-                         <h4 className="font-bold text-xs text-gray-500 uppercase mb-2">Full Message</h4>
-                         <div className="bg-white p-3 rounded border text-sm whitespace-pre-wrap mb-3">
-                            {message.msg}
-                         </div>
+                      <div className="mt-2 pt-2 border-t flex justify-end">
                          <button
                             onClick={() => openReplyModal(message)}
-                            className="w-full py-2 bg-blue-100 text-blue-800 text-sm rounded hover:bg-blue-200 flex items-center justify-center font-medium"
+                            className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 flex items-center justify-center font-medium shadow-sm transition"
                          >
                             <InboxIcon className="h-4 w-4 mr-2" />
                             Reply via System
@@ -257,7 +264,9 @@ const AdminMessagesPage = () => {
             )}
           </div>
 
-          {/* 💻 DESKTOP VIEW: Table (Hidden on mobile) */}
+          {/* ==========================================================
+              💻 DESKTOP VIEW: Table (Unchanged)
+             ========================================================== */}
           <div className="hidden md:block overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -294,14 +303,12 @@ const AdminMessagesPage = () => {
                           <button onClick={() => setShowMessageDetails(showMessageDetails === message._id ? null : message._id)} className="text-indigo-600 hover:text-indigo-900 mr-3">
                             <EyeIcon className="h-5 w-5" />
                           </button>
-                          {/* Trash Icon Removed */}
                         </td>
                       </tr>
                       
                       {showMessageDetails === message._id && (
                         <tr>
                           <td colSpan="6" className="px-6 py-4 bg-gray-50">
-                            {/* Desktop Details View */}
                             <div className="grid grid-cols-2 gap-4 mb-4">
                               <div>
                                 <h4 className="font-medium text-sm mb-2">Details</h4>

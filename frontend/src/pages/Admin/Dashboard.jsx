@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { EyeIcon, ArrowRightIcon, ClockIcon, Download, Calendar } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import api from "../../config/api"; 
+// ✅ 1. Import Auth Context
+import { useAuth } from "../../context/AuthProvider"; 
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -22,7 +24,11 @@ const Dashboard = () => {
   const [qrOrder, setQrOrder] = useState(null);
   const qrRef = useRef(null);
 
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
+  // ✅ 2. Get the Token from Auth Context
+  const { token } = useAuth(); 
+
+  // ✅ 3. Use Production URL correctly
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "https://dkp-ecommerce-store-backend.onrender.com";
 
   const getImageUrl = (imgPath) => {
     if (!imgPath) return "https://via.placeholder.com/150";
@@ -33,16 +39,27 @@ const Dashboard = () => {
     return `${BACKEND_URL}/public/${cleanPath}`;
   };
 
+  // ✅ 4. Updated useEffect to wait for Token
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
 
+        // Fetch Products (Public or Protected)
         const productsResponse = await api.get("/v1/products");
         const products = productsResponse.data.products || [];
 
-        const ordersResponse = await api.get("/v1/getallorder");
-        const orders = ordersResponse.data.orders || [];
+        // Fetch Orders (Protected - Needs Token)
+        // We only fetch orders if we have a token, otherwise empty array to prevent crash
+        let orders = [];
+        if (token) {
+            try {
+                const ordersResponse = await api.get("/v1/getallorder");
+                orders = ordersResponse.data.orders || [];
+            } catch (err) {
+                console.warn("Could not fetch orders (likely auth issue or empty)", err);
+            }
+        }
 
         calculateDashboardStats(products, orders);
         
@@ -63,8 +80,11 @@ const Dashboard = () => {
       }
     };
 
-    fetchDashboardData();
-  }, []);
+    // ✅ 5. Dependency Array: Run when 'token' changes (loads)
+    if (token) {
+        fetchDashboardData();
+    }
+  }, [token]); 
 
   const calculateDashboardStats = (products, orders) => {
     const pendingOrders = orders.filter(
@@ -174,7 +194,6 @@ const Dashboard = () => {
     return "bg-gray-100 text-gray-800";
   };
 
-  // ✅ FIX 1: Corrected Logic (Uses Math.floor)
   const getDaysAgo = (date) => {
     const today = new Date();
     const created = new Date(date);
@@ -184,15 +203,6 @@ const Dashboard = () => {
     if (diffDays === 0) return "Today";
     if (diffDays === 1) return "Yesterday";
     return `${diffDays} days ago`;
-  };
-
-  // ✅ FIX 2: Helper for Fixed Date format (e.g., "12 Oct 2024")
-  const getFixedDate = (date) => {
-    return new Date(date).toLocaleDateString("en-US", {
-      day: "numeric",
-      month: "short",
-      year: "numeric"
-    });
   };
 
   if (loading) return <div className="flex h-screen items-center justify-center"><div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-blue-500"></div></div>;
@@ -346,16 +356,10 @@ const Dashboard = () => {
                         <div className="flex items-center">
                           <span className={`mr-2 rounded-full px-2 py-1 text-xs ${getCategoryBadgeClass(p.category)}`}>{p.category}</span>
                         </div>
-                        {/* Display "Today" / "Yesterday" */}
                         <div className="flex items-center">
                           <ClockIcon className="mr-1 h-3 w-3" />
                           <span>{getDaysAgo(p.createdAt)}</span>
                         </div>
-                        {/* OPTIONAL: Display Exact Date. Uncomment below if you want fixed data like "Dec 12" */}
-                        {/* <div className="flex items-center text-xs text-gray-400">
-                          <Calendar className="mr-1 h-3 w-3" />
-                          <span>{getFixedDate(p.createdAt)}</span>
-                        </div> */}
                       </div>
                     </div>
                     <div className="font-semibold">Rs.{p.price}</div>

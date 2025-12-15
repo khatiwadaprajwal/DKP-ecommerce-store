@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { EyeIcon, MapPinIcon, Download } from 'lucide-react';
 import { QRCodeSVG } from "qrcode.react";
 
-// ✅ Import centralized API and Auth
+
 import api from "../../config/api";
 import { useAuth } from "../../context/AuthProvider";
 
@@ -16,7 +16,7 @@ const ListOrders = () => {
   const [qrOrder, setQrOrder] = useState(null);
   
   const qrRef = useRef(null);
-  const { token } = useAuth();
+  const { token } = useAuth(); // ✅ Get token
   
   const statusOptions = ['All', 'Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
   const paymentStatuses = ['Pending', 'Paid', 'Failed'];
@@ -28,20 +28,23 @@ const ListOrders = () => {
         const response = await api.get("/v1/getallorder");
         if (response.data && response.data.orders) {
           setOrders(response.data.orders);
+          setError(null);
         } else {
           setOrders([]);
-          setError("No orders found or invalid response format");
+          setError("No orders found");
         }
       } catch (error) {
         console.error('Error fetching orders:', error);
-        setError(error.response?.data?.error || "Failed to fetch orders. Please check your connection.");
+        setError(error.response?.data?.error || "Failed to fetch orders.");
       } finally {
         setLoading(false);
       }
     };
-    fetchOrders();
-  }, [token]);
-  
+
+    if (token) {
+        fetchOrders();
+    }
+  }, [token]); 
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
       const response = await api.put(`/v1/change-status/${orderId}`, { status: newStatus });
@@ -56,16 +59,15 @@ const ListOrders = () => {
     }
   };
   
+  // ... (updatePaymentStatus function remains the same) ...
   const updatePaymentStatus = async (orderId, newPaymentStatus) => {
     try {
-      // Mock update (Backend implementation missing)
       setOrders(orders.map(order => 
         order._id === orderId ? { ...order, paymentStatus: newPaymentStatus } : order
       ));
-      alert("Payment status update API endpoint not implemented in backend.");
+      alert("Note: This is a UI update only. Backend endpoint connection required.");
     } catch (error) {
       console.error('Error updating payment status:', error);
-      alert("Failed to update payment status.");
     }
   };
   
@@ -112,6 +114,11 @@ const ListOrders = () => {
       img.onload = () => {
         canvas.width = img.width;
         canvas.height = img.height;
+        
+        
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
         ctx.drawImage(img, 0, 0);
         const pngFile = canvas.toDataURL('image/png');
         const downloadLink = document.createElement('a');
@@ -122,6 +129,7 @@ const ListOrders = () => {
       img.src = 'data:image/svg+xml;base64,' + window.btoa(svgData);
     }
   };
+
 
   return (
     <div className="bg-white rounded-lg shadow-md p-4 md:p-6">

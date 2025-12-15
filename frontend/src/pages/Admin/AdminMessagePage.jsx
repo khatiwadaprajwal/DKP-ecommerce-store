@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { EyeIcon, InboxIcon, XMarkIcon } from '@heroicons/react/24/outline';
-// ✅ Import centralized API configuration
 import api from '../../config/api';
 
+import { useAuth } from "../../context/AuthProvider"; 
+
 const AdminMessagesPage = () => {
+ 
+  const { token } = useAuth();
+
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,9 +63,12 @@ const AdminMessagesPage = () => {
     }
   };
   
+  // ✅ 3. FIX: Only run fetch when token is available/refreshed
   useEffect(() => {
-    fetchAllMessages();
-  }, []);
+    if (token) {
+        fetchAllMessages();
+    }
+  }, [token]); // Re-run if token changes (e.g., after refresh)
   
   const handleSort = (field) => {
     if (sortField === field) {
@@ -160,6 +167,7 @@ const AdminMessagesPage = () => {
     return new Date(dateTimeString).toLocaleString(undefined, options);
   };
 
+ 
   return (
     <div className="bg-white rounded-lg shadow-md p-4 md:p-6">
       {/* Notification Messages */}

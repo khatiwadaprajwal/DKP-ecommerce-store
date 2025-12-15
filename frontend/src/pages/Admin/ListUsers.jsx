@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { PencilIcon, TrashIcon, EyeIcon } from "@heroicons/react/24/outline";
-import api from "../../config/api"; // ✅ Use centralized API
+import api from "../../config/api"; 
+
+import { useAuth } from "../../context/AuthProvider"; 
 
 const ListUsers = () => {
+  // ✅ Get token from Auth Context
+  const { token } = useAuth();
+
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -21,8 +26,6 @@ const ListUsers = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      // ✅ api.get handles headers automatically
-      // ✅ Added /v1 prefix since base URL is root
       const response = await api.get("/v1/customers");
       setUsers(response.data);
       setErrorMessage("");
@@ -34,9 +37,12 @@ const ListUsers = () => {
     }
   };
 
+  // ✅ FIX: Only fetch when token is available/refreshed
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (token) {
+        fetchUsers();
+    }
+  }, [token]);
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -52,7 +58,6 @@ const ListUsers = () => {
       const userToUpdate = users.find((user) => user._id === userId);
       if (!userToUpdate) return;
 
-      // ✅ Use api.put with simplified path
       await api.put(`/v1/user/${userToUpdate.email}`, { status: newStatus });
 
       setUsers(
@@ -74,7 +79,6 @@ const ListUsers = () => {
       const userToUpdate = users.find((user) => user._id === userId);
       if (!userToUpdate) return;
 
-      // ✅ Use api.post/put with simplified paths
       if (newRole === "Admin" && userToUpdate.role === "Customer") {
         await api.post("/v1/make-admin", { email: userToUpdate.email });
       } else if (newRole === "Customer" && userToUpdate.role === "Admin") {
@@ -103,7 +107,6 @@ const ListUsers = () => {
         const userToDelete = users.find((user) => user._id === userId);
         if (!userToDelete) return;
 
-        // Soft delete implementation
         await api.put(`/v1/user/${userToDelete.email}`, { status: "Inactive" });
 
         setUsers(users.filter((user) => user._id !== userId));
@@ -126,7 +129,6 @@ const ListUsers = () => {
           delete userDataToUpdate.password;
         }
 
-        // ✅ Use api.put
         await api.put(`/v1/user/${editingUser.email}`, userDataToUpdate);
 
         setUsers(
@@ -145,7 +147,6 @@ const ListUsers = () => {
     }
   };
 
-  // Helper functions
   const getRoleBadgeClass = (role) => {
     switch (role) {
       case "SuperAdmin": return "bg-red-100 text-red-800";
@@ -209,6 +210,8 @@ const ListUsers = () => {
     };
     return new Date(dateTimeString).toLocaleString(undefined, options);
   };
+
+  
 
   return (
     <div className="bg-white rounded-lg shadow-md p-4 md:p-6">

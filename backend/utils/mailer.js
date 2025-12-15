@@ -3,12 +3,19 @@ const dotenv = require("dotenv");
 
 dotenv.config();
 
+
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com", 
+  port: 465,              
+  secure: true,           
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
+
+  connectionTimeout: 10000, 
+  greetingTimeout: 10000,
+  socketTimeout: 10000,
 });
 
 const sendOTPByEmail = async (email, otp) => {
@@ -20,10 +27,12 @@ const sendOTPByEmail = async (email, otp) => {
   };
 
   try {
+    console.log(`⏳ Attempting to send OTP to: ${email}...`);
     await transporter.sendMail(mailOptions);
-    console.log("📩 OTP Sent to:", email);
+    console.log("✅ OTP Sent successfully to:", email);
   } catch (error) {
-    console.error("❌ Error Sending OTP:", error.message);
+    // Log the specific error code to see if it is a block or a timeout
+    console.error("❌ Error Sending OTP:", error.code, error.message);
     throw error;
   }
 };

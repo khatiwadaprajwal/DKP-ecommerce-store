@@ -1,9 +1,11 @@
 require('dotenv').config();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const User = require("../model/usermodel");
-const TempUser = require("../model/tempusermodel");
-const { sendOTPByEmail } = require("../utils/mailer");
+
+const User = require("../model/usermodel"); 
+const TempUser = require("../model/tempusermodel"); 
+
+const { sendOTPByEmail } = require("../utils/mailer"); 
 const { generateAccessToken, generateRefreshToken } = require("../utils/tokengenerate");
 
 // --- 1. SIGNUP ---
@@ -27,18 +29,16 @@ const signup = async (req, res) => {
     // 2. Check for existing Temp User & Blacklist Status
     const existingTemp = await TempUser.findOne({ email });
     if (existingTemp) {
-      // ✅ RESTORED: Check if currently blacklisted
       if (existingTemp.isBlacklisted && existingTemp.blacklistedUntil > new Date()) {
         return res.status(403).json({ message: "Too many failed OTP attempts. Try again later." });
       }
-      // If not blacklisted, delete old temp user to prevent duplicates
       await TempUser.deleteOne({ email });
     }
 
     // 3. Hash Password & OTP
     const hashedPassword = await bcrypt.hash(password, 10);
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const hashedOtp = await bcrypt.hash(otp, 10); // 🔒 Hash OTP for security
+    const hashedOtp = await bcrypt.hash(otp, 10); 
 
     // 4. Create Temp User
     await TempUser.create({
@@ -46,14 +46,14 @@ const signup = async (req, res) => {
       email,
       password: hashedPassword,
       role: role || "Customer",
-      otp: hashedOtp, // Store Hash
-      otpExpires: new Date(Date.now() + 10 * 60 * 1000), // 10 mins
+      otp: hashedOtp, 
+      otpExpires: new Date(Date.now() + 10 * 60 * 1000), 
       otpAttempts: 0,
       isBlacklisted: false,
       blacklistedUntil: null,
     });
 
-    // 5. Send RAW OTP
+   
     await sendOTPByEmail(email, otp);
     res.status(201).json({ message: "OTP sent to email for verification" });
 
@@ -66,30 +66,24 @@ const signup = async (req, res) => {
 // --- 2. VERIFY OTP ---
 const verifyOTP = async (req, res) => {
   try {
-    const { email, otp } = req.body; // Raw OTP from user
+    const { email, otp } = req.body; 
     const tempUser = await TempUser.findOne({ email });
 
     if (!tempUser) return res.status(400).json({ message: "Invalid request or expired. Sign up again." });
 
-    // ✅ RESTORED: Check Blacklist
     if (tempUser.isBlacklisted && tempUser.blacklistedUntil > new Date()) {
       return res.status(403).json({ message: "Email is temporarily blacklisted. Try again later." });
     }
 
-    // 🔒 Verify OTP (Compare Hash)
     const isMatch = await bcrypt.compare(otp, tempUser.otp);
-    
-    // Check Expiry
     const isExpired = tempUser.otpExpires < Date.now();
 
-    // Handle Failure (Wrong OTP or Expired)
     if (!isMatch || isExpired) {
-      // ✅ RESTORED: Increment Attempts logic
       tempUser.otpAttempts += 1;
 
       if (tempUser.otpAttempts >= 10) {
         tempUser.isBlacklisted = true;
-        tempUser.blacklistedUntil = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours lock
+        tempUser.blacklistedUntil = new Date(Date.now() + 24 * 60 * 60 * 1000); 
         await tempUser.save();
         return res.status(403).json({ message: "Too many failed attempts. Account blocked for 24 hours." });
       }
@@ -98,36 +92,31 @@ const verifyOTP = async (req, res) => {
       return res.status(400).json({ message: isExpired ? "OTP Expired" : "Invalid OTP" });
     }
 
-    // 🟢 DUPLICATE FIX: Last check before creation
     const userAlreadyExists = await User.findOne({ email });
     if (userAlreadyExists) {
        await TempUser.deleteOne({ email });
        return res.status(400).json({ message: "User already registered. Please login." });
     }
 
-    // Success: Create User
     const newUser = await User.create({
       name: tempUser.name,
       email: tempUser.email,
-      password: tempUser.password, // Already hashed
+      password: tempUser.password, 
       role: tempUser.role,
     });
 
     await TempUser.deleteOne({ email });
 
-    // Generate Tokens
     const accessToken = generateAccessToken(newUser._id, newUser.role);
     const refreshToken = generateRefreshToken(newUser._id, newUser.role);
 
-    // Set Refresh Token Cookie
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      secure: true,
+      sameSite: "none", 
+      maxAge: 7 * 24 * 60 * 60 * 1000, 
     });
 
-    // Return Access Token JSON
     return res.status(200).json({ 
         message: "User verified successfully",
         accessToken, 
@@ -149,22 +138,18 @@ const login = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(401).json({ message: "Invalid email or password" });
 
-    // ✅ RESTORED: Account Lock Logic
     if (user.lockUntil && user.lockUntil > new Date()) {
       const minutesLeft = Math.ceil((user.lockUntil - Date.now()) / 60000);
       return res.status(403).json({ message: `Account locked. Try again in ${minutesLeft} minute(s)` });
     }
 
-    // Check Password
     const isMatch = await bcrypt.compare(password, user.password);
     
     if (!isMatch) {
-      // ✅ RESTORED: Increment failed attempts
       user.loginAttempts = (user.loginAttempts || 0) + 1;
       
-      // Lock after 10 failed attempts
       if (user.loginAttempts >= 10) {
-        user.lockUntil = new Date(Date.now() + 60 * 60 * 1000); // 1 hour lock
+        user.lockUntil = new Date(Date.now() + 60 * 60 * 1000); 
         await user.save();
         return res.status(403).json({ message: "Account locked due to too many failed login attempts." });
       }
@@ -173,25 +158,24 @@ const login = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // Success - Reset Locks
     user.loginAttempts = 0;
     user.lockUntil = null;
     await user.save();
 
-    // Tokens
     const accessToken = generateAccessToken(user._id, user.role);
     const refreshToken = generateRefreshToken(user._id, user.role);
 
+  
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: false,
-      sameSite: "lax",
+      secure: true, 
+      sameSite: "none", 
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     res.status(200).json({
       message: "Login successful",
-      accessToken, // Frontend needs this
+      accessToken, 
       user: {
         id: user._id,
         name: user.name, 
@@ -206,7 +190,7 @@ const login = async (req, res) => {
   }
 };
 
-// --- 4. REFRESH TOKEN (Needed for Frontend Interceptors) ---
+// --- 4. REFRESH TOKEN ---
 const refreshAccessToken = async (req, res) => {
     try {
         const cookies = req.cookies;
@@ -234,8 +218,8 @@ const logout = (req, res) => {
   try {
     res.clearCookie("refreshToken", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", 
-      sameSite: "lax"
+      secure: true, 
+      sameSite: "none"
     });
     res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {

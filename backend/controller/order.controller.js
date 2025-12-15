@@ -94,8 +94,8 @@ exports.createOrder = async (req, res) => {
         const amountInPaisa = totalAmount * 100; // Khalti requires paisa
 
         const paymentData = {
-          return_url: `http://localhost:3001/v1/payments/complete-khalti-payment?orderId=${order._id}&userId=${userId}`,
-          website_url: `http://localhost:5173`,
+          return_url: `https://dkp-ecommerce-store-backend.onrender.com/v1/payments/complete-khalti-payment?orderId=${order._id}&userId=${userId}`,
+          website_url: `https://dkp-ecommerce-store-frontend.onrender.com`,
           amount: amountInPaisa,
           purchase_order_id: order._id.toString(),
           purchase_order_name: `Order Payment`,
@@ -138,8 +138,8 @@ exports.createOrder = async (req, res) => {
           intent: "sale",
           payer: { payment_method: "paypal" },
           redirect_urls: {
-            return_url: `http://localhost:5173/paypal/success?orderId=${order._id}&userId=${userId}`,
-            cancel_url: "http://localhost:3001/v1/paypal/cancel"
+            return_url: `https://dkp-ecommerce-store-frontend.onrender.com/paypal/success?orderId=${order._id}&userId=${userId}&productIds=${selectedProducts.map(p => p.productId).join(',')}`,
+            cancel_url: 'https://dkp-ecommerce-store-backend.onrender.com/v1/paypal/cancel'
           },
           transactions: [
             {
@@ -203,7 +203,7 @@ exports.completeKhaltiPayment = async (req, res) => {
     if (status === "UserCanceled" || status === "Expired" || message === "User canceled" || !pidx) {
       console.log(`⚠️ Payment Cancelled for Order: ${orderId}`);
       await Order.findByIdAndUpdate(orderId, { paymentStatus: "Failed", status: "Failed" });
-      return res.redirect(`http://localhost:5173/payment-failed?orderId=${orderId}`);
+      return res.redirect(`https://dkp-ecommerce-store-frontend.onrender.com/payment-failed?orderId=${orderId}`);
     }
 
     // 2. Fetch Order and Check if Already Paid (Prevent Double Stock Deduction)
@@ -216,7 +216,7 @@ exports.completeKhaltiPayment = async (req, res) => {
 
     if (order.paymentStatus === "Paid") {
         console.log("ℹ️ Order already processed");
-        return res.redirect(`http://localhost:5173/payment-success?orderId=${orderId}`);
+        return res.redirect(`https://dkp-ecommerce-store-frontend.onrender.com/payment-success?orderId=${orderId}`);
     }
 
     // 3. Verify Payment with Khalti API
@@ -234,7 +234,7 @@ exports.completeKhaltiPayment = async (req, res) => {
 
     if (response.data.status !== "Completed") {
       await Order.findByIdAndUpdate(orderId, { paymentStatus: "Failed", status: "Failed" });
-      return res.redirect(`http://localhost:5173/payment-failed?orderId=${orderId}`);
+      return res.redirect(`https://dkp-ecommerce-store-frontend.onrender.com/payment-failed?orderId=${orderId}`);
     }
 
     // 4. Mark Order as Paid
@@ -289,13 +289,13 @@ exports.completeKhaltiPayment = async (req, res) => {
     }
 
     // 5. Redirect to Success Page
-    return res.redirect(`http://localhost:5173/payment-success?orderId=${orderId}`);
+    return res.redirect(`https://dkp-ecommerce-store-frontend.onrender.com/payment-success?orderId=${orderId}`);
 
   } catch (error) {
     console.error("❌ Error verifying Khalti payment:", error.message);
     if (orderId) {
        await Order.findByIdAndUpdate(orderId, { paymentStatus: "Failed", status: "Failed" });
-       return res.redirect(`http://localhost:5173/payment-failed?orderId=${orderId}`);
+       return res.redirect(`https://dkp-ecommerce-store-frontend.onrender.com/payment-failed?orderId=${orderId}`);
     }
     return res.status(500).send("Payment verification failed");
   }

@@ -465,8 +465,8 @@ exports.placeOrderFromCart = async (req, res) => {
         const amountInPaisa = totalAmount * 100; // Khalti requires paisa
 
         const paymentData = {
-          return_url: `http://localhost:3001/v1/payments/complete-khalti-payment?orderId=${order._id}&userId=${userId}`,
-          website_url: `http://localhost:5173`,
+          return_url: `https://dkp-ecommerce-store-backend.onrender.com/v1/payments/complete-khalti-payment?orderId=${order._id}&userId=${userId}`,
+          website_url: `https://dkp-ecommerce-store-frontend.onrender.com`,
           amount: amountInPaisa,
           purchase_order_id: order._id.toString(),
           purchase_order_name: `Order Payment`,
@@ -512,8 +512,8 @@ exports.placeOrderFromCart = async (req, res) => {
           intent: "sale",
           payer: { payment_method: "paypal" },
           redirect_urls: {
-            return_url: `http://localhost:5173/paypal/success?orderId=${order._id}&userId=${userId}&productIds=${selectedProducts.map(p => p.productId).join(',')}`,
-            cancel_url: "http://localhost:3001/v1/paypal/cancel",
+            return_url: `https://dkp-ecommerce-store-frontend.onrender.com/paypal/success?orderId=${order._id}&userId=${userId}&productIds=${selectedProducts.map(p => p.productId).join(',')}`,
+            cancel_url: "https://dkp-ecommerce-store-backend.onrender.com/v1/paypal/cancel",
           },
           transactions: [
             {

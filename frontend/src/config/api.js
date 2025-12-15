@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const BACKEND_URL =  "http://192.168.1.64:3001"
+const BACKEND_URL =  "https://dkp-ecommerce-store-backend.onrender.com"
 
 const api = axios.create({
   baseURL: BACKEND_URL, 

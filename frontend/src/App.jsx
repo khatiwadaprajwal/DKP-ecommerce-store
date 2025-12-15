@@ -18,7 +18,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import NotFound from "./pages/NotFound";
 import PaymentVerify from './pages/paymentVerify';
 import PaypalSuccess from "./pages/PaypalSuccess";
-import Profile from "./pages/profile";
+import Profile from "./pages/Profile";
 import UserLayout from "./pages/UserLayout";
 import PaymentSuccess from "./pages/khaltisucess"; 
 import PaymentFailed from "./pages/paymentfailed";

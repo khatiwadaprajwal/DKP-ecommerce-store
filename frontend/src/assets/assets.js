@@ -20,7 +20,7 @@ import cross_icon from './cross_icon.png'
 import banner from './banner.png'
 import side from './side.png'
 import authbanner from './authbanner.png'
-import loginbanner from './loginbanner.png'
+import loginbanner from './loginBanner.png'
 import dikshyantaImage from './dikshyantaImage.png'
 
 // Only export the assets needed for the UI (Header, Footer, etc.)

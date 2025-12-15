@@ -91,6 +91,9 @@ This is a modern full-stack web application built with a React frontend and Node
   - Multer for file uploads
   - Nodemailer for email functionality
   - PayPal integration
+  - Khalti integration
+ - Authentication with access and refresh token
+  -Redis for caching product list
   - CORS enabled
   - Node-cron for scheduled tasks
   - Environment variable management with dotenv
@@ -155,7 +158,7 @@ This is a modern full-stack web application built with a React frontend and Node
 - Secure authentication system
 - File upload capabilities
 - Email notification system
-- Payment integration with PayPal
+- Payment integration with PayPal and Khalti
 - Scheduled tasks with node-cron
 - RESTful API architecture
 
@@ -181,6 +184,4 @@ For production deployment:
 3. Commit your changes
 4. Push to the branch
 5. Create a new Pull Request
-
-## License
-This project is licensed under the MIT License - see the LICENSE file for details 
+ 

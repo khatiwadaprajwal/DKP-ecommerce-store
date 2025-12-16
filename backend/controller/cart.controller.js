@@ -408,14 +408,12 @@ exports.placeOrderFromCart = async (req, res) => {
       });
     }
 
-    // 2. Set Initial Status
-    // Khalti & PayPal start as 'Failed' until callback confirms payment
     const initialStatus = (paymentMethod === "Khalti" || paymentMethod === "PayPal") ? "Failed" : "Pending";
 
     // 3. Create order
     const order = new Order({
       userId,
-      orderItems, // Will be populated shortly
+      orderItems, 
       totalAmount,
       address,
       location,
@@ -447,7 +445,7 @@ exports.placeOrderFromCart = async (req, res) => {
     order.orderItems = orderItems;
     await order.save();
 
-    // 5. Handle Cash Payment (Immediate Stock Update)
+    
     if (paymentMethod === "Cash") {
       for (const update of stockUpdates) {
         const { product, variantIndex, quantity } = update;
@@ -489,8 +487,6 @@ exports.placeOrderFromCart = async (req, res) => {
 
         const khaltiUrl = khaltiResponse.data.payment_url;
 
-        // Return immediately so frontend can redirect. 
-        // Stock reduction and Cart clearing should happen in the completeKhaltiPayment callback.
         return res.status(200).json({
           message: "Redirect to Khalti",
           khaltiUrl
@@ -502,7 +498,7 @@ exports.placeOrderFromCart = async (req, res) => {
       }
     }
 
-    // 7. Handle PayPal Payment
+
     if (paymentMethod === "PayPal") {
       try {
         const accessToken = await generateAccessToken();
@@ -513,7 +509,9 @@ exports.placeOrderFromCart = async (req, res) => {
           payer: { payment_method: "paypal" },
           redirect_urls: {
             return_url: `https://dkp-ecommerce-store-frontend.onrender.com/paypal/success?orderId=${order._id}&userId=${userId}&productIds=${selectedProducts.map(p => p.productId).join(',')}`,
-            cancel_url: "https://dkp-ecommerce-store-backend.onrender.com/v1/paypal/cancel",
+            
+            // ✅ FIX IS HERE: Changed from Backend URL to Frontend Payment Failed URL
+            cancel_url: "https://dkp-ecommerce-store-frontend.onrender.com/payment-failed",
           },
           transactions: [
             {
@@ -542,8 +540,7 @@ exports.placeOrderFromCart = async (req, res) => {
       }
     }
 
-    // 8. Finalize (For Cash on Delivery)
-    // Remove items from cart ONLY if not redirecting to Payment Gateway
+
     const orderedProductIds = selectedProducts.map(p => p.productId);
     await CartItem.deleteMany({ cartId: cart._id, productId: { $in: orderedProductIds } });
 

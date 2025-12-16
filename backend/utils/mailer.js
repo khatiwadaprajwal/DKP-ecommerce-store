@@ -3,24 +3,30 @@ const dotenv = require("dotenv");
 
 dotenv.config();
 
-
+// ----------------------------------------------------------------------
+// BREVO (Sendinblue) CONFIGURATION
+// ----------------------------------------------------------------------
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com", 
-  port: 465,              
-  secure: true,           
+  host: "smtp-relay.brevo.com", // Brevo's SMTP Server
+  port: 587,                    // Port 587 is standard for Brevo
+  secure: false,                // Must be false for port 587 (uses STARTTLS)
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: process.env.EMAIL_USER, // Your Brevo Login Email
+    pass: process.env.EMAIL_PASS, // Your Brevo SMTP MASTER KEY (Not login password)
   },
-
+  // These timeouts prevent the code from hanging indefinitely if connection fails
   connectionTimeout: 10000, 
   greetingTimeout: 10000,
   socketTimeout: 10000,
 });
 
+// ----------------------------------------------------------------------
+// EMAIL FUNCTIONS
+// ----------------------------------------------------------------------
+
 const sendOTPByEmail = async (email, otp) => {
   const mailOptions = {
-    from: `"DKP STORE" <${process.env.EMAIL_USER}>`,
+    from: `"DKP STORE" <${process.env.EMAIL_USER}>`, // Ensure this email is verified in Brevo
     to: email,
     subject: "Your OTP Code",
     text: `Your OTP is ${otp}. It is valid for 10 minutes.`,
@@ -29,15 +35,12 @@ const sendOTPByEmail = async (email, otp) => {
   try {
     console.log(`⏳ Attempting to send OTP to: ${email}...`);
     await transporter.sendMail(mailOptions);
-    console.log("✅ OTP Sent successfully to:", email);
+    console.log("✅ OTP Sent successfully via Brevo to:", email);
   } catch (error) {
-    // Log the specific error code to see if it is a block or a timeout
     console.error("❌ Error Sending OTP:", error.code, error.message);
     throw error;
   }
 };
-
-
 
 const sendOrderEmail = async (email, orderDetails) => {
     const productLines = orderDetails.productDetails
@@ -60,51 +63,19 @@ const sendOrderEmail = async (email, orderDetails) => {
       <html>
         <head>
           <style>
-            body {
-              font-family: Arial, sans-serif;
-              background-color: #f4f4f4;
-              color: #333;
-            }
-            .email-container {
-              width: 600px;
-              margin: 0 auto;
-              background-color: #ffffff;
-              padding: 20px;
-              border-radius: 8px;
-              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            }
-            .header {
-              text-align: center;
-              margin-bottom: 20px;
-            }
-            .header img {
-              width: 150px;
-            }
-            .order-table {
-              width: 100%;
-              border-collapse: collapse;
-            }
-            .order-table th, .order-table td {
-              padding: 10px;
-              border: 1px solid #ddd;
-              text-align: center;
-            }
-            .order-table th {
-              background-color: #f8f8f8;
-              font-weight: bold;
-            }
-            .footer {
-              text-align: center;
-              margin-top: 20px;
-              font-size: 14px;
-              color: #777;
-            }
+            body { font-family: Arial, sans-serif; background-color: #f4f4f4; color: #333; }
+            .email-container { width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+            .header { text-align: center; margin-bottom: 20px; }
+            .header img { width: 150px; }
+            .order-table { width: 100%; border-collapse: collapse; }
+            .order-table th, .order-table td { padding: 10px; border: 1px solid #ddd; text-align: center; }
+            .order-table th { background-color: #f8f8f8; font-weight: bold; }
+            .footer { text-align: center; margin-top: 20px; font-size: 14px; color: #777; }
           </style>
         </head>
         <body>
           <div class="email-container">
             <div class="header">
-              <img src="https://example.com/logo.png" alt="Shop Logo" />
               <h2>🛒 Order Confirmation</h2>
             </div>
             <div>
@@ -130,7 +101,6 @@ const sendOrderEmail = async (email, orderDetails) => {
             </div>
             <div class="footer">
               <p>Best regards,<br/>Your Shop Team</p>
-              <p><small>If you have any questions, please reply to this email.</small></p>
             </div>
           </div>
         </body>
@@ -138,19 +108,20 @@ const sendOrderEmail = async (email, orderDetails) => {
     `;
   
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `"DKP STORE" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: "🛒 Order Confirmation",
-      html: emailContent, // Send HTML content
+      html: emailContent,
     };
   
     try {
       await transporter.sendMail(mailOptions);
-      console.log("📩 Order email sent to:", email);
+      console.log("📩 Order email sent via Brevo to:", email);
     } catch (error) {
       console.error("❌ Error sending order email:", error.message);
     }
-  };
+};
+
 const sendOrderStatusUpdateEmail = async (email, orderDetails) => {
     const productDetails = orderDetails.orderItems
       .map((item, index) => {
@@ -173,7 +144,7 @@ const sendOrderStatusUpdateEmail = async (email, orderDetails) => {
     });
   
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `"DKP STORE" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: "🛒 Order Status Updated",
       text: `Hello,
@@ -194,14 +165,15 @@ const sendOrderStatusUpdateEmail = async (email, orderDetails) => {
   
     try {
       await transporter.sendMail(mailOptions);
-      console.log("📩 Order status update email sent to:", email);
+      console.log("📩 Order status update email sent via Brevo to:", email);
     } catch (error) {
       console.error("❌ Error sending order status update email:", error.message);
     }
-  };
+};
+
 const replyToUserMessage = async (recipientEmail, subject, replyText) => {
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `"DKP Support" <${process.env.EMAIL_USER}>`,
       to: recipientEmail,
       subject: subject || "📩 Reply from Our Team",
       text: `Hello,
@@ -214,13 +186,15 @@ const replyToUserMessage = async (recipientEmail, subject, replyText) => {
   
     try {
       await transporter.sendMail(mailOptions);
-      console.log("✅ Reply email sent to:", recipientEmail);
+      console.log("✅ Reply email sent via Brevo to:", recipientEmail);
     } catch (error) {
       console.error("❌ Error sending reply email:", error.message);
     }
-  };
-  
-  
-  
+};
 
-module.exports = { sendOTPByEmail, sendOrderEmail,sendOrderStatusUpdateEmail,replyToUserMessage};
+module.exports = { 
+  sendOTPByEmail, 
+  sendOrderEmail, 
+  sendOrderStatusUpdateEmail, 
+  replyToUserMessage
+};

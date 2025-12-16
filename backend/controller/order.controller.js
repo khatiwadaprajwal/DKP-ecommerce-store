@@ -94,7 +94,7 @@ exports.createOrder = async (req, res) => {
         const amountInPaisa = totalAmount * 100; // Khalti requires paisa
 
         const paymentData = {
-          return_url: `https://dkp-ecommerce-store-backend.onrender.com/v1/payments/complete-khalti-payment?orderId=${order._id}&userId=${userId}`,
+          return_url: `https://dkp-ecommerce-store-backend.onrender.com/payments/complete-khalti-payment?orderId=${order._id}&userId=${userId}`,
           website_url: `https://dkp-ecommerce-store-frontend.onrender.com`,
           amount: amountInPaisa,
           purchase_order_id: order._id.toString(),
@@ -138,8 +138,10 @@ exports.createOrder = async (req, res) => {
           intent: "sale",
           payer: { payment_method: "paypal" },
           redirect_urls: {
-            return_url: `https://dkp-ecommerce-store-frontend.onrender.com/paypal/success?orderId=${order._id}&userId=${userId}&productIds=${selectedProducts.map(p => p.productId).join(',')}`,
-            cancel_url: 'https://dkp-ecommerce-store-backend.onrender.com/v1/paypal/cancel'
+            // ✅ FIX 1: Changed 'selectedProducts' (which was undefined) to 'productId'
+            // ✅ FIX 2: Cancel URL now points to Frontend 'payment-failed'
+            return_url: `https://dkp-ecommerce-store-frontend.onrender.com/paypal/success?orderId=${order._id}&userId=${userId}&productIds=${productId}`,
+            cancel_url: 'https://dkp-ecommerce-store-frontend.onrender.com/payment-failed'
           },
           transactions: [
             {
@@ -354,8 +356,7 @@ exports.paypalSuccess = async (req, res) => {
       return res.json({ message: "Payment already processed", order });
     }
 
-    // 5. Update order status
-    // 🟢 FIX: Changed "processing" to "Processing" (Capital P)
+    
     order.status = "Pending"; 
     order.paymentStatus = "Paid";
     // Optional: Save transaction details
@@ -456,8 +457,6 @@ exports.paypalSuccess = async (req, res) => {
     });
   }
 };
-
-
 
 exports.cancelOrder = async (req, res) => {
   try {

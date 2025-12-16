@@ -23,7 +23,9 @@ app.use(cors({
 }));
 
 app.use("/public", express.static(path.join(__dirname, "public")));
-
+app.get('/', (req, res) => {
+    res.send("Backend is running!");
+});
 //routes connected
 const routes = require("./routes/index")
 app.use("/v1", routes);

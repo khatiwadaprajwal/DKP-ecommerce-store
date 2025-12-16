@@ -8,16 +8,16 @@ dotenv.config();
 // ----------------------------------------------------------------------
 const transporter = nodemailer.createTransport({
   host: "smtp-relay.brevo.com", // Brevo's SMTP Server
-  port: 587,                    // Port 587 is standard for Brevo
+  port: 2525,                    // Port 587 is standard for Brevo
   secure: false,                // Must be false for port 587 (uses STARTTLS)
   auth: {
     user: process.env.EMAIL_USER, // Your Brevo Login Email
     pass: process.env.EMAIL_PASS, // Your Brevo SMTP MASTER KEY (Not login password)
   },
   // These timeouts prevent the code from hanging indefinitely if connection fails
-  connectionTimeout: 10000, 
-  greetingTimeout: 10000,
-  socketTimeout: 10000,
+  connectionTimeout: 60000, 
+  greetingTimeout: 30000,
+  socketTimeout: 60000,
 });
 
 // ----------------------------------------------------------------------

@@ -44,9 +44,6 @@ exports.createOrder = async (req, res) => {
 
     const totalAmount = quantity * product.price;
 
-    // 🟢 CHANGED LOGIC HERE:
-    // Set Khalti/PayPal orders to "Failed" initially.
-    // They will only become "Pending" (Confirmed) if the payment callback succeeds.
     const initialStatus = (paymentMethod === "Khalti" || paymentMethod === "PayPal") ? "Failed" : "Pending";
 
     // Create order with initial status
@@ -57,8 +54,8 @@ exports.createOrder = async (req, res) => {
       address,
       location,
       paymentMethod,
-      status: initialStatus,        // ✅ Starts as Failed
-      paymentStatus: initialStatus, // ✅ Starts as Failed
+      status: initialStatus,        
+      paymentStatus: initialStatus, 
       currency: "NPR"
     });
 
@@ -79,7 +76,6 @@ exports.createOrder = async (req, res) => {
     order.orderItems.push(orderItem._id);
     await order.save();
 
-    // If payment method is Cash, update stock quantities immediately
     if (paymentMethod === "Cash") {
       product.variants[variantIndex].quantity -= quantity;
       product.totalQuantity = product.variants.reduce((sum, v) => sum + v.quantity, 0);
@@ -91,10 +87,11 @@ exports.createOrder = async (req, res) => {
     if (paymentMethod === "Khalti") {
       try {
         const KHALTI_SECRET_KEY = process.env.KHALTI_SECRET_KEY;
-        const amountInPaisa = totalAmount * 100; // Khalti requires paisa
+        const amountInPaisa = totalAmount * 100;
 
         const paymentData = {
-          return_url: `https://dkp-ecommerce-store-backend.onrender.com/payments/complete-khalti-payment?orderId=${order._id}&userId=${userId}`,
+          
+          return_url: `https://dkp-ecommerce-store-backend.onrender.com/v1/payments/complete-khalti-payment?orderId=${order._id}&userId=${userId}`,
           website_url: `https://dkp-ecommerce-store-frontend.onrender.com`,
           amount: amountInPaisa,
           purchase_order_id: order._id.toString(),
@@ -128,7 +125,6 @@ exports.createOrder = async (req, res) => {
       }
     }
 
-    // If payment method is PayPal
     if (paymentMethod === "PayPal") {
       try {
         const accessToken = await generateAccessToken();
@@ -138,8 +134,6 @@ exports.createOrder = async (req, res) => {
           intent: "sale",
           payer: { payment_method: "paypal" },
           redirect_urls: {
-            // ✅ FIX 1: Changed 'selectedProducts' (which was undefined) to 'productId'
-            // ✅ FIX 2: Cancel URL now points to Frontend 'payment-failed'
             return_url: `https://dkp-ecommerce-store-frontend.onrender.com/paypal/success?orderId=${order._id}&userId=${userId}&productIds=${productId}`,
             cancel_url: 'https://dkp-ecommerce-store-frontend.onrender.com/payment-failed'
           },
@@ -170,7 +164,6 @@ exports.createOrder = async (req, res) => {
       }
     }
 
-    // ✅ Send order confirmation email
     await sendOrderEmail(req.user.email, {
       _id: order._id,
       productDetails: [{

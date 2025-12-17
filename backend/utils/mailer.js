@@ -1,37 +1,40 @@
-const { Resend } = require("resend");
+const SibApiV3Sdk = require('sib-api-v3-sdk');
 const dotenv = require("dotenv");
 
 dotenv.config();
 
 // ----------------------------------------------------------------------
-// RESEND CONFIGURATION
+// BREVO (Sendinblue) API CONFIGURATION
 // ----------------------------------------------------------------------
-const resend = new Resend(process.env.RESEND_API_KEY);
+const defaultClient = SibApiV3Sdk.ApiClient.instance;
+
+// Configure API key authorization: api-key
+const apiKey = defaultClient.authentications['api-key'];
+apiKey.apiKey = process.env.BREVO_API_KEY; // Must start with 'xkeysib-'
+
+const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
 
 // ----------------------------------------------------------------------
 // EMAIL FUNCTIONS
 // ----------------------------------------------------------------------
 
 const sendOTPByEmail = async (email, otp) => {
+  const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+
+  sendSmtpEmail.subject = "Your OTP Code";
+  sendSmtpEmail.htmlContent = `<html><body><p>Your OTP is <strong>${otp}</strong>. It is valid for 10 minutes.</p></body></html>`;
+  
+  // Brevo requires sender as an object { name, email }
+  sendSmtpEmail.sender = { "name": "DKP Store", "email": process.env.EMAIL_USER };
+  sendSmtpEmail.to = [{ "email": email }];
+
   try {
-    console.log(`⏳ Attempting to send OTP to: ${email}...`);
-
-    const { data, error } = await resend.emails.send({
-      from: process.env.EMAIL_FROM, 
-      to: [email], // Resend expects an array, but handles strings too
-      subject: "Your OTP Code",
-      text: `Your OTP is ${otp}. It is valid for 10 minutes.`,
-    });
-
-    if (error) {
-      console.error("❌ Resend API Error:", error);
-      throw new Error(error.message);
-    }
-
-    console.log("✅ OTP Sent successfully via Resend ID:", data.id);
+    console.log(`⏳ Attempting to send OTP via Brevo API to: ${email}...`);
+    const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log("✅ OTP Sent successfully via Brevo ID:", data.messageId);
     return data;
   } catch (error) {
-    console.error("❌ Error Sending OTP:", error.message);
+    console.error("❌ Error Sending OTP:", error.response ? error.response.text : error.message);
     throw error;
   }
 };
@@ -95,25 +98,24 @@ const sendOrderEmail = async (email, orderDetails) => {
               <p>We appreciate your business!</p>
             </div>
             <div class="footer">
-              <p>Best regards,<br/>Your Shop Team</p>
+              <p>Best regards,<br/>DKP Store Team</p>
             </div>
           </div>
         </body>
       </html>
     `;
 
-  try {
-    const { data, error } = await resend.emails.send({
-      from: process.env.EMAIL_FROM,
-      to: [email],
-      subject: "🛒 Order Confirmation",
-      html: emailContent,
-    });
+  const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+  sendSmtpEmail.subject = "🛒 Order Confirmation";
+  sendSmtpEmail.htmlContent = emailContent;
+  sendSmtpEmail.sender = { "name": "DKP Store", "email": process.env.EMAIL_USER };
+  sendSmtpEmail.to = [{ "email": email }];
 
-    if (error) throw new Error(error.message);
-    console.log("📩 Order email sent via Resend ID:", data.id);
+  try {
+    const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log("📩 Order email sent via Brevo ID:", data.messageId);
   } catch (error) {
-    console.error("❌ Error sending order email:", error.message);
+    console.error("❌ Error sending order email:", error.response ? error.response.text : error.message);
   }
 };
 
@@ -141,12 +143,7 @@ const sendOrderStatusUpdateEmail = async (email, orderDetails) => {
     }
   );
 
-  try {
-    const { data, error } = await resend.emails.send({
-      from: process.env.EMAIL_FROM,
-      to: [email],
-      subject: "🛒 Order Status Updated",
-      text: `Hello,
+  const textContent = `Hello,
   
   Your order placed on ${formattedDate} has been updated.
   
@@ -159,34 +156,41 @@ const sendOrderStatusUpdateEmail = async (email, orderDetails) => {
   If you have any questions, please don't hesitate to contact us.
   
   Best regards,  
- DKP Store Team `,
-    });
+  DKP Store Team`;
 
-    if (error) throw new Error(error.message);
-    console.log("📩 Order status update email sent via Resend ID:", data.id);
+  const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+  sendSmtpEmail.subject = "🛒 Order Status Updated";
+  sendSmtpEmail.textContent = textContent; // Using textContent for plain text
+  sendSmtpEmail.sender = { "name": "DKP Store", "email": process.env.EMAIL_USER };
+  sendSmtpEmail.to = [{ "email": email }];
+
+  try {
+    const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log("📩 Order status update email sent via Brevo ID:", data.messageId);
   } catch (error) {
-    console.error("❌ Error sending order status update email:", error.message);
+    console.error("❌ Error sending order status update email:", error.response ? error.response.text : error.message);
   }
 };
 
 const replyToUserMessage = async (recipientEmail, subject, replyText) => {
-  try {
-    const { data, error } = await resend.emails.send({
-      from: process.env.EMAIL_FROM,
-      to: [recipientEmail],
-      subject: subject || "📩 Reply from Our Team",
-      text: `Hello,
+  const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+  
+  sendSmtpEmail.subject = subject || "📩 Reply from Our Team";
+  sendSmtpEmail.textContent = `Hello,
   
   ${replyText}
   
   Best regards,  
-  DKP Store Team`,
-    });
+  DKP Store Team`;
+  
+  sendSmtpEmail.sender = { "name": "DKP Support", "email": process.env.EMAIL_USER };
+  sendSmtpEmail.to = [{ "email": recipientEmail }];
 
-    if (error) throw new Error(error.message);
-    console.log("✅ Reply email sent via Resend ID:", data.id);
+  try {
+    const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log("✅ Reply email sent via Brevo ID:", data.messageId);
   } catch (error) {
-    console.error("❌ Error sending reply email:", error.message);
+    console.error("❌ Error sending reply email:", error.response ? error.response.text : error.message);
   }
 };
 

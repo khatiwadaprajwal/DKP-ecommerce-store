@@ -1,51 +1,46 @@
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 const dotenv = require("dotenv");
 
 dotenv.config();
 
 // ----------------------------------------------------------------------
-// BREVO (Sendinblue) CONFIGURATION
+// RESEND CONFIGURATION
 // ----------------------------------------------------------------------
-const transporter = nodemailer.createTransport({
-  host: "smtp-relay.brevo.com", // Brevo's SMTP Server
-  port: 2525,                    // Port 587 is standard for Brevo
-  secure: false,                // Must be false for port 587 (uses STARTTLS)
-  auth: {
-    user: process.env.EMAIL_USER, // Your Brevo Login Email
-    pass: process.env.EMAIL_PASS, // Your Brevo SMTP MASTER KEY (Not login password)
-  },
-  // These timeouts prevent the code from hanging indefinitely if connection fails
-  connectionTimeout: 60000, 
-  greetingTimeout: 30000,
-  socketTimeout: 60000,
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // ----------------------------------------------------------------------
 // EMAIL FUNCTIONS
 // ----------------------------------------------------------------------
 
 const sendOTPByEmail = async (email, otp) => {
-  const mailOptions = {
-    from: `"DKP STORE" <${process.env.EMAIL_USER}>`, // Ensure this email is verified in Brevo
-    to: email,
-    subject: "Your OTP Code",
-    text: `Your OTP is ${otp}. It is valid for 10 minutes.`,
-  };
-
   try {
     console.log(`⏳ Attempting to send OTP to: ${email}...`);
-    await transporter.sendMail(mailOptions);
-    console.log("✅ OTP Sent successfully via Brevo to:", email);
+
+    const { data, error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM, 
+      to: [email], // Resend expects an array, but handles strings too
+      subject: "Your OTP Code",
+      text: `Your OTP is ${otp}. It is valid for 10 minutes.`,
+    });
+
+    if (error) {
+      console.error("❌ Resend API Error:", error);
+      throw new Error(error.message);
+    }
+
+    console.log("✅ OTP Sent successfully via Resend ID:", data.id);
+    return data;
   } catch (error) {
-    console.error("❌ Error Sending OTP:", error.code, error.message);
+    console.error("❌ Error Sending OTP:", error.message);
     throw error;
   }
 };
 
 const sendOrderEmail = async (email, orderDetails) => {
-    const productLines = orderDetails.productDetails
-      .map((item, index) => {
-        return `
+  // Logic to build the table rows
+  const productLines = orderDetails.productDetails
+    .map((item, index) => {
+      return `
     <tr>
       <td style="padding: 10px; border: 1px solid #ccc; text-align: center;">${index + 1}</td>
       <td style="padding: 10px; border: 1px solid #ccc;">${item.productName}</td>
@@ -56,10 +51,10 @@ const sendOrderEmail = async (email, orderDetails) => {
       <td style="padding: 10px; border: 1px solid #ccc;">💰 NPR ${item.totalPrice}</td>
     </tr>
     `;
-      })
-      .join("\n");
-  
-    const emailContent = `
+    })
+    .join("\n");
+
+  const emailContent = `
       <html>
         <head>
           <style>
@@ -106,53 +101,57 @@ const sendOrderEmail = async (email, orderDetails) => {
         </body>
       </html>
     `;
-  
-    const mailOptions = {
-      from: `"DKP STORE" <${process.env.EMAIL_USER}>`,
-      to: email,
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM,
+      to: [email],
       subject: "🛒 Order Confirmation",
       html: emailContent,
-    };
-  
-    try {
-      await transporter.sendMail(mailOptions);
-      console.log("📩 Order email sent via Brevo to:", email);
-    } catch (error) {
-      console.error("❌ Error sending order email:", error.message);
-    }
+    });
+
+    if (error) throw new Error(error.message);
+    console.log("📩 Order email sent via Resend ID:", data.id);
+  } catch (error) {
+    console.error("❌ Error sending order email:", error.message);
+  }
 };
 
 const sendOrderStatusUpdateEmail = async (email, orderDetails) => {
-    const productDetails = orderDetails.orderItems
-      .map((item, index) => {
-        const productName = item.productId?.productName || 'N/A';
-        const color = item.color || 'N/A';
-        const size = item.size || 'N/A';
-        const quantity = item.quantity || 0;
-  
-        return `${index + 1}. 🛍️ Product Name: ${productName}
+  const productDetails = orderDetails.orderItems
+    .map((item, index) => {
+      const productName = item.productId?.productName || "N/A";
+      const color = item.color || "N/A";
+      const size = item.size || "N/A";
+      const quantity = item.quantity || 0;
+
+      return `${index + 1}. 🛍️ Product Name: ${productName}
      🎨 Color: ${color}
      📏 Size: ${size}
      🔢 Quantity: ${quantity}`;
-      })
-      .join('\n\n');
-  
-    const formattedDate = new Date(orderDetails.orderDate).toLocaleString("en-US", {
+    })
+    .join("\n\n");
+
+  const formattedDate = new Date(orderDetails.orderDate).toLocaleString(
+    "en-US",
+    {
       timeZone: "Asia/Kathmandu",
       dateStyle: "full",
       timeStyle: "short",
-    });
-  
-    const mailOptions = {
-      from: `"DKP STORE" <${process.env.EMAIL_USER}>`,
-      to: email,
+    }
+  );
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM,
+      to: [email],
       subject: "🛒 Order Status Updated",
       text: `Hello,
   
   Your order placed on ${formattedDate} has been updated.
   
   🧾 Order Summary:
-  ${productDetails || 'No items in this order.'}
+  ${productDetails || "No items in this order."}
   
   💰 Total Amount: NPR ${orderDetails.totalAmount}
   📦 New Status: ${orderDetails.status}
@@ -160,41 +159,40 @@ const sendOrderStatusUpdateEmail = async (email, orderDetails) => {
   If you have any questions, please don't hesitate to contact us.
   
   Best regards,  
-  Your Shop Team`,
-    };
-  
-    try {
-      await transporter.sendMail(mailOptions);
-      console.log("📩 Order status update email sent via Brevo to:", email);
-    } catch (error) {
-      console.error("❌ Error sending order status update email:", error.message);
-    }
+ DKP Store Team `,
+    });
+
+    if (error) throw new Error(error.message);
+    console.log("📩 Order status update email sent via Resend ID:", data.id);
+  } catch (error) {
+    console.error("❌ Error sending order status update email:", error.message);
+  }
 };
 
 const replyToUserMessage = async (recipientEmail, subject, replyText) => {
-    const mailOptions = {
-      from: `"DKP Support" <${process.env.EMAIL_USER}>`,
-      to: recipientEmail,
+  try {
+    const { data, error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM,
+      to: [recipientEmail],
       subject: subject || "📩 Reply from Our Team",
       text: `Hello,
   
   ${replyText}
   
   Best regards,  
-  Your Support Team`,
-    };
-  
-    try {
-      await transporter.sendMail(mailOptions);
-      console.log("✅ Reply email sent via Brevo to:", recipientEmail);
-    } catch (error) {
-      console.error("❌ Error sending reply email:", error.message);
-    }
+  DKP Store Team`,
+    });
+
+    if (error) throw new Error(error.message);
+    console.log("✅ Reply email sent via Resend ID:", data.id);
+  } catch (error) {
+    console.error("❌ Error sending reply email:", error.message);
+  }
 };
 
-module.exports = { 
-  sendOTPByEmail, 
-  sendOrderEmail, 
-  sendOrderStatusUpdateEmail, 
-  replyToUserMessage
+module.exports = {
+  sendOTPByEmail,
+  sendOrderEmail,
+  sendOrderStatusUpdateEmail,
+  replyToUserMessage,
 };

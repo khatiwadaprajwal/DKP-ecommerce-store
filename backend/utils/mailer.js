@@ -8,14 +8,13 @@ dotenv.config();
 // We use port 465 (SSL) which is the most reliable method for Gmail on Render.
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 465,
-  secure: true, // true for 465, false for other ports
+  port: 587,             // CHANGED: 465 -> 587
+  secure: false,         // CHANGED: true -> false (587 uses STARTTLS)
   auth: {
-    user: process.env.EMAIL_USER, // Must be your Gmail address (e.g. project.bot@gmail.com)
-    pass: process.env.EMAIL_PASS, // Must be the 16-char App Password (no spaces)
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
 });
-
 // 2. VERIFY CONNECTION ON STARTUP
 // This helps you see in Render Logs immediately if the password is wrong
 transporter.verify((error, success) => {

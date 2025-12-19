@@ -1,60 +1,77 @@
 import React, { useState, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { assets } from "../assets/assets";
 import api from "../config/api"; 
 import { toast } from "react-toastify";
 
 const ForgotPassword = () => {
-  const navigate = useNavigate();
-  
-  // Define states
-  const [step, setStep] = useState(1); // 1: Email, 2: OTP & Password, 3: Success
+  // States
+  const [step, setStep] = useState(1); // 1: Email, 2: Security Questions, 3: Success
   const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
+  
+  // Security Questions State
+  const [questions, setQuestions] = useState([]); // Array of { _id, question }
+  const [answers, setAnswers] = useState({}); // Object { "questionId": "answer" }
+
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Refs for focus management
+  // Refs
   const emailInputRef = useRef(null);
-  const otpInputRef = useRef(null);
 
   // --- HANDLERS ---
 
-  // Step 1: Request OTP
-  const handleRequestOTP = async (e) => {
+  // Step 1: Request Security Questions (Replaces Request OTP)
+  const handleGetQuestions = async (e) => {
     e.preventDefault();
-    
     if (!email) return toast.error("Please enter your email address");
     
     setIsLoading(true);
     try {
-      const response = await api.post("/v1/sendotp", { email });
-      if (response.status === 201 || response.status === 200) {
-        toast.success("OTP sent to your email!");
+      // Adjusted endpoint to match your routes (Ensure this matches your backend route file)
+      const response = await api.post("/v1/auth/get-security-questions", { email });
+      
+      if (response.status === 200) {
+        setQuestions(response.data.questions);
         setStep(2); 
-        // Focus OTP field after render
-        setTimeout(() => otpInputRef.current?.focus(), 100);
+        toast.success("Questions found. Please answer them.");
       }
     } catch (error) {
       console.error(error);
-      toast.error(error.response?.data?.error || "Failed to send OTP.");
+      const msg = error.response?.data?.message || "User not found or no questions set.";
+      toast.error(msg);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Step 2: Verify & Reset
+  // Helper to handle answer input changes
+  const handleAnswerChange = (questionId, value) => {
+    setAnswers(prev => ({
+      ...prev,
+      [questionId]: value
+    }));
+  };
+
+  // Step 2: Verify Answers & Reset Password
   const handleResetPassword = async (e) => {
     e.preventDefault();
     
-    if (!otp) return toast.error("Enter OTP");
+    // Validation
+    if (Object.keys(answers).length !== 3) return toast.error("Please answer all 3 questions");
     if (!password) return toast.error("Enter new password");
+    if (password.length < 8) return toast.error("Password must be at least 8 characters");
     if (password !== confirmPassword) return toast.error("Passwords do not match");
     
     setIsLoading(true);
     try {
-      const response = await api.put("/v1/resetpassword", { email, otp, password });
+      // Adjusted endpoint
+      const response = await api.put("/v1/auth/reset-password", { 
+        email, 
+        answers, 
+        newPassword: password 
+      });
       
       if (response.status === 200) {
         toast.success("Password reset successfully!");
@@ -62,7 +79,8 @@ const ForgotPassword = () => {
       }
     } catch (error) {
       console.error(error);
-      toast.error(error.response?.data?.message || "Failed to reset password.");
+      const msg = error.response?.data?.message || "Failed to reset password. Check answers.";
+      toast.error(msg);
     } finally {
       setIsLoading(false);
     }
@@ -72,7 +90,7 @@ const ForgotPassword = () => {
   const LeftBanner = (
     <div className="hidden md:block md:w-1/2 bg-blue-50">
       <img
-        src={assets.loginbanner || "https://via.placeholder.com/600x800"} // Fallback image
+        src={assets.loginbanner || "https://via.placeholder.com/600x800"} 
         alt="Login Banner"
         className="w-full h-full object-cover"
       />
@@ -88,22 +106,22 @@ const ForgotPassword = () => {
         <div className="w-full md:w-1/2 flex items-center justify-center px-6 py-12">
           <div className="w-full max-w-md">
             
-            {/* Headers based on step */}
+            {/* Headers */}
             <h2 className="text-3xl font-bold mb-2">
               {step === 1 && "Forgot Password"}
-              {step === 2 && "Verify & Reset"}
+              {step === 2 && "Security Questions"}
               {step === 3 && "All Done!"}
             </h2>
             
             <p className="text-gray-600 mb-8">
-              {step === 1 && "Enter your email to receive a verification code."}
-              {step === 2 && "Check your email for the OTP code."}
+              {step === 1 && "Enter your email to retrieve your security questions."}
+              {step === 2 && "Answer the questions correctly to reset your password."}
               {step === 3 && "Your password has been updated."}
             </p>
             
             {/* --- STEP 1: EMAIL FORM --- */}
             {step === 1 && (
-              <form onSubmit={handleRequestOTP} className="space-y-6">
+              <form onSubmit={handleGetQuestions} className="space-y-6">
                 <div>
                   <input
                     type="email"
@@ -120,9 +138,9 @@ const ForgotPassword = () => {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="px-8 py-3 bg-black text-white rounded-md hover:bg-gray-800 transition-colors disabled:bg-gray-400"
+                    className="px-8 py-3 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors disabled:bg-gray-400"
                   >
-                    {isLoading ? "Sending..." : "Send OTP"}
+                    {isLoading ? "Checking..." : "Next"}
                   </button>
                   <Link to="/login" className="text-center text-sm text-gray-600 hover:text-black">
                     Back to Login
@@ -131,21 +149,28 @@ const ForgotPassword = () => {
               </form>
             )}
 
-            {/* --- STEP 2: OTP & PASSWORD FORM --- */}
+            {/* --- STEP 2: QUESTIONS & PASSWORD FORM --- */}
             {step === 2 && (
               <form onSubmit={handleResetPassword} className="space-y-6">
-                {/* OTP Input */}
-                <div>
-                  <input
-                    type="text"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                    placeholder="Enter OTP Code"
-                    required
-                    ref={otpInputRef}
-                    className="w-full px-4 py-3 border-b border-gray-300 focus:border-gray-900 focus:outline-none bg-transparent tracking-widest"
-                  />
-                </div>
+                
+                {/* Dynamic Questions Render */}
+                {questions.map((q, index) => (
+                  <div key={q._id}>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {index + 1}. {q.question}
+                    </label>
+                    <input
+                      type="text"
+                      value={answers[q._id] || ""}
+                      onChange={(e) => handleAnswerChange(q._id, e.target.value)}
+                      placeholder="Your answer"
+                      required
+                      className="w-full px-4 py-2 border-b border-gray-300 focus:border-gray-900 focus:outline-none bg-transparent"
+                    />
+                  </div>
+                ))}
+
+                <hr className="my-4" />
 
                 {/* Password Input */}
                 <div>
@@ -171,17 +196,17 @@ const ForgotPassword = () => {
                   />
                 </div>
 
-                <div className="flex flex-col space-y-4">
+                <div className="flex flex-col space-y-4 mt-6">
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="px-8 py-3 bg-black text-white rounded-md hover:bg-gray-800 transition-colors disabled:bg-gray-400"
+                    className="px-8 py-3 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors disabled:bg-gray-400"
                   >
-                    {isLoading ? "Updating..." : "Reset Password"}
+                    {isLoading ? "Verifying..." : "Reset Password"}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setStep(1)}
+                    onClick={() => { setStep(1); setQuestions([]); setAnswers({}); }}
                     className="text-center text-sm text-gray-600 hover:text-black"
                   >
                     Change Email

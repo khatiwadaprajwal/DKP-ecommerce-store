@@ -11,6 +11,7 @@ import {
   Package,
   ChevronDown,
   Settings,
+  ShieldCheck 
 } from "lucide-react";
 
 // ✅ Import useAuth for Authentication Logic
@@ -30,15 +31,11 @@ const Navbar = () => {
   // ✅ 1. Get Auth Data & Logout function from useAuth
   const { logout, user, token } = useAuth();
 
-  // ✅ 2. Get Shop Data from ShopContext (Removed auth properties)
+  // ✅ 2. Get Shop Data from ShopContext
   const {
     getCartCount,
-    search,
-    setSearch,
-    showSearch,
     handleSearchFunction,
     navigate,
-    gender,
     setGender,
     applyFilter,
     resetAllFilters
@@ -342,7 +339,7 @@ const Navbar = () => {
 
             {/* Improved Dropdown with Animation */}
             {isProfileOpen && (
-              <div className="absolute right-0 mt-2 w-46 bg-white rounded-md shadow-lg border border-gray-100 z-50 transition-all duration-200 ease-in-out transform origin-top-right">
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-100 z-50 transition-all duration-200 ease-in-out transform origin-top-right">
                 <div className="py-2 rounded-md ring-1 ring-black ring-opacity-5">
                   {token ? (
                     <>
@@ -364,6 +361,18 @@ const Navbar = () => {
                         <Package className="w-5 h-5 mr-3 text-gray-600" />
                         <div>
                           <p className="text-lg">My Orders</p>
+                        </div>
+                      </Link>
+
+                      {/* ✅ NEW: Account Security Link */}
+                      <Link
+                        to="/security-settings"
+                        className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
+                        onClick={() => setIsProfileOpen(false)}
+                      >
+                        <ShieldCheck className="w-5 h-5 mr-3 text-gray-600" />
+                        <div>
+                          <p className="text-lg">Account Security</p>
                         </div>
                       </Link>
 
@@ -567,6 +576,16 @@ const Navbar = () => {
                         My Orders
                       </Link>
 
+                      {/* ✅ NEW: Account Security Link (Mobile) */}
+                      <Link
+                        to="/security-settings"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="flex items-center text-base font-medium text-gray-700 py-3 px-4 hover:bg-gray-50 rounded-md"
+                      >
+                        <ShieldCheck className="w-5 h-5 mr-3 text-gray-600" />
+                        Account Security
+                      </Link>
+
                       {/* Admin Panel link - only visible for admin users in mobile menu */}
                       {isAdmin && (
                         <Link
@@ -604,33 +623,18 @@ const Navbar = () => {
         </div>
       )}
 
-      {/* Add these custom animations to your global CSS or style tag */}
+      {/* CSS Animations */}
       <style jsx>{`
         @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
-
         @keyframes slideIn {
-          from {
-            transform: translateX(100%);
-          }
-          to {
-            transform: translateX(0);
-          }
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
         }
-
-        .animate-fadeIn {
-          animation: fadeIn 0.2s ease-in-out;
-        }
-
-        .animate-slideIn {
-          animation: slideIn 0.3s ease-in-out;
-        }
+        .animate-fadeIn { animation: fadeIn 0.2s ease-in-out; }
+        .animate-slideIn { animation: slideIn 0.3s ease-in-out; }
       `}</style>
     </nav>
   );

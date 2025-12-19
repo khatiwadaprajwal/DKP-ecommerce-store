@@ -1,7 +1,7 @@
-import React, { useState, useContext, useEffect } from "react"; // ✅ Added useEffect here
+import React, { useState, useContext, useEffect } from "react"; 
 import { Link, useNavigate } from "react-router-dom";
 import { assets } from "../assets/assets";
-import { toast } from "react-toastify"; // Switched back to toastify based on your previous files
+import { toast } from "react-toastify"; 
 import { Eye, EyeOff } from "lucide-react";
 import api from "../config/api";
 import { useAuth } from "../context/AuthProvider";
@@ -14,13 +14,13 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
-  // OTP States
-  const [showOTP, setShowOTP] = useState(false);
+  // OTP States (Kept only to prevent JSX errors if you keep the same UI)
+  // Logic-wise, these are now unused because we redirect immediately.
+  const [showOTP, setShowOTP] = useState(false); 
   const [otp, setOtp] = useState("");
-  const [timeLeft, setTimeLeft] = useState(600); // 10 minutes
+  const [timeLeft, setTimeLeft] = useState(0); 
   const [loading, setLoading] = useState(false);
 
-  // ✅ Use useAuth instead of ShopContext
   const { login, token } = useAuth();
   const navigate = useNavigate();
 
@@ -31,27 +31,18 @@ const Register = () => {
     }
   }, [token, navigate]);
 
-  // Timer Logic for OTP
-  useEffect(() => {
-    let timer;
-    if (showOTP && timeLeft > 0) {
-      timer = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
-      }, 1000);
-    }
-    return () => clearInterval(timer);
-  }, [showOTP, timeLeft]);
-
-  // Password validation function
+  // Password validation (Updated to match backend: 8 chars, Upper, Lower, Num, Special)
   const validatePassword = (password) => {
     const errors = [];
-    if (password.length < 6) errors.push("Password must be at least 6 characters long");
-    if (!/[A-Z]/.test(password)) errors.push("Password must contain at least one capital letter");
-    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) errors.push("Password must contain at least one special character");
+    if (password.length < 8) errors.push("Password must be at least 8 characters");
+    if (!/[A-Z]/.test(password)) errors.push("One uppercase letter required");
+    if (!/[a-z]/.test(password)) errors.push("One lowercase letter required");
+    if (!/\d/.test(password)) errors.push("One number required");
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) errors.push("One special character required");
     return errors;
   };
 
-  // 1. Handle Registration (Send OTP)
+  // 1. Handle Registration (DIRECT SIGNUP + AUTO LOGIN)
   const handleRegister = async (e) => {
     e.preventDefault();
     
@@ -68,60 +59,49 @@ const Register = () => {
     setLoading(true);
 
     try {
+      // Call new logic endpoint
       const response = await api.post("/v1/auth/signup", {
         name,
         email,
         password,
       });
 
+      // Backend now creates user and returns tokens immediately (No OTP)
       if (response.status === 201) {
-        setShowOTP(true);
-        toast.success("Registration successful! Please verify your email with OTP");
+        const { accessToken, user } = response.data;
+
+        // Auto Login
+        login(accessToken, user);
+        
+        toast.success("Account created successfully!");
+        navigate("/"); 
+        // Note: We do NOT set showOTP(true) here anymore.
       } 
     } catch (error) {
       console.error("Registration Error:", error);
-      toast.error(error.response?.data?.message || "Registration failed");
+      const statusCode = error.response?.status;
+      const msg = error.response?.data?.message || "Registration failed";
+
+      if (statusCode === 429) {
+          toast.error("Too many accounts created from this IP. Please wait.");
+      } else {
+          toast.error(msg);
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // 2. Handle OTP Verification
+  // Legacy handler - kept to prevent crash if your JSX calls it, but it's unused in new flow
   const handleVerifyOTP = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const response = await api.post("/v1/auth/verify-otp", {
-        email,
-        otp,
-      });
-      
-      if (response.status === 200) {
-        const { accessToken, user } = response.data;
-
-        // Login via AuthContext
-        login(accessToken, user);
-        
-        toast.success("Email verified successfully!");
-        navigate("/");
-      } 
-    } catch (error) {
-      console.error("OTP Verification Error:", error);
-      toast.error(error.response?.data?.message || "OTP verification failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const formatTime = (seconds) => {
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    e.preventDefault(); 
+    console.warn("OTP logic is deprecated");
   };
 
   const togglePasswordVisibility = () => setShowPassword(!showPassword);
   const toggleConfirmPasswordVisibility = () => setShowConfirmPassword(!showConfirmPassword);
+  
+  // ... return (JSX) remains the same ...
 
   return (
     <div className="min-h-screen flex flex-col text-lg">

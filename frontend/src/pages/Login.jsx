@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-
-// Import the image directly
 import loginBannerImg from "../assets/loginBanner.png"; 
-
 import api from "../config/api"; 
 import { useAuth } from "../context/AuthProvider"; 
 
@@ -46,13 +43,6 @@ const Login = () => {
     return () => { if (timer) clearInterval(timer); };
   }, [lockTimeRemaining]);
 
-  const formatLockTime = (minutes) => {
-    if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''}`;
-    const hours = Math.floor(minutes / 60);
-    const rem = minutes % 60;
-    return `${hours} hour${hours > 1 ? 's' : ''}${rem > 0 ? ` and ${rem} min` : ''}`;
-  };
-
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
@@ -83,22 +73,29 @@ const Login = () => {
       const statusCode = err.response?.status;
       const errorMessage = err.response?.data?.message || "Login failed.";
 
-      // 🟢 FIX HERE: Prevent double error boxes
-      if (statusCode === 403 && errorMessage.toLowerCase().includes("locked")) {
-        setAccountLocked(true);
-        setError(""); // ✅ Clear generic error so top box doesn't show
+      // --- NEW: Rate Limiting Handling (429) ---
+      if (statusCode === 429) {
+        setError("Too many attempts. Please try again later.");
+        toast.error("Too many login attempts from this IP.");
+        return;
+      }
 
-        // Logic to extract time or default to 60
+      // --- Lockout Handling (403) ---
+      if (statusCode === 403 && (errorMessage.toLowerCase().includes("locked") || errorMessage.includes("attempts"))) {
+        setAccountLocked(true);
+        setError(""); 
+
+        // Logic to extract time or default to 15 (based on backend)
         const minutesMatch = errorMessage.match(/(\d+) minute/);
         if (minutesMatch) {
           setLockTimeRemaining(parseInt(minutesMatch[1]));
         } else {
-          setLockTimeRemaining(60); 
+          setLockTimeRemaining(15); 
         }
       } else {
         // Normal error (wrong password, etc.)
         setAccountLocked(false);
-        setError(errorMessage); // Show top box only
+        setError(errorMessage); 
         if (statusCode !== 401) toast.error(errorMessage);
       }
     } finally {
@@ -106,6 +103,7 @@ const Login = () => {
     }
   };
 
+  // ... return (JSX) remains the same ...
   return (
     <div className="min-h-screen flex flex-col text-lg">
       <div className="flex flex-1 flex-col md:flex-row">

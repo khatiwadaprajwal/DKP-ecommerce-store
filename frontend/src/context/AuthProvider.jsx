@@ -20,15 +20,17 @@ export const AuthProvider = ({ children }) => {
   // Function to sync state with LocalStorage
   const checkToken = () => {
     const storedToken = localStorage.getItem('accessToken');
-    const storedUser = localStorage.getItem('user'); // ✅ Get full user data
+    const storedUser = localStorage.getItem('user'); 
 
     if (storedToken) {
       const decoded = decodeUser(storedToken);
-      if (decoded) {
+      const currentTime = Date.now() / 1000;
+
+      // Check if token exists and hasn't expired
+      if (decoded && decoded.exp > currentTime) {
         setToken(storedToken);
         api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
         
-        // ✅ FIX: Use storedUser (full details) if available, otherwise fallback to decoded token
         if (storedUser) {
             try {
                 setUser(JSON.parse(storedUser));
@@ -38,10 +40,10 @@ export const AuthProvider = ({ children }) => {
         } else {
             setUser(decoded);
         }
-
       } else {
-        // Token is invalid/expired according to jwtDecode
-        handleLogout();
+        // Token is invalid or expired
+        handleLogout(false); // False = suppress toast on auto-logout
+        return;
       }
     } else {
         setUser(null);
@@ -53,7 +55,6 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     checkToken();
 
-    // LISTEN for storage events (Triggered by api.js refreshing token)
     const handleStorageChange = () => {
       checkToken();
     };
@@ -65,21 +66,26 @@ export const AuthProvider = ({ children }) => {
   const login = (newToken, userData) => {
     localStorage.setItem('accessToken', newToken);
     localStorage.setItem('user', JSON.stringify(userData));
-    checkToken(); // Update state immediately
+    api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+    
+    // Update state immediately without waiting for storage event
+    setToken(newToken);
+    setUser(userData);
   };
 
-  const handleLogout = async () => {
+  const handleLogout = async (showToast = true) => {
     try {
+      // Attempt backend logout, but don't block client logout if it fails
       await api.post(`/auth/logout`); 
     } catch (error) {
       console.error("Logout error", error);
     } finally {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('user');
+      delete api.defaults.headers.common['Authorization'];
       setUser(null);
       setToken(null);
-      delete api.defaults.headers.common['Authorization'];
-      toast.success("Logged out successfully");
+      if(showToast) toast.success("Logged out successfully");
     }
   };
 
@@ -89,6 +95,8 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 }
+
+
 
 // ----- UPDATED ROUTES -----
 

@@ -1,146 +1,201 @@
-const { sendOTPByEmail } = require("../utils/mailer");
 const User = require("../model/usermodel");
 const bcrypt = require("bcryptjs");
-const Otp = require("../model/otp.model");
 
-// Generate a 6-digit OTP
-const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+// ==========================================
+// 1. GET SECURITY QUESTIONS (Step 1 of Forgot Password)
+// ==========================================
+// User enters email -> We return the 3 questions (text only)
+// Add this to passwordController.js
+const setSecurityQuestions = async (req, res) => {
+    try {
+        const { securityQuestions } = req.body;
+        if (!securityQuestions || securityQuestions.length !== 3) {
+            return res.status(400).json({ message: "Provide 3 questions." });
+        }
+        const user = await User.findById(req.user.id || req.user._id);
+        if (!user) return res.status(404).json({ message: "User not found" });
 
-// ✅ Send OTP (Now Hashes the OTP before storage)
-const sendotp = async (req, res) => {
+        const processedQuestions = await Promise.all(
+            securityQuestions.map(async (q) => {
+                const hashedAnswer = await bcrypt.hash(q.answer.trim().toLowerCase(), 12);
+                return { question: q.question, answer: hashedAnswer };
+            })
+        );
+        user.securityQuestions = processedQuestions;
+        await user.save();
+        res.status(200).json({ message: "Security questions updated." });
+    } catch (error) {
+        res.status(500).json({ error: "Server Error" });
+    }
+};
+
+
+
+const getSecurityQuestions = async (req, res) => {
     try {
         const { email } = req.body;
         
-        // 1. Generate Raw OTP
-        const otp = generateOTP();
+        if (!email) return res.status(400).json({ message: "Email is required" });
 
-        // 🔒 2. Hash the OTP (Security Step)
-        const hashedOtp = await bcrypt.hash(otp, 10);
+        // Find user, return ONLY the questions (exclude answers, password, etc)
+        const user = await User.findOne({ email: email.toLowerCase() })
+                               .select("securityQuestions.question securityQuestions._id");
 
-        // 3. Store the HASHED OTP in DB
-        await Otp.findOneAndUpdate(
-            { email }, 
-            { 
-                otp: hashedOtp, // Store hash, not raw
-                createdAt: Date.now(),
-                otpAttempts: 0, // Reset attempts on new OTP
-                isBlacklisted: false 
-            }, 
-            { upsert: true, new: true } 
-        );
+        if (!user) {
+            // Security: Don't reveal if user exists. Return 404 or generic message.
+            return res.status(404).json({ message: "User not found" });
+        }
 
-        console.log(`📩 OTP Sent to: ${email}`); // Don't log raw OTP in production
+        if (user.securityQuestions.length === 0) {
+            return res.status(400).json({ message: "Account has no security questions set up." });
+        }
 
-        // 4. Send the RAW OTP via Email
-        await sendOTPByEmail(email, otp);
-        
-        res.status(201).json({ message: "OTP sent to email for verification" });
+        // Return array of { _id, question }
+        res.status(200).json({ 
+            email: user.email,
+            questions: user.securityQuestions 
+        });
 
     } catch (error) {
-        console.error("❌ Error in sendotp:", error.message);
+        console.error("❌ Error fetching questions:", error);
         res.status(500).json({ error: "Internal Server Error" });
     }
 };
 
+// ==========================================
+// 2. VERIFY ANSWERS & RESET PASSWORD (Step 2)
+// ==========================================
+const resetPassword = async (req, res) => {
+    try {
+        // 'answers' should be an object: { "question_id_1": "answer1", "question_id_2": "answer2" }
+        const { email, answers, newPassword } = req.body;
 
-// ✅ Reset Password (Now Compares Hashed OTP)
-const resetpassword = async (req, res) => {
-  try {
-      const { email, password, otp } = req.body; // 'otp' here is raw
+        // 1. Validate Password Strength
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+        if (!passwordRegex.test(newPassword)) {
+            return res.status(400).json({ message: "Password too weak. Must be 8+ chars with Upper, Lower, Number & Special." });
+        }
 
-      // Find OTP entry
-      const otpEntry = await Otp.findOne({ email });
+        // 2. Find User (Explicitly select hidden answers)
+        const user = await User.findOne({ email: email.toLowerCase() }).select("+securityQuestions.answer");
 
-      if (!otpEntry) {
-          return res.status(400).json({ message: "No OTP request found for this email" });
-      }
+        if (!user) return res.status(404).json({ message: "User not found" });
 
-      // Check if blacklisted
-      if (otpEntry.isBlacklisted && otpEntry.blacklistedUntil > new Date()) {
-          return res.status(403).json({ message: "Too many failed attempts. Try again later." });
-      }
+        // 3. Check Lockout Status (Brute force protection)
+        if (user.lockUntil && user.lockUntil > Date.now()) {
+            const minutesLeft = Math.ceil((user.lockUntil - Date.now()) / 60000);
+            return res.status(403).json({ message: `Account locked. Try again in ${minutesLeft} minutes.` });
+        }
 
-      // 🔒 Check if OTP matches (Using bcrypt compare)
-      const isMatch = await bcrypt.compare(otp, otpEntry.otp);
+        // 4. Verify ALL 3 Answers
+        let allCorrect = true;
 
-      if (!isMatch) {
-          otpEntry.otpAttempts += 1;
+        if (!user.securityQuestions || user.securityQuestions.length === 0) {
+            return res.status(400).json({ message: "Security questions not set up." });
+        }
 
-          // Blacklist after 10 failed attempts
-          if (otpEntry.otpAttempts >= 10) {
-              otpEntry.isBlacklisted = true;
-              otpEntry.blacklistedUntil = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-          }
+        for (let dbQ of user.securityQuestions) {
+            // Get the user's submitted answer for this specific Question ID
+            const submittedAnswer = answers[dbQ._id];
+            
+            if (!submittedAnswer) {
+                allCorrect = false;
+                break;
+            }
 
-          await otpEntry.save();
-          return res.status(400).json({ message: "Invalid OTP" });
-      }
+            // Normalize (trim + lowercase) and Compare Hash
+            const isMatch = await bcrypt.compare(submittedAnswer.trim().toLowerCase(), dbQ.answer);
+            
+            if (!isMatch) {
+                allCorrect = false;
+                break;
+            }
+        }
 
-      // OTP matched — reset password
-      const hashedPassword = await bcrypt.hash(password, 10);
-      await User.updateOne({ email }, { password: hashedPassword });
+        // 5. Handle Incorrect Answers
+        if (!allCorrect) {
+            user.loginAttempts = (user.loginAttempts || 0) + 1;
+            
+            // Lock after 5 failed attempts
+            if (user.loginAttempts >= 5) {
+                user.lockUntil = new Date(Date.now() + 30 * 60 * 1000); // Lock for 30 minutes
+                await user.save();
+                return res.status(403).json({ message: "Too many failed attempts. Account locked for 30 minutes." });
+            }
 
-      // Cleanup OTP entry
-      await Otp.deleteOne({ email });
+            await user.save();
+            return res.status(400).json({ message: "One or more answers are incorrect." });
+        }
 
-      console.log("✅ Password Reset Successful for:", email);
-      res.status(200).json({ message: "Password reset successfully" });
+        // 6. SUCCESS: Reset Password & Clear Locks
+        const hashedPassword = await bcrypt.hash(newPassword, 12);
+        user.password = hashedPassword;
+        user.loginAttempts = 0;
+        user.lockUntil = null;
+        await user.save();
 
-  } catch (error) {
-      console.error("❌ Error in resetpassword:", error.message);
-      res.status(500).json({ error: "Internal Server Error" });
-  }
+        console.log(`✅ Password reset successfully for: ${email}`);
+        res.status(200).json({ message: "Password reset successfully. You can now login." });
+
+    } catch (error) {
+        console.error("❌ Error in resetPassword:", error.message);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
 };
 
-
-// ✅ Change Password (Authenticated User) - Unchanged but included for completeness
+// ==========================================
+// 3. CHANGE PASSWORD (Authenticated)
+// ==========================================
 const changePassword = async (req, res) => {
   try {
     const { oldPassword, newPassword } = req.body;
+    
     if (!oldPassword || !newPassword) {
-      return res.status(400).json({ msg: "Please provide old and new passwords" });
+      return res.status(400).json({ message: "Please provide old and new passwords" });
     }
 
-    // Find full user from DB for latest password + attempts info
-    const user = await User.findById(req.user._id);
-    if (!user) return res.status(404).json({ msg: "User not found" });
+    // req.user.id comes from your verifyToken middleware
+    const user = await User.findById(req.user.id || req.user._id);
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-    // 🔒 Check if currently locked
-    if (user.lockUntil && user.lockUntil > new Date()) {
+    // 1. Check Lockout
+    if (user.lockUntil && user.lockUntil > Date.now()) {
       const minutesLeft = Math.ceil((user.lockUntil - Date.now()) / 60000);
-      return res.status(403).json({ msg: `Too many incorrect attempts. Try again in ${minutesLeft} minute(s).` });
+      return res.status(403).json({ message: `Account locked. Try again in ${minutesLeft} minutes.` });
     }
 
-    // Compare old password
+    // 2. Verify Old Password
     const isMatch = await bcrypt.compare(oldPassword, user.password);
-
     if (!isMatch) {
-      // Increment failed attempts
-      user.loginAttempts += 1;
-
-      if (user.loginAttempts >= 10) {
-        user.lockUntil = new Date(Date.now() + 60 * 60 * 1000); // lock for 1 hour
+      user.loginAttempts = (user.loginAttempts || 0) + 1;
+      
+      if (user.loginAttempts >= 5) {
+        user.lockUntil = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
         await user.save();
-        return res.status(403).json({ msg: "Too many incorrect attempts. You are temporarily locked out for 1 hour." });
+        return res.status(403).json({ message: "Too many failed attempts. Account locked for 1 hour." });
       }
 
       await user.save();
-      return res.status(401).json({ msg: "Old password is incorrect" });
+      return res.status(401).json({ message: "Old password is incorrect" });
     }
 
-    // ✅ Success — reset lock state
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    // 3. Check if new password is same as old
+    const isSame = await bcrypt.compare(newPassword, user.password);
+    if (isSame) return res.status(400).json({ message: "New password cannot be the same as old password" });
 
+    // 4. Update
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
     user.password = hashedPassword;
     user.loginAttempts = 0;
     user.lockUntil = null;
     await user.save();
 
-    res.status(200).json({ msg: "Password changed successfully" });
+    res.status(200).json({ message: "Password changed successfully" });
+
   } catch (error) {
     console.error("❌ Error in changePassword:", error);
-    res.status(500).json({ msg: "Server error", error: error.message });
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-module.exports = { sendotp, resetpassword, changePassword };
+module.exports = { setSecurityQuestions, getSecurityQuestions, resetPassword, changePassword };

@@ -17,6 +17,7 @@ const {
     signup, 
     login, 
     logout, 
+
     refreshAccessToken 
 } = require('../controller/authentication.controller');
 
@@ -34,6 +35,7 @@ const authLimiter = rateLimit({
 
 router.post('/signup', authLimiter, signup);
 router.post('/login', authLimiter, login);
+
 
 router.post('/logout', logout);
 router.get("/refresh", refreshAccessToken);

@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from "react"; 
+import React, { useState, useEffect } from "react"; 
 import { Link, useNavigate } from "react-router-dom";
 import { assets } from "../assets/assets";
 import { toast } from "react-toastify"; 
@@ -7,18 +7,15 @@ import api from "../config/api";
 import { useAuth } from "../context/AuthProvider";
 
 const Register = () => {
+  // Form States
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  
+  // UI States
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
-  // OTP States (Kept only to prevent JSX errors if you keep the same UI)
-  // Logic-wise, these are now unused because we redirect immediately.
-  const [showOTP, setShowOTP] = useState(false); 
-  const [otp, setOtp] = useState("");
-  const [timeLeft, setTimeLeft] = useState(0); 
   const [loading, setLoading] = useState(false);
 
   const { login, token } = useAuth();
@@ -31,7 +28,7 @@ const Register = () => {
     }
   }, [token, navigate]);
 
-  // Password validation (Updated to match backend: 8 chars, Upper, Lower, Num, Special)
+  // Strict Password Validation
   const validatePassword = (password) => {
     const errors = [];
     if (password.length < 8) errors.push("Password must be at least 8 characters");
@@ -42,10 +39,10 @@ const Register = () => {
     return errors;
   };
 
-  // 1. Handle Registration (DIRECT SIGNUP + AUTO LOGIN)
   const handleRegister = async (e) => {
     e.preventDefault();
     
+    // 1. Client-side Validation
     const passwordErrors = validatePassword(password);
     if (passwordErrors.length > 0) {
       passwordErrors.forEach(error => toast.error(error));
@@ -59,23 +56,19 @@ const Register = () => {
     setLoading(true);
 
     try {
-      // Call new logic endpoint
+      // 2. API Call (Direct Signup)
       const response = await api.post("/v1/auth/signup", {
         name,
         email,
         password,
       });
 
-      // Backend now creates user and returns tokens immediately (No OTP)
+      // 3. Success -> Auto Login
       if (response.status === 201) {
         const { accessToken, user } = response.data;
-
-        // Auto Login
         login(accessToken, user);
-        
         toast.success("Account created successfully!");
         navigate("/"); 
-        // Note: We do NOT set showOTP(true) here anymore.
       } 
     } catch (error) {
       console.error("Registration Error:", error);
@@ -92,175 +85,112 @@ const Register = () => {
     }
   };
 
-  // Legacy handler - kept to prevent crash if your JSX calls it, but it's unused in new flow
-  const handleVerifyOTP = async (e) => {
-    e.preventDefault(); 
-    console.warn("OTP logic is deprecated");
-  };
-
   const togglePasswordVisibility = () => setShowPassword(!showPassword);
   const toggleConfirmPasswordVisibility = () => setShowConfirmPassword(!showConfirmPassword);
-  
-  // ... return (JSX) remains the same ...
 
   return (
-    <div className="min-h-screen flex flex-col text-lg">
-      <div className="flex flex-1 flex-col md:flex-row">
+    <div className="flex flex-col min-h-screen text-lg">
+      <div className="flex flex-col flex-1 md:flex-row">
         {/* Left Side - Image */}
-        <div className="hidden md:block md:w-1/2 bg-blue-50">
+        <div className="hidden bg-blue-50 md:block md:w-1/2">
           <img
             src={assets.side}
             alt="Register Side"
-            className="w-full h-full object-cover"
+            className="object-cover w-full h-full"
           />
         </div>
 
         {/* Right Side - Registration Form */}
-        <div className="w-full md:w-1/2 flex items-center justify-center px-6 py-12">
+        <div className="flex items-center justify-center w-full px-6 py-12 md:w-1/2">
           <div className="w-full max-w-md">
-            {!showOTP ? (
-              <>
-                <h2 className="text-3xl font-bold mb-2">Create Account</h2>
-                <p className="text-gray-600 mb-8">Enter your details below</p>
+            
+            <h2 className="mb-2 text-3xl font-bold">Create Account</h2>
+            <p className="mb-8 text-gray-600">Enter your details below</p>
 
-                <form onSubmit={handleRegister} className="space-y-6">
-                  <div>
-                    <input
-                      type="text"
-                      name="name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Full Name"
-                      required
-                      className="w-full px-4 py-3 border-b border-gray-300 focus:border-gray-900 focus:outline-none bg-transparent"
-                    />
-                  </div>
+            <form onSubmit={handleRegister} className="space-y-6">
+              {/* Name Input */}
+              <div>
+                <input
+                  type="text"
+                  name="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Full Name"
+                  required
+                  className="w-full px-4 py-3 bg-transparent border-b border-gray-300 focus:border-gray-900 focus:outline-none"
+                />
+              </div>
 
-                  <div>
-                    <input
-                      type="email"
-                      name="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Email"
-                      required
-                      className="w-full px-4 py-3 border-b border-gray-300 focus:border-gray-900 focus:outline-none bg-transparent"
-                    />
-                  </div>
+              {/* Email Input */}
+              <div>
+                <input
+                  type="email"
+                  name="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email"
+                  required
+                  className="w-full px-4 py-3 bg-transparent border-b border-gray-300 focus:border-gray-900 focus:outline-none"
+                />
+              </div>
 
-                  <div className="relative">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      name="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Password"
-                      required
-                      className="w-full px-4 py-3 border-b border-gray-300 focus:border-gray-900 focus:outline-none bg-transparent"
-                    />
-                    <button
-                      type="button"
-                      onClick={togglePasswordVisibility}
-                      className="absolute right-2 top-3 text-gray-500"
-                    >
-                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                    </button>
-                  </div>
-                  
-                  <div className="text-xs text-gray-500">
-                    Password must be at least 6 characters with one capital letter and one special character
-                  </div>
+              {/* Password Input */}
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  required
+                  className="w-full px-4 py-3 bg-transparent border-b border-gray-300 focus:border-gray-900 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={togglePasswordVisibility}
+                  className="absolute text-gray-500 right-2 top-3"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+              
+              <div className="text-xs text-gray-500">
+                Password must be at least 8 characters with uppercase, lowercase, number & special char.
+              </div>
 
-                  <div className="relative">
-                    <input
-                      type={showConfirmPassword ? "text" : "password"}
-                      name="confirmPassword"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Confirm Password"
-                      required
-                      className="w-full px-4 py-3 border-b border-gray-300 focus:border-gray-900 focus:outline-none bg-transparent"
-                    />
-                    <button
-                      type="button"
-                      onClick={toggleConfirmPasswordVisibility}
-                      className="absolute right-2 top-3 text-gray-500"
-                    >
-                      {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                    </button>
-                  </div>
+              {/* Confirm Password Input */}
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  name="confirmPassword"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm Password"
+                  required
+                  className="w-full px-4 py-3 bg-transparent border-b border-gray-300 focus:border-gray-900 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={toggleConfirmPasswordVisibility}
+                  className="absolute text-gray-500 right-2 top-3"
+                >
+                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
 
-                  <div>
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className={`w-full px-8 py-3 ${
-                        loading ? "bg-gray-400" : "bg-red-500 hover:bg-red-600"
-                      } text-white rounded-md transition-colors`}
-                    >
-                      {loading ? "Processing..." : "Create Account"}
-                    </button>
-                  </div>
-                </form>
-              </>
-            ) : (
-              <>
-                <h1 className="text-3xl font-bold mb-2">Verify Your Email</h1>
-                <p className="text-gray-600 mb-8">
-                  Enter the OTP sent to your email
-                </p>
-
-                <form onSubmit={handleVerifyOTP} className="space-y-6">
-                  <div>
-                    <input
-                      type="text"
-                      name="otp"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value)}
-                      placeholder="Enter OTP"
-                      required
-                      maxLength={6}
-                      className="w-full px-4 py-3 border-b border-gray-300 focus:border-gray-900 focus:outline-none bg-transparent"
-                    />
-                    <p className="mt-2 text-sm text-gray-500">
-                      OTP expires in{" "}
-                      <span className="text-red-500 font-medium">
-                        {formatTime(timeLeft)}
-                      </span>
-                    </p>
-                  </div>
-
-                  <div>
-                    <button
-                      type="submit"
-                      disabled={loading || otp.length < 4}
-                      className={`w-full px-8 py-3 ${
-                        loading || otp.length < 4
-                          ? "bg-gray-400"
-                          : "bg-red-500 hover:bg-red-600"
-                      } text-white rounded-md transition-colors`}
-                    >
-                      {loading ? "Verifying..." : "Verify OTP"}
-                    </button>
-                  </div>
-
-                  {timeLeft <= 0 && (
-                    <div className="text-center">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTimeLeft(600);
-                          toast.info("OTP resent to your email");
-                        }}
-                        className="text-blue-600 hover:underline"
-                      >
-                        Resend OTP
-                      </button>
-                    </div>
-                  )}
-                </form>
-              </>
-            )}
+              {/* Submit Button */}
+              <div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={`w-full px-8 py-3 ${
+                    loading ? "bg-gray-400" : "bg-red-500 hover:bg-red-600"
+                  } text-white rounded-md transition-colors`}
+                >
+                  {loading ? "Processing..." : "Create Account"}
+                </button>
+              </div>
+            </form>
 
             <div className="mt-12 text-center">
               <p className="text-gray-600">

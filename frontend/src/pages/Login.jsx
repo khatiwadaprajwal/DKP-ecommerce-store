@@ -38,10 +38,18 @@ const Login = () => {
           }
           return prev - 1;
         });
-      }, 60000);
+      }, 60000); // Decrement every 1 minute
     }
     return () => { if (timer) clearInterval(timer); };
   }, [lockTimeRemaining]);
+
+  // ✅ ADDED: Missing Helper Function
+  const formatLockTime = (minutes) => {
+    if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''}`;
+    const hours = Math.floor(minutes / 60);
+    const rem = minutes % 60;
+    return `${hours} hour${hours > 1 ? 's' : ''}${rem > 0 ? ` and ${rem} min` : ''}`;
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -49,6 +57,7 @@ const Login = () => {
     setIsLoading(true);
 
     try {
+      // Backend Route
       const response = await api.post(`/v1/auth/login`, {
         email,
         password,
@@ -57,6 +66,8 @@ const Login = () => {
       if (response.status === 200) {
         const { accessToken, user } = response.data;
         login(accessToken, user);
+        
+        // Reset Lock State on success
         setAccountLocked(false);
         setLockTimeRemaining(null);
         toast.success("Login successful");
@@ -73,27 +84,27 @@ const Login = () => {
       const statusCode = err.response?.status;
       const errorMessage = err.response?.data?.message || "Login failed.";
 
-      // --- NEW: Rate Limiting Handling (429) ---
+      // 1. Rate Limiting Handling (429) - From express-rate-limit
       if (statusCode === 429) {
         setError("Too many attempts. Please try again later.");
         toast.error("Too many login attempts from this IP.");
         return;
       }
 
-      // --- Lockout Handling (403) ---
+      // 2. Lockout Handling (403) - From brute force logic
       if (statusCode === 403 && (errorMessage.toLowerCase().includes("locked") || errorMessage.includes("attempts"))) {
         setAccountLocked(true);
         setError(""); 
 
-        // Logic to extract time or default to 15 (based on backend)
+        // Extract time from string like "Account locked. Try again in 15 minutes"
         const minutesMatch = errorMessage.match(/(\d+) minute/);
         if (minutesMatch) {
           setLockTimeRemaining(parseInt(minutesMatch[1]));
         } else {
-          setLockTimeRemaining(15); 
+          setLockTimeRemaining(15); // Default fallback
         }
       } else {
-        // Normal error (wrong password, etc.)
+        // 3. Normal error (400/401)
         setAccountLocked(false);
         setError(errorMessage); 
         if (statusCode !== 401) toast.error(errorMessage);
@@ -103,7 +114,6 @@ const Login = () => {
     }
   };
 
-  // ... return (JSX) remains the same ...
   return (
     <div className="min-h-screen flex flex-col text-lg">
       <div className="flex flex-1 flex-col md:flex-row">
@@ -123,7 +133,7 @@ const Login = () => {
             <h2 className="text-3xl font-bold mb-2">Log in to Dkp</h2>
             <p className="text-gray-600 mb-8">Enter your details below</p>
 
-            {/* Box 1: Generic Error (Wrong password, User not found) */}
+            {/* Box 1: Generic Error */}
             {error && !accountLocked && (
               <div className="text-red-500 mb-4 p-3 bg-red-50 rounded text-sm font-medium">
                 {error}
@@ -135,7 +145,8 @@ const Login = () => {
               <div className="text-red-500 mb-4 p-3 bg-red-50 rounded border border-red-200">
                 <p className="font-bold">Account Locked</p>
                 <p className="text-sm">
-                   Try again in {lockTimeRemaining ? formatLockTime(lockTimeRemaining) : '1 hour'}.
+                   {/* This line will now work correctly */}
+                   Try again in {lockTimeRemaining ? formatLockTime(lockTimeRemaining) : 'a few minutes'}.
                 </p>
               </div>
             )}
@@ -162,7 +173,11 @@ const Login = () => {
               />
 
               <div className="flex justify-between items-center">
-                <button type="submit" disabled={isLoading || accountLocked} className="px-8 py-3 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors disabled:opacity-50">
+                <button 
+                  type="submit" 
+                  disabled={isLoading || accountLocked} 
+                  className="px-8 py-3 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   {isLoading ? "Logging in..." : accountLocked ? "Locked" : "Log in"}
                 </button>
                 <Link to="/forgot-password" className="text-red-500 hover:underline text-sm">Forgot Password?</Link>

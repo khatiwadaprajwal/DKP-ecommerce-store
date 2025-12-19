@@ -48,6 +48,7 @@ export const AuthProvider = ({ children }) => {
     } else {
         setUser(null);
         setToken(null);
+        delete api.defaults.headers.common['Authorization'];
     }
     setLoading(false);
   };
@@ -55,6 +56,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     checkToken();
 
+    // Listen for the custom event dispatched by api.js
     const handleStorageChange = () => {
       checkToken();
     };
@@ -66,17 +68,18 @@ export const AuthProvider = ({ children }) => {
   const login = (newToken, userData) => {
     localStorage.setItem('accessToken', newToken);
     localStorage.setItem('user', JSON.stringify(userData));
+    
+    // Set header immediately
     api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
     
-    // Update state immediately without waiting for storage event
     setToken(newToken);
     setUser(userData);
   };
 
   const handleLogout = async (showToast = true) => {
     try {
-      // Attempt backend logout, but don't block client logout if it fails
-      await api.post(`/auth/logout`); 
+      // ✅ FIX: Added /v1 to match your backend routes
+      await api.post(`/v1/auth/logout`); 
     } catch (error) {
       console.error("Logout error", error);
     } finally {
@@ -97,8 +100,6 @@ export const AuthProvider = ({ children }) => {
 }
 
 
-
-// ----- UPDATED ROUTES -----
 
 export const AdminRoute = () => {
   const { user, loading } = useAuth();

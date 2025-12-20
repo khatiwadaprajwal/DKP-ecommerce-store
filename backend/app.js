@@ -30,13 +30,13 @@ app.get('/', (req, res) => {
 const routes = require("./routes/index")
 app.use("/v1", routes);
 
+const PORT = process.env.PORT || 3001;
 
-
-app.listen(3001, "0.0.0.0", (err) => {
+app.listen(PORT, "0.0.0.0", (err) => {
     if (err) {
         console.log("Server Error:", err);
     } else {
-        console.log("Server connected to port 3001");
+        console.log(`Server connected to port ${PORT}`);
         console.log("Press Ctrl + C to end the connection");
     }
 });

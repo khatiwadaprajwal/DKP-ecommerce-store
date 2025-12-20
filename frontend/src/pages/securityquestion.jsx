@@ -39,7 +39,7 @@ const SecuritySettings = () => {
     setLoading(true);
     try {
       // Calls your new controller endpoint
-      const response = await api.put("/v1/auth/set-security-questions", {
+      const response = await api.put("/v1/set-security-questions", {
         securityQuestions: formData
       });
       

@@ -30,7 +30,7 @@ const ForgotPassword = () => {
     setIsLoading(true);
     try {
       // Adjusted endpoint to match your routes (Ensure this matches your backend route file)
-      const response = await api.post("/v1/auth/get-security-questions", { email });
+      const response = await api.post("/v1/get-security-questions", { email });
       
       if (response.status === 200) {
         setQuestions(response.data.questions);

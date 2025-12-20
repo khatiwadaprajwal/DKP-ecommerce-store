@@ -22,7 +22,7 @@ import Profile from "./pages/Profile";
 import UserLayout from "./pages/UserLayout";
 import PaymentSuccess from "./pages/khaltisucess"; 
 import PaymentFailed from "./pages/paymentfailed";
-
+import SecuritySettings from "./pages/securityquestion";
 // Admin Imports
 import Adminpage from "./pages/Admin/Adminpage";
 import AddProduct from "./pages/Admin/AddProduct";
@@ -80,6 +80,7 @@ const App = () => {
             <Route path="/placeOrder" element={<PlaceOrder />} />
             <Route path="/order" element={<Order />} />
             <Route path="/cart" element={<Cart />} />
+            <Route path="/security-settings" element={<SecuritySettings />} />
           </Route>
         </Route>
 

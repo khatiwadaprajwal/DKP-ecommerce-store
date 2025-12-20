@@ -67,7 +67,7 @@ const ForgotPassword = () => {
     setIsLoading(true);
     try {
       // Adjusted endpoint
-      const response = await api.put("/v1/reset-password", { 
+      const response = await api.put("/v1/resetpassword", { 
         email, 
         answers, 
         newPassword: password 

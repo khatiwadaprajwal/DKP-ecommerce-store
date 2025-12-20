@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { verifyKhaltiPayment, getPaymentStatus } = require('../controller/payment.controller');
+const { verifyKhaltiPayment, getPaymentStatus } = require('../controllers/payment.controller');
 const isLoggedIn = require('../middleware/isloggedin');
 
 // Verify Khalti payment

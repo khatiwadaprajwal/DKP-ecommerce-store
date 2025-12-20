@@ -6,7 +6,7 @@ const {
     updateProduct,
     deleteProduct,
     searchProducts,
-} = require("../controller/product.controller");
+} = require("../controllers/product.controller");
 
 const isLoggedIn = require("../middleware/isloggedin");
 const isAdminOrSuperAdmin = require("../middleware/isAdminorSuperAdmin");

@@ -5,7 +5,7 @@ const {
     getFeaturedProducts,
     getLatestProducts,
     getTopRatedProducts
-} = require('../controller/productlist.controller');
+} = require('../controllers/productlist.controller');
 
 // Get bestseller products
 router.get('/bestsellers', getBestsellerProducts);

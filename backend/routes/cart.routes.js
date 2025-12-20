@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const isLoggedIn = require("../middleware/isloggedin");
-const { addToCart, removeFromCart, getCart,placeOrderFromCart, updateCartQuantity } = require("../controller/cart.controller");
+const { addToCart, removeFromCart, getCart,placeOrderFromCart, updateCartQuantity } = require("../controllers/cart.controller");
 
 router.post("/add", isLoggedIn, addToCart);
 router.delete("/remove/:cartItemId", isLoggedIn, removeFromCart);

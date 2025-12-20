@@ -1,6 +1,6 @@
 // routes/user.routes.js
 const express = require("express");
-const { getAllCustomers, getCustomerByEmail, updateUser } = require("../controller/user.controller");
+const { getAllCustomers, getCustomerByEmail, updateUser } = require("../controllers/user.controller");
 const isLoggedIn = require("../middleware/isloggedin");
 const isAdmin = require("../middleware/isadmin");
 const isAdminOrSuperAdmin = require("../middleware/isAdminorSuperAdmin");

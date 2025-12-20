@@ -1,5 +1,5 @@
 const express = require("express");
-const { addReview, getProductReviews, getUserReviews, updateReview, deleteReview, } = require("../controller/userreview.controller");
+const { addReview, getProductReviews, getUserReviews, updateReview, deleteReview, } = require("../controllers/userreview.controller");
 
 const isLoggedIn = require("../middleware/isloggedin");
 const isAdmin = require("../middleware/isadmin");

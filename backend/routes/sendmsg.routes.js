@@ -8,7 +8,7 @@ const {
   getAllMessages,
   getMessagesByEmail,
   replyToMessage
-} = require('../controller/sendmsg.controller');
+} = require('../controllers/sendmsg.controller');
 
 // Route to send a new message
 router.post('/send', isloggedin, sendMessage);

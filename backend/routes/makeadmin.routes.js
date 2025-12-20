@@ -1,5 +1,5 @@
 const express = require("express");
-const {makeAdmin,demoteAdmin,makeSuperAdmin} = require("../controller/makeadmin.controller");
+const {makeAdmin,demoteAdmin,makeSuperAdmin} = require("../controllers/makeadmin.controller");
 const isLoggedIn = require("../middleware/isloggedin");
 const isAdmin = require("../middleware/isadmin");
 

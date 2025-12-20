@@ -19,7 +19,7 @@ const {
     logout, 
 
     refreshAccessToken 
-} = require('../controller/authentication.controller');
+} = require('../controllers/authentication.controller');
 
 // --- SECURITY: Rate Limiter ---
 

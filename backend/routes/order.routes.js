@@ -3,7 +3,7 @@ const router = express.Router();
 const isLoggedIn = require("../middleware/isloggedin");
 const isadmin = require("../middleware/isadmin");
 const isSuperAdmin = require("../middleware/isSuperAdmin");
-const orderController = require("../controller/order.controller");
+const orderController = require("../controllers/order.controller");
 const isAdminOrSuperAdmin = require("../middleware/isAdminorSuperAdmin");
 
 const {
@@ -14,7 +14,7 @@ const {
   getAllOrders,
   changeOrderStatus,
   completeKhaltiPayment
-} = require("../controller/order.controller");
+} = require("../controllers/order.controller");
 
 
 // Route to place an order (COD & PayPal)

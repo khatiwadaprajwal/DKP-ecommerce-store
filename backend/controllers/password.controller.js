@@ -6,29 +6,49 @@ const bcrypt = require("bcryptjs");
 // ==========================================
 // User enters email -> We return the 3 questions (text only)
 // Add this to passwordController.js
+
 const setSecurityQuestions = async (req, res) => {
     try {
-        const { securityQuestions } = req.body;
+        const { securityQuestions, currentPassword } = req.body;
+
+        // 1. Basic Validation
         if (!securityQuestions || securityQuestions.length !== 3) {
-            return res.status(400).json({ message: "Provide 3 questions." });
+            return res.status(400).json({ message: "Please provide exactly 3 questions." });
         }
-        const user = await User.findById(req.user.id || req.user._id);
+
+        if (!currentPassword) {
+            return res.status(400).json({ message: "Current password is required to save changes." });
+        }
+
+        // 2. Find User (Include password field for comparison)
+        const user = await User.findById(req.user.id || req.user._id).select("+password");
         if (!user) return res.status(404).json({ message: "User not found" });
 
+        // 3. SECURITY CHECK: Verify Current Password
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
+        if (!isMatch) {
+            // Log this attempt for security monitoring
+            console.warn(`Failed security question update attempt for user ${user.email}`);
+            return res.status(401).json({ message: "Incorrect password. Changes not saved." });
+        }
+
+        // 4. Hash and Save Questions
         const processedQuestions = await Promise.all(
             securityQuestions.map(async (q) => {
                 const hashedAnswer = await bcrypt.hash(q.answer.trim().toLowerCase(), 12);
                 return { question: q.question, answer: hashedAnswer };
             })
         );
+
         user.securityQuestions = processedQuestions;
         await user.save();
-        res.status(200).json({ message: "Security questions updated." });
+
+        res.status(200).json({ message: "Security questions updated successfully." });
     } catch (error) {
+        console.error("Error setting security questions:", error);
         res.status(500).json({ error: "Server Error" });
     }
 };
-
 
 
 const getSecurityQuestions = async (req, res) => {
